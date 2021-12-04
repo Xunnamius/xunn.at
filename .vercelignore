@@ -1,0 +1,22 @@
+# This file's syntax is only KINDA similar like .gitignore...
+
+# Ignore all root-level files
+/*
+
+# Re-add root-level dirs
+!/data
+!/lib
+!/public
+!/src
+!/types
+
+# Re-add root-level files
+!/.gitignore
+!/babel.config.js
+!/next.config.js
+!/package-lock.json
+!/package.json
+!/tsconfig.json
+
+# Custom adds
+!/expect-env.js
