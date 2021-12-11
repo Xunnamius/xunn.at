@@ -2,7 +2,7 @@ import * as React from 'react';
 import { version as pkgVersion } from 'package';
 import { getEnv } from 'universe/backend/env';
 
-import type { Awaited } from '@ergodark/types';
+import { PromiseValue as Awaited } from 'type-fest';
 
 export async function getServerSideProps() {
   const env = getEnv();
@@ -11,10 +11,7 @@ export async function getServerSideProps() {
     props: {
       isInProduction: env.NODE_ENV == 'production',
       nodeEnv: env.NODE_ENV,
-      nodeVersion: process.version,
-      region: env.VERCEL_REGION,
-      timezone: env.TZ,
-      commitMessage: env.VERCEL_GIT_COMMIT_MESSAGE
+      nodeVersion: process.version
     }
   };
 }
@@ -22,22 +19,16 @@ export async function getServerSideProps() {
 export default function Index({
   isInProduction,
   nodeEnv,
-  nodeVersion,
-  region,
-  timezone,
-  commitMessage
+  nodeVersion
 }: Awaited<ReturnType<typeof getServerSideProps>>['props']) {
   return (
     <React.Fragment>
       <p>
         Serverless node runtime: <strong>{nodeVersion}</strong> <br />
-        Ghostmeme runtime: <strong>{`v${pkgVersion}`}</strong> <br />
-        Latest change: <strong>{commitMessage}</strong>
+        Xunn.at runtime: <strong>{`v${pkgVersion}`}</strong>
         <br />
       </p>
       <p>
-        Vercel region: <strong>{region}</strong> <br />
-        Timezone: <strong>{timezone}</strong> <br />
         Environment: <strong>{nodeEnv}</strong> <br />
         Production mode:{' '}
         <strong>

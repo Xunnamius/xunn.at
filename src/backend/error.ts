@@ -14,6 +14,7 @@ export {
 } from 'named-app-errors';
 
 // TODO: XXX: update named-app-errors with new naming paradigm:
+// TODO: XXX:   - add InvalidConfigurationError
 // TODO: XXX:   - add TestError
 // TODO: XXX:   - add InvalidIdError
 // TODO: XXX:   - add ExternalError (extended by the following new classes)
@@ -21,6 +22,11 @@ export {
 // TODO: XXX:   - BC: rename "XTypeError"s
 // TODO: XXX:   - BC: rename "NotFoundError" to "ItemNotFoundError"
 // TODO: XXX:   - BC: add new "NotFoundError" that now takes any message
+
+// * -- * \\
+
+export class InvalidConfigurationError extends AppError {}
+makeNamedError(InvalidConfigurationError, 'InvalidConfigurationError');
 
 // * -- * \\
 

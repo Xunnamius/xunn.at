@@ -2,6 +2,7 @@ import { name as pkgName, version as pkgVersion } from 'package';
 import { verifyEnvironment } from '../expect-env';
 import { TestError, GuruMeditationError } from 'universe/backend/error';
 import { sendHttpErrorResponse } from 'multiverse/next-respond';
+import { asMockedFunction } from '@xunnamius/jest-types';
 import { tmpdir } from 'os';
 import { promises as fs } from 'fs';
 import { resolve } from 'path';
@@ -14,11 +15,10 @@ import 'jest-extended/all';
 import 'jest-extended';
 
 import type { ExecaReturnValue } from 'execa';
-import type { AnyFunction, AnyVoid, HttpStatusCode } from '@ergodark/types';
+import type { HttpStatusCode } from '@xunnamius/next-types';
 import type { Debugger } from 'debug';
 import type { SimpleGit } from 'simple-git';
-import type { WithId } from 'mongodb';
-import type { InternalMeme, InternalUser, PublicMeme, PublicUser } from 'types/global';
+import type { Promisable } from 'type-fest';
 
 const { writeFile, access: accessFile } = fs;
 const debug = debugFactory(`${pkgName}:jest-setup`);
@@ -37,35 +37,6 @@ try {
 }
 
 verifyEnvironment();
-
-export function toPublicUser(internal: WithId<InternalUser>): PublicUser {
-  return {
-    user_id: internal._id.toString(),
-    name: internal.name,
-    email: internal.email,
-    phone: internal.phone,
-    username: internal.username,
-    friends: internal.friends.length,
-    liked: internal.liked.length,
-    deleted: internal.deleted,
-    imageUrl: internal.imageUrl
-  };
-}
-
-export function toPublicMeme(internal: WithId<InternalMeme>): PublicMeme {
-  return {
-    meme_id: internal._id.toString(),
-    owner: internal.owner.toString(),
-    receiver: internal.receiver?.toString() || null,
-    createdAt: internal.createdAt,
-    expiredAt: internal.expiredAt,
-    description: internal.description,
-    likes: internal.totalLikes,
-    private: internal.private,
-    replyTo: internal.replyTo?.toString() || null,
-    imageUrl: internal.imageUrl
-  };
-}
 
 // TODO: XXX: is toBeAround still needed given we're using type-fest?
 
@@ -104,8 +75,8 @@ export function asMockedNextApiMiddleware(
         await jest.requireActual('universe/backend/middleware')
       ).handleError(res, error);
     } finally {
-      // ! This must happen or jest tests will hang and mongomemserv will choke.
-      // ! Also note that this isn't a NextApiResponse but a ServerResponse!
+      // ! This must happen or jest tests will hang and MMS will choke. Also
+      // ! note that this isn't a NextApiResponse but a ServerResponse!
       if (!spy.mock.calls.length) {
         sendHttpErrorResponse(res, 600 as unknown as HttpStatusCode, {
           error: 'there was a (perhaps unexpected) problem with the mocked middleware'
@@ -162,16 +133,6 @@ export function itemFactory<T>(testItems: T[]) {
   return nextItem;
 }
 
-// TODO: XXX: add all that follows to @ergodark/types (renamed to @xunnamius/types):
-
-export function asMockedFunction<T extends AnyFunction = never>(): jest.MockedFunction<T>;
-export function asMockedFunction<T extends AnyFunction>(fn: T): jest.MockedFunction<T>;
-export function asMockedFunction<T extends AnyFunction>(fn?: T): jest.MockedFunction<T> {
-  return (fn || jest.fn()) as unknown as jest.MockedFunction<T>;
-}
-
-// TODO: XXX (end "all that follows")
-
 // TODO: XXX: make this into a separate (mock-argv) package (along w/ the below)
 export type MockArgvOptions = {
   /**
@@ -195,7 +156,7 @@ export type MockEnvOptions = {
 
 // TODO: XXX: make this into a separate (mock-argv) package
 export async function withMockedArgv(
-  fn: () => AnyVoid,
+  fn: () => Promisable<void>,
   newArgv: string[],
   options: MockArgvOptions = { replace: false }
 ) {
@@ -203,10 +164,12 @@ export async function withMockedArgv(
   const prevArgv = process.argv.splice(options?.replace ? 0 : 2, process.argv.length);
   process.argv.push(...newArgv);
 
-  await fn();
-
-  process.argv.splice(options?.replace ? 0 : 2, process.argv.length);
-  process.argv.push(...prevArgv);
+  try {
+    await fn();
+  } finally {
+    process.argv.splice(options?.replace ? 0 : 2, process.argv.length);
+    process.argv.push(...prevArgv);
+  }
 }
 
 // TODO: XXX: make this into a separate (mock-argv) package (along w/ the above)
@@ -217,7 +180,7 @@ export function mockArgvFactory(
   const factoryNewArgv = newArgv;
   const factoryOptions = options;
 
-  return (fn: () => AnyVoid, newArgv?: string[], options?: MockArgvOptions) => {
+  return (fn: () => Promisable<void>, newArgv?: string[], options?: MockArgvOptions) => {
     return withMockedArgv(
       fn,
       [...factoryNewArgv, ...(newArgv || [])],
@@ -228,7 +191,7 @@ export function mockArgvFactory(
 
 // TODO: XXX: make this into a separate (mock-env) package
 export async function withMockedEnv(
-  fn: () => AnyVoid,
+  fn: () => Promisable<void>,
   newEnv: Record<string, string>,
   options: MockEnvOptions = { replace: true }
 ) {
@@ -240,10 +203,12 @@ export async function withMockedEnv(
   if (options.replace) clearEnv();
   Object.assign(process.env, newEnv);
 
-  await fn();
-
-  clearEnv();
-  Object.assign(process.env, prevEnv);
+  try {
+    await fn();
+  } finally {
+    clearEnv();
+    Object.assign(process.env, prevEnv);
+  }
 }
 
 // TODO: XXX: make this into a separate (mock-env) package (along w/ the above)
@@ -255,7 +220,7 @@ export function mockEnvFactory(
   const factoryOptions = options;
 
   return (
-    fn: () => AnyVoid,
+    fn: () => Promisable<void>,
     newEnv?: Record<string, string>,
     options?: MockEnvOptions
   ) => {
@@ -268,8 +233,10 @@ export function mockEnvFactory(
 }
 
 // TODO: XXX: make this into a separate (jest-isolated-import) package
-export async function isolatedImport(path: string) {
-  let pkg: Promise<unknown> | undefined;
+// ! Note that this breaks the "shared requires" expectation of Node (shows up
+// ! with stuff like getDb returning different connection instances)
+export function isolatedImport<T>(path: string) {
+  let pkg: T | undefined;
 
   // ? Cache-busting
   jest.isolateModules(() => {
@@ -288,17 +255,17 @@ export async function isolatedImport(path: string) {
     })(require(path));
   });
 
-  return pkg;
+  return pkg as T;
 }
 
 // TODO: XXX: make this into a separate package (along with the above)
-export function isolatedImportFactory(path: string) {
-  return () => isolatedImport(path);
+export function isolatedImportFactory<T>(path: string) {
+  return () => isolatedImport<T>(path);
 }
 
 // TODO: XXX: make this into a separate (mock-exit) package
 export async function withMockedExit(
-  fn: (spies: { exitSpy: jest.SpyInstance }) => AnyVoid
+  fn: (spies: { exitSpy: jest.SpyInstance }) => Promisable<void>
 ) {
   const exitSpy = jest
     .spyOn(process, 'exit')
@@ -337,7 +304,7 @@ export async function withMockedOutput(
     infoSpy: jest.SpyInstance;
     stdoutSpy: jest.SpyInstance;
     stdErrSpy: jest.SpyInstance;
-  }) => AnyVoid
+  }) => Promisable<void>
 ) {
   const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
   const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -413,7 +380,7 @@ export interface WebpackTestFixtureOptions {
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
 export interface GitRepositoryFixtureOptions {
-  setupGit: (git: SimpleGit) => AnyVoid;
+  setupGit: (git: SimpleGit) => Promisable<void>;
 }
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)

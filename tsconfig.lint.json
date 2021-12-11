@@ -4,6 +4,7 @@
     "types/**/*",
     "lib/**/*",
     "src/**/*",
+    "test/**/*",
     "external-scripts/**/*",
     "packages/**/*"
   ]

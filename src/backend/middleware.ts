@@ -2,8 +2,6 @@ import Cors from 'cors';
 import { getEnv } from 'universe/backend/env';
 
 import {
-  sendHttpContrivedError,
-  sendHttpUnauthenticated,
   sendHttpBadMethod,
   sendNotImplementedError,
   sendHttpError,
@@ -24,12 +22,7 @@ import {
   AppError
 } from 'universe/backend/error';
 
-import {
-  isKeyAuthentic,
-  addToRequestLog,
-  isDueForContrivedError,
-  isRateLimited
-} from 'universe/backend';
+import { addToRequestLog, isRateLimited } from 'universe/backend';
 
 import type { NextApiRequest, NextApiResponse, PageConfig } from 'next';
 import type { NextApiState } from 'types/global';
@@ -122,25 +115,25 @@ export async function wrapHandler(
       await runCorsMiddleware(req, res);
 
       const { limited, retryAfter } = await isRateLimited(req);
-      const { key } = req.headers;
+      // const { key } = req.headers;
 
       if (!getEnv().IGNORE_RATE_LIMITS && limited) {
         sendHttpRateLimited(finalRes, { retryAfter });
-      } else if (
+      } /*else if (
         getEnv().LOCKOUT_ALL_KEYS ||
         typeof key != 'string' ||
         !(await isKeyAuthentic(key))
       ) {
         sendHttpUnauthenticated(finalRes);
-      } else if (
+      }*/ else if (
         !req.method ||
         getEnv().DISALLOWED_METHODS.includes(req.method) ||
         !methods.includes(req.method)
       ) {
         sendHttpBadMethod(finalRes);
-      } else if (isDueForContrivedError()) {
+      } /*else if (isDueForContrivedError()) {
         sendHttpContrivedError(finalRes);
-      } else {
+      }*/ else {
         handler && (await handler({ req, res: finalRes }));
         // ? If a response hasn't been sent, send one now
         !sent && sendNotImplementedError(finalRes);

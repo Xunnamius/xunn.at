@@ -1,105 +1,202 @@
 import { name as pkgName } from 'package';
-import { MongoClient, Db, ObjectId, Collection, WithId } from 'mongodb';
-import { GuruMeditationError } from 'named-app-errors';
+import { MongoClient, ObjectId } from 'mongodb';
 import { toss } from 'toss-expression';
+import { GuruMeditationError, InvalidConfigurationError } from 'universe/backend/error';
 import { getEnv } from 'universe/backend/env';
+import { schema } from 'universe/backend/db.schema';
 import debugFactory from 'debug';
 
-import type { Nullish } from '@ergodark/types';
+import type { Db, Collection, WithId } from 'mongodb';
 
-const debug = debugFactory(`${pkgName}:jest-setup`);
+const debug = debugFactory(`${pkgName}:db`);
 
-type InternalMemory = { client: MongoClient; db: Db } | null;
-let memory: InternalMemory = null;
+export type InternalMemory = {
+  client: MongoClient;
+  databases: Record<string, Db>;
+};
+
+type createIndexParams = Parameters<Db['createIndex']>;
+
+export type CollectionSchema = {
+  name: string;
+  createOptions?: Parameters<Db['createCollection']>[1];
+  indices?: {
+    indexSpec: createIndexParams[1];
+    options?: createIndexParams[2];
+  }[];
+};
+
+export type DbSchema = {
+  databases: Record<
+    string,
+    {
+      collections: (string | CollectionSchema)[];
+    }
+  >;
+
+  aliases: Record<string, string>;
+};
+
+let memory: InternalMemory | null = null;
 
 /**
- * Lazily connects to the database once on-demand instead of immediately when
- * the app runs.
+ * Mutates internal memory. Used for testing purposes.
  */
-export async function getDb(params?: { external: true }) {
-  if (!memory) {
-    memory = {} as NonNullable<InternalMemory>;
-
-    let uri = getEnv().MONGODB_URI;
-    if (params?.external) uri = getEnv().EXTERNAL_SCRIPTS_MONGODB_URI;
-
-    debug(`connecting to mongo database at ${uri}`);
-
-    memory.client = await MongoClient.connect(uri);
-    memory.db = memory.client.db();
-  }
-
-  return memory.db;
+export function overwriteMemory(newMemory: Partial<InternalMemory>) {
+  memory = { ...memory, ...newMemory } as InternalMemory;
+  debug('internal db memory overwritten');
 }
 
 /**
- * Returns the MongoClient instance used to connect to the database.
- *
- * @param params if `{external: true}`, external Mongo connect URI will be used
+ * Lazily connects to the server on-demand, memoizing the result.
  */
-export async function getDbClient(params?: { external: true }) {
-  await getDb(params);
-  if (!memory) throw new GuruMeditationError('memory is missing');
+export async function getClient(params?: {
+  /**
+   * If `true`, `EXTERNAL_SCRIPTS_MONGODB_URI` is checked first to determine
+   * server uri. If `false`, `MONGODB_URI` is used; this is the default (and
+   * fallback).
+   */
+  external?: boolean;
+}) {
+  !memory && (memory = {} as InternalMemory);
+
+  if (!memory.client) {
+    let uri = getEnv().MONGODB_URI;
+    if (params?.external) uri = getEnv().EXTERNAL_SCRIPTS_MONGODB_URI;
+    debug(`connecting to mongo server at ${uri}`);
+    memory.client = await MongoClient.connect(uri);
+  } else {
+    debug('connected (from memory) to mongo server');
+  }
+
   return memory.client;
 }
 
 /**
  * Kills the MongoClient and closes any lingering database connections.
  */
-export async function closeDb() {
+export async function closeClient() {
+  debug('closing client');
   await memory?.client.close(true);
   memory = null;
 }
 
 /**
- * Sets the global db instance to something else. Used primarily for testing
- * purposes.
+ * Accepts a database alias and returns its real name.
  */
-export function setClientAndDb({ client, db }: { client: MongoClient; db: Db }) {
-  memory = memory ?? ({} as NonNullable<InternalMemory>);
-  memory.client = client;
-  memory.db = db;
+export function getNameFromAlias(alias: string) {
+  const nameActual = schema.aliases[alias] || alias;
+
+  debug(`alias: ${alias}`);
+  debug(`actual name: ${nameActual}`);
+
+  if (!schema.databases[nameActual]?.collections) {
+    throw new InvalidConfigurationError(
+      `database schema "${nameActual}" is not defined in backend/db.schema`
+    );
+  }
+
+  return nameActual;
 }
 
 /**
- * Destroys all collections in the database. Can be called multiple times
- * safely. Used primarily for testing purposes.
+ * Lazily connects to a database on-demand, memoizing the result. If the
+ * database does not yet exist, it is created (but not initialized) by this
+ * function.
  */
-export async function destroyDb(db: Db) {
-  await Promise.allSettled([
-    db.dropCollection('keys'),
-    db.dropCollection('request-log'),
-    db.dropCollection('limited-log-mview'),
-    db.dropCollection('memes'),
-    db.dropCollection('users'),
-    db.dropCollection('info'),
-    db.dropCollection('uploads')
-  ]);
+export async function getDb({
+  name,
+  external
+}: {
+  /**
+   * The name or alias of the database to retrieve.
+   */
+  name: string;
+  /**
+   * If `true`, `EXTERNAL_SCRIPTS_MONGODB_URI` is checked first to determine
+   * server uri. If `false`, `MONGODB_URI` is used; this is the default (and
+   * fallback).
+   */
+  external?: boolean;
+}) {
+  !memory && (memory = {} as InternalMemory);
+  !memory.databases && (memory.databases = {});
+
+  const nameActual = getNameFromAlias(name);
+
+  if (!memory.databases[nameActual]) {
+    debug(`connecting to mongo database "${nameActual}"`);
+    memory.databases[nameActual] = (await getClient({ external })).db(nameActual);
+  } else {
+    debug(`connected (from memory) to mongo database "${nameActual}"`);
+  }
+
+  return memory.databases[nameActual];
 }
 
 /**
- * Initializes the database collections and indices. This function is idempotent
- * and can be called without worry of data loss.
+ * Drops a database, destroying its collections. If the database does not exist
+ * before calling this function, it will be created first then dropped.
  */
-export async function initializeDb(db: Db) {
-  await Promise.all([
-    db.createCollection('keys'),
-    db.createCollection('request-log'),
-    db.createCollection('limited-log-mview'),
-    db.createCollection('memes'),
-    // ? Collation allows for case-insensitive searching. See:
-    // ? https://stackoverflow.com/a/40914924/1367414
-    db.createCollection('users', { collation: { locale: 'en', strength: 2 } }),
-    db.createCollection('info'),
-    db.createCollection('uploads')
-  ]);
+export async function destroyDb({
+  name,
+  external
+}: {
+  /**
+   * The name or alias of the database to destroy.
+   */
+  name: string;
+  /**
+   * If `true`, `EXTERNAL_SCRIPTS_MONGODB_URI` is checked first to determine
+   * server uri. If `false`, `MONGODB_URI` is used; this is the default (and
+   * fallback).
+   */
+  external?: boolean;
+}) {
+  return (await getDb({ name, external })).dropDatabase();
+}
 
-  // TODO:
-  // await Promise.all([
-  //   memes.createIndex({ x: 1 }),
-  //   memes.createIndex({ y: 1 }),
-  //   memes.createIndex({ z: 1 })
-  // ]);
+/**
+ * Creates a database and initializes its collections. If the database does not
+ * exist before calling this function, it will be created first. Otherwise, this
+ * function is idempotent.
+ */
+export async function initializeDb({
+  name,
+  external
+}: {
+  /**
+   * The name or alias of the database to initialize.
+   */
+  name: string;
+  /**
+   * If `true`, `EXTERNAL_SCRIPTS_MONGODB_URI` is checked first to determine
+   * server uri. If `false`, `MONGODB_URI` is used; this is the default (and
+   * fallback).
+   */
+  external?: boolean;
+}) {
+  const db = await getDb({ name, external });
+  const nameActual = getNameFromAlias(name);
+
+  await Promise.all(
+    schema.databases[nameActual].collections.map((colNameOrSchema) => {
+      const colSchema: CollectionSchema =
+        typeof colNameOrSchema == 'string'
+          ? {
+              name: colNameOrSchema
+            }
+          : colNameOrSchema;
+
+      return db.createCollection(colSchema.name, colSchema.createOptions).then((col) => {
+        return Promise.all(
+          colSchema.indices?.map((indexSchema) =>
+            col.createIndex(indexSchema.indexSpec, indexSchema.options || {})
+          ) || []
+        );
+      });
+    })
+  );
 }
 
 // TODO: XXX: turn this into a package of some sort (and abstract away key type)
@@ -111,7 +208,7 @@ type ItemExistsOptions = { exclude_id?: ObjectId; caseInsensitive?: boolean };
 export async function itemExists<T>(
   collection: Collection<T>,
   id: ObjectId,
-  key?: '_id' | 'owner' | 'receiver' | 'replyTo',
+  key?: '_id' | 'owner',
   options?: ItemExistsOptions
 ): Promise<boolean>;
 export async function itemExists<T>(
@@ -134,12 +231,6 @@ export async function itemExists<T>(
     }
   }
 
-  if (key == '_id' && options?.exclude_id) {
-    throw new GuruMeditationError(
-      'assert failed: cannot use "_id" as key and use exclude_id simultaneously'
-    );
-  }
-
   const result = collection.find({
     [key]: id,
     ...(options?.exclude_id ? { _id: { $ne: options.exclude_id } } : {})
@@ -152,12 +243,13 @@ export async function itemExists<T>(
   return (await result.count()) != 0;
 }
 
-export type IdItem<T extends ObjectId> = WithId<unknown> | string | T | Nullish;
+export type IdItem<T extends ObjectId> = WithId<unknown> | string | T | null | undefined;
 export type IdItemArray<T extends ObjectId> =
   | WithId<unknown>[]
   | string[]
   | T[]
-  | Nullish;
+  | null
+  | undefined;
 
 /**
  * Reduces an `item` down to its `ObjectId` instance.

@@ -1,10 +1,10 @@
 import { name as pkgName } from 'package';
 import { getEnv } from 'universe/backend/env';
 import { ExternalError, IllegalExternalEnvironmentError } from 'universe/backend/error';
-import { getDb, closeDb } from 'universe/backend/db';
+import { getDb } from 'universe/backend/db';
 import debugFactory from 'debug';
 
-const debugNamespace = `${pkgName}:prune-data`;
+const debugNamespace = `${pkgName}:ban-hammer`;
 
 const oneSecondInMs = 1000;
 const log = debugFactory(debugNamespace);
@@ -61,7 +61,7 @@ export default async function main() {
     const calledEveryMs = oneSecondInMs * calledEverySeconds;
     const defaultBanTimeMs = oneSecondInMs * 60 * defaultBanTimeMinutes;
     const resolutionWindowMs = oneSecondInMs * resolutionWindowSeconds;
-    const db = await getDb({ external: true });
+    const db = await getDb({ name: 'system', external: true });
 
     const pipeline = [
       {
@@ -252,7 +252,6 @@ export default async function main() {
 
     await cursor.next();
     await cursor.close();
-    await closeDb();
 
     log('execution complete');
   } catch (e) {
@@ -260,5 +259,5 @@ export default async function main() {
   }
 }
 
-!module.parent &&
+require.main === module &&
   main().catch((e) => log.extend('<exception>')(e.message || e.toString()));

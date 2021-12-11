@@ -12,8 +12,8 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:import/errors',
     'plugin:import/warnings',
-    'plugin:import/typescript',
-    'plugin:@next/next/recommended'
+    'plugin:import/typescript'
+    //'plugin:@next/next/recommended'
   ],
   parserOptions: {
     ecmaVersion: 8,

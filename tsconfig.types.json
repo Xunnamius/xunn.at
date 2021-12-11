@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "allowJs": false,
+    "checkJs": false,
     "declaration": true,
     "emitDeclarationOnly": true,
     "isolatedModules": false,
@@ -9,5 +10,5 @@
     "rootDir": "./"
   },
   "extends": "./tsconfig.json",
-  "include": ["types/**/*", "src/**/*"]
+  "include": ["types/**/*", "lib/**/*", "src/**/*"]
 }
