@@ -1,4 +1,4 @@
-import * as NR from 'multiverse/next-respond';
+import * as NR from 'multiverse/next-api-respond';
 
 describe('next-respond', () => {
   void NR;

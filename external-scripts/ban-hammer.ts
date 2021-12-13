@@ -1,6 +1,6 @@
 import { name as pkgName } from 'package';
 import { getEnv } from 'universe/backend/env';
-import { ExternalError, IllegalExternalEnvironmentError } from 'universe/backend/error';
+import { ExternalError, IllegalExternalEnvironmentError } from 'universe/error';
 import { getDb } from 'universe/backend/db';
 import debugFactory from 'debug';
 

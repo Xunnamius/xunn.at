@@ -1,9 +1,9 @@
 import { name as pkgName } from 'package';
 import { MongoClient, ObjectId } from 'mongodb';
 import { toss } from 'toss-expression';
-import { GuruMeditationError, InvalidConfigurationError } from 'universe/backend/error';
+import { GuruMeditationError, InvalidConfigurationError } from 'universe/error';
 import { getEnv } from 'universe/backend/env';
-import { schema } from 'universe/backend/db.schema';
+import { schema } from 'universe/backend/db/schema';
 import debugFactory from 'debug';
 
 import type { Db, Collection, WithId } from 'mongodb';

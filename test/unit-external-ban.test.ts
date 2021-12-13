@@ -1,6 +1,6 @@
 import { BANNED_KEY } from 'universe/backend';
 import { setupTestDb } from 'testverse/db';
-import { GuruMeditationError } from 'universe/backend/error';
+import { GuruMeditationError } from 'universe/error';
 import { withMockedEnv } from './setup';
 import banHammer from 'externals/ban-hammer';
 

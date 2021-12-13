@@ -1,5 +1,5 @@
 import type { NextApiResponse } from 'next';
-import type { HttpStatusCode, SuccessJsonResponse, ErrorJsonResponse } from './types';
+import type { HttpStatusCode, JsonSuccess, JsonError } from '@xunnamius/types';
 
 export function sendGenericHttpResponse(
   res: NextApiResponse,
@@ -14,7 +14,7 @@ export function sendHttpSuccessResponse(
   statusCode: HttpStatusCode,
   responseJson?: Record<string, unknown>
 ) {
-  const json: SuccessJsonResponse = { ...responseJson, success: true };
+  const json: JsonSuccess = { ...responseJson, success: true };
   sendGenericHttpResponse(res, statusCode, json);
   return json;
 }
@@ -24,7 +24,7 @@ export function sendHttpErrorResponse(
   statusCode: HttpStatusCode,
   responseJson: Record<string, unknown> & { error: string }
 ) {
-  const json: ErrorJsonResponse = { ...responseJson, success: false };
+  const json: JsonError = { ...responseJson, success: false };
   sendGenericHttpResponse(res, statusCode, json);
   return json;
 }

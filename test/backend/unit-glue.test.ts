@@ -3,14 +3,10 @@ import { testApiHandler } from 'next-test-api-route-handler';
 import { getEnv } from 'universe/backend/env';
 import { toss } from 'toss-expression';
 import { asMockedFunction } from '@xunnamius/jest-types';
-
-import { DUMMY_KEY, addToRequestLog, isRateLimited } from 'universe/backend';
-
-import {
-  wrapHandler,
-  defaultConfig as middlewareConfig
-} from 'universe/backend/middleware';
-
+import { DUMMY_KEY, ValidHttpMethod } from 'universe/backend';
+import { addToRequestLog, isRateLimited } from 'universe/backend/request';
+import { withMiddleware } from 'universe/backend/middleware';
+import { defaultConfig as middlewareConfig } from 'universe/backend/api';
 import { isolatedImport, itemFactory, mockEnvFactory } from 'testverse/setup';
 
 import {
@@ -22,15 +18,15 @@ import {
   ItemNotFoundError,
   AppError,
   GuruMeditationError
-} from 'universe/backend/error';
+} from 'universe/error';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-jest.mock('universe/backend');
+jest.mock('universe/backend/request');
 
-// TODO: XXX: add non-authenticated endpoint support (merge-in from airports api)
-
-const noop = async ({ res }: { res: NextApiResponse }) => res.status(200).send({});
+const noop = async (_req: NextApiRequest, res: NextApiResponse) => {
+  res.status(200).send({});
+};
 
 const withMockedEnv = mockEnvFactory(
   {
@@ -40,7 +36,7 @@ const withMockedEnv = mockEnvFactory(
   { replace: false }
 );
 
-const wrapMiddlewareHandler = (
+const wrapHandler = (
   handler: (req: NextApiRequest, res: NextApiResponse) => Promise<void>
 ) => {
   const api = async (req: NextApiRequest, res: NextApiResponse) => handler(req, res);
@@ -61,9 +57,7 @@ describe('::handleEndpoint', () => {
     expect.hasAssertions();
 
     await testApiHandler({
-      handler: wrapMiddlewareHandler((req, res) =>
-        wrapHandler(noop, { req, res, methods: ['POST'] })
-      ),
+      handler: wrapHandler(withMiddleware(noop, { options: { methods: ['POST'] } })),
       test: async ({ fetch }) => {
         await expect(
           fetch({
@@ -82,12 +76,8 @@ describe('::handleEndpoint', () => {
 
     await testApiHandler({
       requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-      handler: wrapMiddlewareHandler((req, res) =>
-        wrapHandler(async () => undefined, {
-          req,
-          res,
-          methods: ['GET']
-        })
+      handler: wrapHandler(
+        withMiddleware(async () => undefined, { options: { methods: ['GET'] } })
       ),
       test: async ({ fetch }) => expect((await fetch()).status).toBe(501)
     });
@@ -98,13 +88,7 @@ describe('::handleEndpoint', () => {
 
     await testApiHandler({
       requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-      handler: wrapMiddlewareHandler((req, res) =>
-        wrapHandler(undefined, {
-          req,
-          res,
-          methods: ['GET']
-        })
-      ),
+      handler: wrapHandler(withMiddleware(undefined, { options: { methods: ['GET'] } })),
       test: async ({ fetch }) => expect((await fetch()).status).toBe(501)
     });
   });
@@ -112,7 +96,7 @@ describe('::handleEndpoint', () => {
   it('logs requests properly', async () => {
     expect.hasAssertions();
 
-    const factory = itemFactory<[string, number]>([
+    const factory = itemFactory<[ValidHttpMethod, number]>([
       ['GET', 502],
       ['POST', 404],
       ['PUT', 403],
@@ -129,12 +113,14 @@ describe('::handleEndpoint', () => {
 
         req.url = '/api/v1/handlerX';
       },
-      handler: wrapMiddlewareHandler((req, res) =>
-        wrapHandler(async ({ res }) => res.status(factory()[1]).send({}), {
-          req,
-          res,
-          methods: factory.items.map(([method]) => method.toString())
-        })
+      handler: wrapHandler(
+        wrapHandler(
+          withMiddleware(async (_req, res) => res.status(factory()[1]).send({}), {
+            options: {
+              methods: factory.items.map(([method]) => method)
+            }
+          })
+        )
       ),
       test: async ({ fetch }) => {
         await Promise.all(
@@ -151,12 +137,8 @@ describe('::handleEndpoint', () => {
 
     await testApiHandler({
       requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-      handler: wrapMiddlewareHandler((req, res) =>
-        wrapHandler(noop, {
-          req,
-          res,
-          methods: ['POST', 'PUT']
-        })
+      handler: wrapHandler(
+        withMiddleware(noop, { options: { methods: ['POST', 'PUT'] } })
       ),
       test: async ({ fetch }) => {
         expect((await fetch({ method: 'GET' })).status).toBe(405);
@@ -174,11 +156,9 @@ describe('::handleEndpoint', () => {
       async () => {
         await testApiHandler({
           requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-          handler: wrapMiddlewareHandler((req, res) =>
-            wrapHandler(noop, {
-              req,
-              res,
-              methods: ['POST', 'PUT', 'GET', 'DELETE']
+          handler: wrapHandler(
+            withMiddleware(noop, {
+              options: { methods: ['POST', 'PUT', 'GET', 'DELETE'] }
             })
           ),
           test: async ({ fetch }) => {
@@ -200,11 +180,9 @@ describe('::handleEndpoint', () => {
       async () => {
         await testApiHandler({
           requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-          handler: wrapMiddlewareHandler((req, res) =>
-            wrapHandler(noop, {
-              req,
-              res,
-              methods: ['POST', 'PUT', 'GET', 'DELETE']
+          handler: wrapHandler(
+            withMiddleware(noop, {
+              options: { methods: ['POST', 'PUT', 'GET', 'DELETE'] }
             })
           ),
           test: async ({ fetch }) => {
@@ -226,7 +204,7 @@ describe('::handleEndpoint', () => {
       [new InvalidIdError(), 400],
       [new InvalidKeyError(), 400],
       [new ValidationError(), 400],
-      [new ValidationError(''), 400], // ! Edge case for code coverage
+      [new ValidationError(''), 400], // ? Edge case for code coverage
       [new NotAuthorizedError(), 403],
       [new NotFoundError(), 404],
       [new ItemNotFoundError(), 404],
@@ -240,8 +218,8 @@ describe('::handleEndpoint', () => {
 
     await testApiHandler({
       requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-      handler: wrapMiddlewareHandler((req, res) =>
-        wrapHandler(() => toss(expectedError), { req, res, methods: ['GET'] })
+      handler: wrapHandler(
+        withMiddleware(() => toss(expectedError), { options: { methods: ['GET'] } })
       ),
       test: async ({ fetch }) => {
         for (const item of factory) {
@@ -257,21 +235,9 @@ describe('::handleEndpoint', () => {
     expect.hasAssertions();
 
     await testApiHandler({
-      handler: wrapMiddlewareHandler((req, res) =>
-        wrapHandler(noop, {
-          req,
-          res,
-          methods: ['GET']
-        })
-      ),
+      handler: wrapHandler(withMiddleware(noop, { options: { methods: ['GET'] } })),
       test: async ({ fetch }) =>
-        expect(
-          (
-            await fetch({
-              headers: { KEY: DUMMY_KEY }
-            })
-          ).status
-        ).toBe(200)
+        expect((await fetch({ headers: { KEY: DUMMY_KEY } })).status).toBe(200)
     });
   });
 
@@ -297,13 +263,7 @@ describe('::handleEndpoint', () => {
 
     await testApiHandler({
       requestPatcher: (req) => (req.headers['x-forwarded-for'] = ip),
-      handler: wrapMiddlewareHandler((req, res) =>
-        wrapHandler(noop, {
-          req,
-          res,
-          methods: ['GET']
-        })
-      ),
+      handler: wrapHandler(withMiddleware(noop, { options: { methods: ['GET'] } })),
       test: async ({ fetch }) => {
         await withMockedEnv(
           async () => {
@@ -342,13 +302,8 @@ describe('::handleEndpoint', () => {
 
     await testApiHandler({
       requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-      handler: wrapMiddlewareHandler((req, res) =>
-        wrapHandler(noop, {
-          apiVersion: 1,
-          req,
-          res,
-          methods: ['GET']
-        })
+      handler: wrapHandler(
+        withMiddleware(noop, { options: { methods: ['GET'], apiVersion: '1' } })
       ),
       test: async ({ fetch }) => {
         await withMockedEnv(
@@ -385,78 +340,47 @@ describe('::handleEndpoint', () => {
       async () => {
         await testApiHandler({
           requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-          handler: wrapMiddlewareHandler((req, res) =>
-            wrapHandler(noop, {
-              apiVersion: 1,
-              req,
-              res,
-              methods: ['GET']
-            })
+          handler: wrapHandler(
+            withMiddleware(noop, { options: { methods: ['GET'], apiVersion: '1' } })
           ),
           test: async ({ fetch }) => expect((await fetch()).status).toBe(200)
         });
 
         await testApiHandler({
           requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-          handler: wrapMiddlewareHandler((req, res) =>
-            wrapHandler(noop, {
-              apiVersion: 2,
-              req,
-              res,
-              methods: ['GET']
-            })
+          handler: wrapHandler(
+            withMiddleware(noop, { options: { methods: ['GET'], apiVersion: '2' } })
           ),
           test: async ({ fetch }) => expect((await fetch()).status).toBe(404)
         });
 
         await testApiHandler({
           requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-          handler: wrapMiddlewareHandler((req, res) =>
-            wrapHandler(noop, {
-              apiVersion: 3,
-              req,
-              res,
-              methods: ['GET']
-            })
+          handler: wrapHandler(
+            withMiddleware(noop, { options: { methods: ['GET'], apiVersion: '3' } })
           ),
           test: async ({ fetch }) => expect((await fetch()).status).toBe(404)
         });
 
         await testApiHandler({
           requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-          handler: wrapMiddlewareHandler((req, res) =>
-            wrapHandler(noop, {
-              apiVersion: 4,
-              req,
-              res,
-              methods: ['GET']
-            })
+          handler: wrapHandler(
+            withMiddleware(noop, { options: { methods: ['GET'], apiVersion: '4' } })
           ),
           test: async ({ fetch }) => expect((await fetch()).status).toBe(404)
         });
 
         await testApiHandler({
           requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-          handler: wrapMiddlewareHandler((req, res) =>
-            wrapHandler(async () => undefined, {
-              apiVersion: 4,
-              req,
-              res,
-              methods: ['GET']
-            })
+          handler: wrapHandler(
+            withMiddleware(noop, { options: { methods: ['GET'], apiVersion: '4' } })
           ),
           test: async ({ fetch }) => expect((await fetch()).status).toBe(404)
         });
 
         await testApiHandler({
           requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-          handler: wrapMiddlewareHandler((req, res) =>
-            wrapHandler(noop, {
-              req,
-              res,
-              methods: ['GET']
-            })
-          ),
+          handler: wrapHandler(withMiddleware(noop, { options: { methods: ['GET'] } })),
           test: async ({ fetch }) => expect((await fetch()).status).toBe(200)
         });
       },
@@ -467,26 +391,15 @@ describe('::handleEndpoint', () => {
       async () => {
         await testApiHandler({
           requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-          handler: wrapMiddlewareHandler((req, res) =>
-            wrapHandler(noop, {
-              apiVersion: 1,
-              req,
-              res,
-              methods: ['GET']
-            })
+          handler: wrapHandler(
+            withMiddleware(noop, { options: { methods: ['GET'], apiVersion: '1' } })
           ),
           test: async ({ fetch }) => expect((await fetch()).status).toBe(200)
         });
 
         await testApiHandler({
           requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-          handler: wrapMiddlewareHandler((req, res) =>
-            wrapHandler(noop, {
-              req,
-              res,
-              methods: ['GET']
-            })
-          ),
+          handler: wrapHandler(withMiddleware(noop, { options: { methods: ['GET'] } })),
           test: async ({ fetch }) => expect((await fetch()).status).toBe(200)
         });
       },
@@ -502,13 +415,13 @@ describe('::handleEndpoint', () => {
         req.url = '/?some=url&yes';
         req.headers.key = DUMMY_KEY;
       },
-      handler: wrapMiddlewareHandler((req, res) =>
-        wrapHandler(
-          async ({ req, res }) => {
+      handler: wrapHandler(
+        withMiddleware(
+          async (req, res) => {
             expect(req.query).toStrictEqual({ some: 'url', yes: '' });
             res.status(200).send({});
           },
-          { req, res, methods: ['GET'] }
+          { options: { methods: ['GET'] } }
         )
       ),
       test: async ({ fetch }) => {
@@ -530,12 +443,8 @@ describe('::handleEndpoint', () => {
 
     await testApiHandler({
       requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-      handler: wrapMiddlewareHandler((req, res) =>
-        Wrapper.wrapHandler(noop, {
-          req,
-          res,
-          methods: ['GET']
-        })
+      handler: wrapHandler(
+        Wrapper.withMiddleware(noop, { options: { methods: ['GET'] } })
       ),
       test: async ({ fetch }) => expect((await fetch()).status).toBe(500)
     });
@@ -548,13 +457,7 @@ describe('::handleEndpoint', () => {
 
     await testApiHandler({
       requestPatcher: (req) => (req.headers.key = DUMMY_KEY),
-      handler: wrapMiddlewareHandler((req, res) =>
-        Wrapper.wrapHandler(noop, {
-          req,
-          res,
-          methods: ['GET']
-        })
-      ),
+      handler: wrapHandler(withMiddleware(noop, { options: { methods: ['GET'] } })),
       test: async ({ fetch }) => {
         expect((await fetch()).status).toBe(200);
       }

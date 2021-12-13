@@ -1,7 +1,7 @@
 import { name as pkgName, version as pkgVersion } from 'package';
 import { verifyEnvironment } from '../expect-env';
-import { TestError, GuruMeditationError } from 'universe/backend/error';
-import { sendHttpErrorResponse } from 'multiverse/next-respond';
+import { TestError, GuruMeditationError } from 'universe/error';
+import { sendHttpErrorResponse } from 'multiverse/next-api-respond';
 import { asMockedFunction } from '@xunnamius/jest-types';
 import { tmpdir } from 'os';
 import { promises as fs } from 'fs';
@@ -15,7 +15,7 @@ import 'jest-extended/all';
 import 'jest-extended';
 
 import type { ExecaReturnValue } from 'execa';
-import type { HttpStatusCode } from '@xunnamius/next-types';
+import type { HttpStatusCode } from '@xunnamius/types';
 import type { Debugger } from 'debug';
 import type { SimpleGit } from 'simple-git';
 import type { Promisable } from 'type-fest';
@@ -62,7 +62,7 @@ expect.extend({
 
 // TODO: XXX: this one specifically should become part of next-api-glue itself!
 export function asMockedNextApiMiddleware(
-  wrapHandler: typeof import('universe/backend/middleware')['wrapHandler']
+  wrapHandler: typeof import('universe/backend/middleware')['withMiddleware']
 ) {
   asMockedFunction(wrapHandler).mockImplementation(async (fn, { req, res }) => {
     const spy = jest.spyOn(res, 'send');

@@ -3,7 +3,7 @@ import { WithId } from 'mongodb';
 import { toss } from 'toss-expression';
 import * as Backend from 'universe/backend';
 import { setupTestDb, dummySystemData } from 'testverse/db';
-import { TestError } from 'universe/backend/error';
+import { TestError } from 'universe/error';
 import { asMockedFunction, HttpStatusCode } from '@xunnamius/jest-types';
 import fetch from 'node-fetch';
 

@@ -13,6 +13,9 @@ export {
   makeNamedError
 } from 'named-app-errors';
 
+// eslint-disable-next-line import/export
+export * from 'universe/error/app';
+
 // TODO: XXX: update named-app-errors with new naming paradigm:
 // TODO: XXX:   - add InvalidConfigurationError
 // TODO: XXX:   - add TestError

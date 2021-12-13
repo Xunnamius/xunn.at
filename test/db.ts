@@ -2,9 +2,9 @@ import { name as pkgName } from 'package';
 import { MongoClient } from 'mongodb';
 import { getEnv } from 'universe/backend/env';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { schema } from 'universe/backend/db.schema';
+import { schema } from 'universe/backend/db/schema';
 import { getDummyData } from 'testverse/db.schema';
-import { InvalidConfigurationError } from 'universe/backend/error';
+import { InvalidConfigurationError } from 'universe/error';
 import debugFactory from 'debug';
 
 import {

@@ -1,22 +1,14 @@
 import { name as pkgName } from 'package';
 import { parse as parseAsBytes } from 'bytes';
 import { isServer } from 'is-server-side';
-import { IllegalEnvironmentError } from 'universe/backend/error';
+import { IllegalEnvironmentError } from 'universe/error';
+import { validHttpMethods } from 'universe/backend';
+import { getEnv as getCustomizedEnv } from 'universe/backend/env/app';
 import debugFactory from 'debug';
 
-const debug = debugFactory(`${pkgName}:env`);
+import type { ValidHttpMethod } from 'universe/backend';
 
-const HTTP2_METHODS = [
-  'GET',
-  'HEAD',
-  'POST',
-  'PUT',
-  'DELETE',
-  'CONNECT',
-  'OPTIONS',
-  'TRACE',
-  'PATCH'
-];
+const debug = debugFactory(`${pkgName}:env`);
 
 // TODO: unit test env.ts and other testable abstraction layers
 
@@ -28,7 +20,7 @@ const envToArray = (envVal: string) => {
 };
 
 export function getEnv() {
-  const env = {
+  const env = getCustomizedEnv({
     NODE_ENV:
       process.env.APP_ENV || process.env.NODE_ENV || process.env.BABEL_ENV || 'unknown',
     MONGODB_URI: process.env.MONGODB_URI || '',
@@ -80,7 +72,7 @@ export function getEnv() {
       : null,
     DEBUG: process.env.DEBUG ?? null,
     DEBUG_INSPECTING: !!process.env.VSCODE_INSPECTOR_OPTIONS
-  };
+  });
 
   debug(env);
 
@@ -107,13 +99,13 @@ export function getEnv() {
       (name) => envIsGtZero(name)
     );
 
-    env.DISALLOWED_METHODS.forEach(
-      (method) =>
-        !HTTP2_METHODS.includes(method) &&
+    env.DISALLOWED_METHODS.forEach((method) => {
+      if (!validHttpMethods.includes(method as ValidHttpMethod)) {
         errors.push(
-          `unknown method "${method}", must be one of: ${HTTP2_METHODS.join(', ')}`
-        )
-    );
+          `unknown method "${method}", must be one of: ${validHttpMethods.join(', ')}`
+        );
+      }
+    });
 
     if (env.MONGODB_MS_PORT && env.MONGODB_MS_PORT <= 1024) {
       errors.push(`optional environment variable MONGODB_MS_PORT must be > 1024`);
