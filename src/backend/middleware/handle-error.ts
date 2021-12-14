@@ -36,38 +36,33 @@ export default async function (
 ) {
   debug('entered middleware runtime');
 
-  if (res.writableEnded) {
-    debug('res.end called: middleware skipped');
-    throw context.runtime.error;
+  const {
+    runtime: { error }
+  } = context;
+
+  const errorJson: Partial<JsonError> = (error as { message: string }).message
+    ? { error: (error as { message: string }).message }
+    : {};
+
+  debug('encountered error condition: %O', errorJson.error || '(no message)');
+
+  if (error instanceof GuruMeditationError) {
+    sendHttpError(res, {
+      error: 'sanity check failed: please report exactly what you did just now!'
+    });
+  } else if (
+    error instanceof InvalidIdError ||
+    error instanceof InvalidKeyError ||
+    error instanceof ValidationError
+  ) {
+    sendHttpBadRequest(res, errorJson);
+  } else if (error instanceof NotAuthorizedError) {
+    sendHttpUnauthorized(res, errorJson);
+  } else if (error instanceof NotFoundError || error instanceof ItemNotFoundError) {
+    sendHttpNotFound(res, errorJson);
+  } else if (error instanceof AppError) {
+    sendHttpError(res, errorJson);
   } else {
-    const {
-      runtime: { error }
-    } = context;
-
-    const errorJson: Partial<JsonError> = (error as { message: string }).message
-      ? { error: (error as { message: string }).message }
-      : {};
-
-    debug('error condition handled: %O', errorJson);
-
-    if (error instanceof GuruMeditationError) {
-      sendHttpError(res, {
-        error: 'sanity check failed: please report exactly what you did just now!'
-      });
-    } else if (
-      error instanceof InvalidIdError ||
-      error instanceof InvalidKeyError ||
-      error instanceof ValidationError
-    ) {
-      sendHttpBadRequest(res, errorJson);
-    } else if (error instanceof NotAuthorizedError) {
-      sendHttpUnauthorized(res, errorJson);
-    } else if (error instanceof NotFoundError || error instanceof ItemNotFoundError) {
-      sendHttpNotFound(res, errorJson);
-    } else if (error instanceof AppError) {
-      sendHttpError(res, errorJson);
-    } else {
-      sendHttpError(res);
-    }
+    sendHttpError(res);
   }
 }

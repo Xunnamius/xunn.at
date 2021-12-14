@@ -33,8 +33,8 @@ export function getEnv() {
     RESULTS_PER_PAGE: Number(process.env.RESULTS_PER_PAGE),
     IGNORE_RATE_LIMITS:
       !!process.env.IGNORE_RATE_LIMITS && process.env.IGNORE_RATE_LIMITS !== 'false',
-    LOCKOUT_ALL_KEYS:
-      !!process.env.LOCKOUT_ALL_KEYS && process.env.LOCKOUT_ALL_KEYS !== 'false',
+    LOCKOUT_ALL_CLIENTS:
+      !!process.env.LOCKOUT_ALL_CLIENTS && process.env.LOCKOUT_ALL_CLIENTS !== 'false',
     DISALLOWED_METHODS: !!process.env.DISALLOWED_METHODS
       ? envToArray(process.env.DISALLOWED_METHODS.toUpperCase())
       : [],

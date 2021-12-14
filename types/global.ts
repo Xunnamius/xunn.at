@@ -1,6 +1,5 @@
 import type { ObjectId } from 'mongodb';
-import type { HttpStatusCode } from '@xunnamius/next-types';
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { HttpStatusCode } from '@xunnamius/types';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface UserId extends ObjectId {}
@@ -42,14 +41,6 @@ export type InternalLinkMapEntry =
       commit: string;
       subdir: string | null;
     };
-
-/**
- * A type combining NextApiRequest and NextApiResponse.
- */
-export type NextApiState<T = unknown> = {
-  req: NextApiRequest;
-  res: NextApiResponse<T>;
-};
 
 /**
  * The shape of an API key.

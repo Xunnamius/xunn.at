@@ -10,7 +10,7 @@ const debug = debugFactory(`${pkgName}:glue:auth-request`);
 
 export type Options = {
   /**
-   * Whether the endpoint requires authentication or not.
+   * If `true`, accessing this endpoint requires a valid authorization header.
    */
   requiresAuth: boolean;
 };
@@ -18,22 +18,18 @@ export type Options = {
 export default async function (
   req: NextApiRequest,
   res: NextApiResponse,
-  context: MiddlewareContext & { options: Options }
+  context: MiddlewareContext<Options>
 ) {
   debug('entered middleware runtime');
 
-  if (res.writableEnded) {
-    debug('res.end called: middleware skipped');
-  } else {
-    const { authorization } = req.headers;
+  const { authorization } = req.headers;
 
-    if (context.options.requiresAuth) {
-      if (typeof authorization != 'string' || !(await isValidAuthHeader(authorization))) {
-        debug('request authentication failed: bad auth header');
-        sendHttpUnauthenticated(res);
-      } else {
-        debug('request authentication succeeded');
-      }
+  if (context.options.requiresAuth) {
+    if (typeof authorization != 'string' || !(await isValidAuthHeader(authorization))) {
+      debug('request authentication failed: bad auth header');
+      sendHttpUnauthenticated(res);
+    } else {
+      debug('request authentication succeeded');
     }
   }
 }

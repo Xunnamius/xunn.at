@@ -11,20 +11,20 @@ const debug = debugFactory(`${pkgName}:glue:contrive-error`);
 export type Options = {
   /**
    * If `true`, every Nth request will fail with a contrived error.
+   *
+   * @default false
    */
-  enableContrivedErrors: boolean;
+  enableContrivedErrors?: boolean;
 };
 
 export default async function (
   _req: NextApiRequest,
   res: NextApiResponse,
-  context: MiddlewareContext & { options: Options }
+  context: MiddlewareContext<Options>
 ) {
   debug('entered middleware runtime');
 
-  if (res.writableEnded) {
-    debug('res.end called: middleware skipped');
-  } else if (context.options.enableContrivedErrors && isDueForContrivedError()) {
+  if (context.options.enableContrivedErrors && isDueForContrivedError()) {
     debug('request failed: contrived error');
     sendHttpContrivedError(res);
   }

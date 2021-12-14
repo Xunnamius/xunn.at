@@ -1,5 +1,5 @@
-import * as impl from './custom-scripts';
-import { PkgCustomScript } from '../parse-url-query';
+import * as impl from '../../../src/backend/gitpkg/tar/custom-scripts';
+import { PkgCustomScript } from '../../../src/backend/gitpkg/parse-url-query';
 import { TarEntry } from 'tar-transform';
 import { tarEntries, getEntries } from '../../test/util/tar-entry';
 import { Readable, pipeline as _pl } from 'stream';

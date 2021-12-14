@@ -11,25 +11,23 @@ const debug = debugFactory(`${pkgName}:glue:check-method`);
 
 export type Options = {
   /**
-   * An array of HTTP2 methods this endpoint is allowed to serve.
+   * An array of HTTP methods this endpoint is allowed to serve.
    */
-  methods?: ValidHttpMethod[];
+  allowedMethods?: ValidHttpMethod[];
 };
 
 export default async function (
   req: NextApiRequest,
   res: NextApiResponse,
-  context: MiddlewareContext & { options: Options }
+  context: MiddlewareContext<Options>
 ) {
   debug('entered middleware runtime');
 
-  if (res.writableEnded) {
-    debug('res.end called: middleware skipped');
-  } else if (
+  if (
     !req.method ||
     getEnv().DISALLOWED_METHODS.includes(req.method) ||
-    (context.options.methods &&
-      !context.options.methods.includes(req.method as ValidHttpMethod))
+    (context.options.allowedMethods &&
+      !context.options.allowedMethods.includes(req.method as ValidHttpMethod))
   ) {
     debug(`request failed: unrecognized or disallowed method "${req.method}"`);
     sendHttpBadMethod(res);

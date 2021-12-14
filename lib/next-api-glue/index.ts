@@ -1,19 +1,25 @@
 import { toss } from 'toss-expression';
-import { sendHttpError, sendNotImplementedError } from 'multiverse/next-api-respond';
+import { sendNotImplementedError } from 'multiverse/next-api-respond';
 import { name as pkgName } from 'package';
-import debugFactory from 'debug';
+import { debugFactory, Debugger } from 'multiverse/debug-extended';
 
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse, NextApiHandler } from 'next';
+import type { NoInfer } from '@xunnamius/types';
+import type { Promisable } from 'type-fest';
 
 const debug = debugFactory(`${pkgName}:glue`);
 
-export type Middleware = (
+export type Middleware<
+  Options extends Record<string, unknown> = Record<string, unknown>
+> = (
   req: NextApiRequest,
   res: NextApiResponse,
-  context: MiddlewareContext
-) => Promise<void>;
+  context: MiddlewareContext<Options>
+) => Promisable<void>;
 
-export type MiddlewareContext = {
+export type MiddlewareContext<
+  Options extends Record<string, unknown> = Record<string, unknown>
+> = {
   /**
    * Contains middleware use chain control functions and metadata.
    */
@@ -27,8 +33,11 @@ export type MiddlewareContext = {
     readonly next: () => Promise<void>;
     /**
      * Stop calling middleware functions, effectively short-circuiting the use
-     * chain. If `response.send` hasn't been called before calling this
-     * function, it will be called automatically.
+     * chain. If `response.end` hasn't been called before calling this function,
+     * it will be called automatically.
+     *
+     * When using this function to abort execution of the primary middleware
+     * chain, the final handler will also be skipped.
      */
     readonly done: () => void;
     /**
@@ -36,136 +45,213 @@ export type MiddlewareContext = {
      * the thrown error object.
      */
     readonly error: unknown;
-    /**
-     * If `true`, `context.runtime.done` is called whenever `response.send` is
-     * called.
-     *
-     * @default true
-     */
-    callDoneOnSend: boolean;
   };
   /**
    * Options expected by middleware functions at runtime.
    */
-  options: Record<string, unknown>;
+  options: Options & {
+    /**
+     * If `true`, `context.runtime.done` is called whenever `response.end` is
+     * called. If `false`, the entire primary middleware chain will always run
+     * to completion, even if the response has already been sent before it
+     * completes.
+     *
+     * @default true
+     */
+    callDoneOnEnd: boolean;
+  };
 };
 
 /**
  * Generic middleware runner. Decorates a request handler.
  *
- * Passing `undefined` as `handler` or not calling `res.send()` in your handler
+ * Passing `undefined` as `handler` or not calling `res.end()` in your handler
  * or use chain will trigger an `HTTP 501 Not Implemented` response. This can be
  * used to to stub out endpoints and their middleware for later implementation.
  */
 export function withMiddleware<
   Options extends Record<string, unknown> = Record<string, unknown>
 >(
-  handler: ((req: NextApiRequest, res: NextApiResponse) => Promise<void>) | undefined,
+  handler: NextApiHandler | undefined,
   {
     use,
     useOnError,
     options
   }: {
-    use: Middleware[];
-    useOnError?: Middleware[];
-    options?: Options;
+    use: Middleware<NoInfer<Options>>[];
+    useOnError?: Middleware<NoInfer<Options>>[];
+    options?: Partial<MiddlewareContext<NoInfer<Options>>['options']> & NoInfer<Options>;
   }
 ) {
+  if (!Array.isArray(use)) {
+    throw new Error('withMiddleware `use` parameter must be an array');
+  }
+
+  if (useOnError && !Array.isArray(useOnError)) {
+    throw new Error('withMiddleware `useOnError` parameter must be an array');
+  }
+
   return async (req: NextApiRequest, res: NextApiResponse) => {
-    const middlewareContext: MiddlewareContext = {
+    const middlewareContext: MiddlewareContext<NoInfer<Options>> = {
       runtime: {
-        next: () => toss(new Error('next() was called before it was ready')),
-        done: () => toss(new Error('done() was called before it was ready')),
-        error: undefined,
-        callDoneOnSend: true
+        next: () => toss(new Error('runtime.next was called unexpectedly')),
+        done: () => toss(new Error('runtime.done was called unexpectedly')),
+        error: undefined
       },
-      options: options || {}
+      options: { callDoneOnEnd: true, ...options } as MiddlewareContext<
+        NoInfer<Options>
+      >['options']
     };
 
     /**
-     * Async middleware chain iteration. Returns `true` if the chain was
-     * actually pulled or `false` if it was empty.
+     * Async middleware chain iteration. Returns `true` if execution was aborted
+     * or `false` otherwise.
      */
-    const startPullingChain = async (chain: IterableIterator<Middleware>) => {
-      let abort = false;
-      let workWasDone = false;
+    const startPullingChain = async (
+      chain: IterableIterator<Middleware<NoInfer<Options>>>,
+      localDebug: Debugger
+    ) => {
+      let executionWasAborted = false;
+      let ranAtLeastOneMiddleware = false;
 
-      const pullChain = async () => {
-        let chainWasPulled = false;
-        const { value: currentMiddleware, done } = chain.next();
+      localDebug(
+        middlewareContext.options.callDoneOnEnd
+          ? 'chain will call runtime.done after res.end automatically'
+          : 'chain will NOT automatically call runtime.done after res.end'
+      );
 
-        // @ts-expect-error: next is readonly to everyone but us
-        middlewareContext.runtime.next = async () => {
-          if (!chainWasPulled) {
-            chainWasPulled = true;
-            debug('runtime.next: manually executing next middleware in chain');
-            await pullChain();
+      try {
+        const pullChain = async () => {
+          let chainWasPulled = false;
+          const { value: currentMiddleware, done } = chain.next();
+
+          // @ts-expect-error: next is readonly to everyone but us
+          middlewareContext.runtime.next = async () => {
+            if (chainWasPulled) {
+              debug.warn(
+                'runtime.next: the next middleware in this chain was already executed; calling runtime.next() at this point is a no-op!'
+              );
+            } else if (executionWasAborted) {
+              debug.warn(
+                'runtime.next: this chain was aborted; calling runtime.next() at this point is a no-op!'
+              );
+            } else {
+              chainWasPulled = true;
+              localDebug('runtime.next: manually executing next middleware in chain');
+              await pullChain();
+            }
+          };
+
+          // @ts-expect-error: done is readonly to everyone but us
+          middlewareContext.runtime.done = () => {
+            if (!executionWasAborted) {
+              localDebug('runtime.done: aborting middleware execution chain');
+              executionWasAborted = true;
+            } else {
+              debug.warn(
+                'runtime.abort: this chain was already aborted; calling runtime.abort() at this point is a no-op!'
+              );
+            }
+          };
+
+          if (middlewareContext.options.callDoneOnEnd) {
+            const send = res.end;
+            res.end = ((...args: Parameters<typeof res.end>) => {
+              const sent = res.writableEnded;
+              send(...args);
+
+              if (!executionWasAborted && !sent) {
+                localDebug('calling runtime.done after initial call to res.end');
+                middlewareContext.runtime.done();
+              }
+            }) as typeof res.end;
+          }
+
+          if (!done) {
+            if (typeof currentMiddleware == 'function') {
+              localDebug('executing middleware');
+              await currentMiddleware(req, res, middlewareContext);
+              ranAtLeastOneMiddleware = true;
+            } else {
+              debug.warn('skipping execution of non-function item in middleware array');
+            }
+
+            if (executionWasAborted) {
+              localDebug('execution chain aborted manually');
+            } else if (!chainWasPulled) {
+              localDebug('selecting next middleware in chain');
+              await pullChain();
+            }
+          } else {
+            localDebug('no more middleware to execute');
           }
         };
 
-        // @ts-expect-error: done is readonly to everyone but us
-        middlewareContext.runtime.done = () => {
-          debug('runtime.done: aborting middleware execution chain');
-          abort = true;
-        };
-
-        if (!done) {
-          if (currentMiddleware) {
-            debug('executing middleware with context');
-            await currentMiddleware(req, res, middlewareContext);
-            workWasDone = true;
-          }
-
-          if (abort) {
-            debug('execution chain aborted');
-          } else if (!chainWasPulled) {
-            debug('selecting next middleware in chain');
-            await pullChain();
-          }
-        } else {
-          debug('no more middleware to execute');
-        }
-      };
-
-      await pullChain();
-      debug('stopped middleware execution chain');
-      debug(`at least one middleware executed: ${workWasDone ? 'yes' : 'no'}`);
-      return workWasDone;
+        await pullChain();
+        localDebug('stopped middleware execution chain');
+        localDebug(
+          `at least one middleware executed: ${ranAtLeastOneMiddleware ? 'yes' : 'no'}`
+        );
+        return executionWasAborted;
+      } catch (e) {
+        executionWasAborted = true;
+        debug.error('execution chain aborted due to error');
+        throw e;
+      }
     };
 
     try {
-      await startPullingChain(use[Symbol.iterator]());
-
-      if (handler) {
-        debug('executing handler');
-        await handler(req, res);
-      }
-    } catch (e) {
-      // @ts-expect-error: error is readonly to everyone but us
-      middlewareContext.runtime.error = e;
-
+      let primaryChainWasAborted = false;
       try {
-        if (useOnError) {
-          await startPullingChain(useOnError[Symbol.iterator]());
-        }
-      } catch (err) {
-        // ? Error in error handler was unhandled
-        debug.extend('<error>')(
-          'unhandled exception in error handling middleware chain: %O',
-          err
-        );
-      }
-
-      // ? Error was unhandled
-      if (!res.writableEnded) {
-        debug.extend('<error>')('unhandled exception in primary middleware chain: %O', e);
-        sendHttpError(res);
+        debug('selecting first middleware in primary middleware chain');
+        primaryChainWasAborted = await startPullingChain(use[Symbol.iterator](), debug);
+      } catch (e) {
+        debug('error in primary middleware chain');
         throw e;
       }
-    } finally {
+
+      if (handler) {
+        if (primaryChainWasAborted) {
+          debug('not executing handler since primary chain execution was aborted');
+        } else {
+          debug('executing handler');
+          await handler(req, res);
+        }
+      } else {
+        debug('no handler found');
+      }
+
       if (!res.writableEnded) {
-        debug('res.end was not called: sending "not implemented" error');
+        debug.extend('cleanup')(
+          'res.end was not called: sending "not implemented" error'
+        );
         sendNotImplementedError(res);
+      }
+    } catch (e) {
+      debug.error('attempting to handle error: %O', e);
+
+      // @ts-expect-error: error is readonly to everyone but us
+      middlewareContext.runtime.error = e;
+      if (useOnError) {
+        try {
+          debug.error('selecting first middleware in error handling middleware chain');
+          await startPullingChain(useOnError[Symbol.iterator](), debug.error);
+        } catch (err) {
+          // ? Error in error handler was unhandled
+          debug.error('error in error handling middleware chain: %O', err);
+          debug.error('throwing unhandled error');
+          throw err;
+        }
+      } else {
+        debug.error('no error handling middleware found');
+        debug.error('throwing unhandled error');
+        throw e;
+      }
+
+      // ? Error was unhandled, kick it up to the caller (usually Next itself)
+      if (!res.writableEnded) {
+        debug.error('throwing unhandled error');
+        throw e;
       }
     }
   };
@@ -188,16 +274,16 @@ export function middlewareFactory<
   useOnError: defaultUseOnError,
   options: defaultOptions
 }: {
-  use: Middleware[];
-  useOnError?: Middleware[];
-  options?: Options;
+  use: Middleware<NoInfer<Options>>[];
+  useOnError?: Middleware<NoInfer<Options>>[];
+  options?: Partial<MiddlewareContext<NoInfer<Options>>['options']> & NoInfer<Options>;
 }) {
   return (
-    handler: ((req: NextApiRequest, res: NextApiResponse) => Promise<void>) | undefined,
+    handler: NextApiHandler | undefined,
     params?: {
-      use?: Middleware[];
-      useOnError?: Middleware[];
-      options?: Options;
+      use?: Middleware<NoInfer<Options>>[];
+      useOnError?: Middleware<NoInfer<Options>>[];
+      options?: Partial<MiddlewareContext<NoInfer<Options>>['options']>;
     }
   ) => {
     const {
@@ -206,10 +292,13 @@ export function middlewareFactory<
       options: passedOptions
     } = { ...params };
 
-    return withMiddleware<Options>(handler, {
+    return withMiddleware<NoInfer<Options>>(handler, {
       use: [...defaultUse, ...(passedUse || [])],
       useOnError: [...(defaultUseOnError || []), ...(passedUseOnError || [])],
-      options: { ...defaultOptions, ...passedOptions } as Options
+      options: { ...defaultOptions, ...passedOptions } as Partial<
+        MiddlewareContext<NoInfer<Options>>['options']
+      > &
+        NoInfer<Options>
     });
   };
 }

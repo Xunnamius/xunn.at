@@ -9,19 +9,20 @@ import type { MiddlewareContext } from 'multiverse/next-api-glue';
 const debug = debugFactory(`${pkgName}:glue:check-version`);
 
 export type Options = {
+  /**
+   * The version of the api this endpoint serves.
+   */
   apiVersion?: string;
 };
 
 export default async function (
   _req: NextApiRequest,
   res: NextApiResponse,
-  context: MiddlewareContext & { options: Options }
+  context: MiddlewareContext<Options>
 ) {
   debug('entered middleware runtime');
 
-  if (res.writableEnded) {
-    debug('res.end called: middleware skipped');
-  } else if (
+  if (
     context.options.apiVersion !== undefined &&
     getEnv().DISABLED_API_VERSIONS.includes(context.options.apiVersion)
   ) {

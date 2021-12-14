@@ -1,12 +1,11 @@
 import { name as pkgName, version as pkgVersion } from 'package';
 import { verifyEnvironment } from '../expect-env';
 import { TestError, GuruMeditationError } from 'universe/error';
-import { sendHttpErrorResponse } from 'multiverse/next-api-respond';
-import { asMockedFunction } from '@xunnamius/jest-types';
 import { tmpdir } from 'os';
 import { promises as fs } from 'fs';
 import { resolve } from 'path';
 import { toss } from 'toss-expression';
+import { defaultConfig } from 'universe/backend/api';
 import execa from 'execa';
 import uniqueFilename from 'unique-filename';
 import debugFactory from 'debug';
@@ -14,11 +13,10 @@ import gitFactory from 'simple-git';
 import 'jest-extended/all';
 import 'jest-extended';
 
-import type { ExecaReturnValue } from 'execa';
-import type { HttpStatusCode } from '@xunnamius/types';
 import type { Debugger } from 'debug';
 import type { SimpleGit } from 'simple-git';
 import type { Promisable } from 'type-fest';
+import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 
 const { writeFile, access: accessFile } = fs;
 const debug = debugFactory(`${pkgName}:jest-setup`);
@@ -38,53 +36,17 @@ try {
 
 verifyEnvironment();
 
-// TODO: XXX: is toBeAround still needed given we're using type-fest?
+export const noopHandler = async (_req: NextApiRequest, res: NextApiResponse) => {
+  res.status(200).send({});
+};
 
-expect.extend({
-  toBeAround(actual, expected, precision) {
-    const pass = Math.abs(expected - actual) <= precision;
-
-    if (pass) {
-      return {
-        message: () => `expected ${actual} not to be with ±${precision} of ${expected}`,
-        pass: true
-      };
-    } else {
-      return {
-        message: () => `expected ${actual} to be with ±${precision} of ${expected}`,
-        pass: false
-      };
-    }
-  }
-});
+export const wrapHandler = (handler: NextApiHandler) => {
+  const api = async (req: NextApiRequest, res: NextApiResponse) => handler(req, res);
+  api.config = defaultConfig;
+  return api;
+};
 
 // TODO: XXX: add these brand new tools to where they're supposed to be!
-
-// TODO: XXX: this one specifically should become part of next-api-glue itself!
-export function asMockedNextApiMiddleware(
-  wrapHandler: typeof import('universe/backend/middleware')['withMiddleware']
-) {
-  asMockedFunction(wrapHandler).mockImplementation(async (fn, { req, res }) => {
-    const spy = jest.spyOn(res, 'send');
-
-    try {
-      fn && (await fn({ req, res }));
-    } catch (error) {
-      // ! This must be imported dynamically or jest will hang & mocks will fail
-      await (
-        await jest.requireActual('universe/backend/middleware')
-      ).handleError(res, error);
-    } finally {
-      // ! This must happen or jest tests will hang and MMS will choke. Also
-      // ! note that this isn't a NextApiResponse but a ServerResponse!
-      if (!spy.mock.calls.length) {
-        sendHttpErrorResponse(res, 600 as unknown as HttpStatusCode, {
-          error: 'there was a (perhaps unexpected) problem with the mocked middleware'
-        });
-      }
-    }
-  });
-}
 
 export class FactoryExhaustionError extends TestError {}
 export function itemFactory<T>(testItems: T[]) {
@@ -233,34 +195,95 @@ export function mockEnvFactory(
 }
 
 // TODO: XXX: make this into a separate (jest-isolated-import) package
-// ! Note that this breaks the "shared requires" expectation of Node (shows up
-// ! with stuff like getDb returning different connection instances)
-export function isolatedImport<T>(path: string) {
+
+/**
+ * Performs a module import as if it were being imported for the first time.
+ *
+ * Note that this function breaks the "require caching" expectation of Node.js
+ * modules. Problems can arise, for example, when closing an app-wide database
+ * connection in your test cleanup phase and expecting it to close for the
+ * isolated module too. In this case, the isolated module has its own isolated
+ * "app-wide" connection that would not actually be closed and could cause your
+ * test to hang unexpectedly, even when all tests pass.
+ */
+export function isolatedImport<T = unknown>(args: {
+  /**
+   * Path to the module to import. Module resolution is handled by `require`.
+   */
+  path: string;
+  /**
+   * By default, if `module.__esModule === true`, the default export will be
+   * returned instead. Use `useDefault` to override this behavior in either
+   * direction.
+   */
+  useDefault?: boolean;
+}) {
   let pkg: T | undefined;
 
   // ? Cache-busting
   jest.isolateModules(() => {
     pkg = ((r) => {
       debug(
-        `performing isolated import of ${path} as ${r.__esModule ? 'es' : 'cjs'} module`
+        `performing isolated import of ${args.path}${
+          args.useDefault ? ' (returning default by force)' : ''
+        }`
       );
 
-      if (!r.__esModule && r.default) {
-        debug(
-          'WARNING: treating module with default export as CJS instead of ESM, which could cause undefined behavior!'
-        );
-      }
-
-      return r.__esModule && r.default ? r.default : r;
-    })(require(path));
+      return args.useDefault === true || (args.useDefault !== false && r.__esModule)
+        ? r.default
+        : r;
+    })(require(args.path));
   });
 
   return pkg as T;
 }
 
 // TODO: XXX: make this into a separate package (along with the above)
-export function isolatedImportFactory<T>(path: string) {
-  return () => isolatedImport<T>(path);
+export function isolatedImportFactory<T = unknown>(args: {
+  path: string;
+  useDefault?: boolean;
+}) {
+  return () => isolatedImport<T>({ path: args.path, useDefault: args.useDefault });
+}
+
+// TODO: XXX: make this into a separate package (along with the above)
+/**
+ * While [[`isolatedImport`]] performs a module import as if it were being
+ * imported for the first time, `protectedImport` wraps [[`isolatedImport`]]
+ * with [[`withMockedExit`]]. This makes `protectedImport` useful for testing
+ * IIFE modules such as CLI entry points.
+ */
+export function protectedImport<T = unknown>(args: {
+  path: string;
+  useDefault?: boolean;
+}) {
+  return async (params?: {
+    /**
+     * The code passed to process.exit by the imported module.
+     *
+     * @default 0
+     */
+    expectedExitCode?: number | 'non-zero';
+  }) => {
+    let pkg: unknown = undefined;
+
+    await withMockedExit(async ({ exitSpy }) => {
+      pkg = await isolatedImport({ path: args.path, useDefault: args.useDefault });
+      params?.expectedExitCode == 'non-zero'
+        ? expect(exitSpy).not.toBeCalledWith(0)
+        : expect(exitSpy).toBeCalledWith(params?.expectedExitCode ?? 0);
+    });
+
+    return pkg as T;
+  };
+}
+
+// TODO: XXX: make this into a separate package (along with the above)
+export function protectedImportFactory<T = unknown>(args: {
+  path: string;
+  useDefault?: boolean;
+}) {
+  return () => protectedImport<T>({ path: args.path, useDefault: args.useDefault });
 }
 
 // TODO: XXX: make this into a separate (mock-exit) package
@@ -276,23 +299,6 @@ export async function withMockedExit(
   } finally {
     exitSpy.mockRestore();
   }
-}
-
-// TODO: XXX: make this into a separate package (along with the above)
-export function protectedImportFactory(path: string) {
-  return async (params?: { expectedExitCode?: number }) => {
-    let pkg: unknown = undefined;
-
-    await withMockedExit(async ({ exitSpy }) => {
-      pkg = await isolatedImport(path);
-      if (expect && params?.expectedExitCode)
-        expect(exitSpy).toBeCalledWith(params.expectedExitCode);
-      else if (!expect)
-        debug('WARNING: "expect" object not found, so exit check was skipped');
-    });
-
-    return pkg;
-  };
 }
 
 // TODO: XXX: make this into a separate (mock-output) package
@@ -344,12 +350,12 @@ export interface RunOptions extends execa.Options {
 // TODO: XXX: make this into a separate (run) package
 // ! By default, does NOT reject on bad exit code (set reject: true to override)
 export async function run(file: string, args?: string[], options?: RunOptions) {
-  let result: ExecaReturnValue & { code: ExecaReturnValue['exitCode'] };
-  // eslint-disable-next-line prefer-const
-  result = (await execa(file, args, { reject: false, ...options })) as typeof result;
+  debug(`executing "${file}" with:`);
+  debug(`  args: %O`, args);
+  debug(`  runner options %O`, options);
 
-  result.code = result.exitCode;
-  debug('executed command result: %O', result);
+  const result = await execa(file, args, { reject: false, ...options });
+  debug('execution result: %O', result);
 
   return result;
 }
@@ -404,7 +410,7 @@ export interface FixtureContext<CustomOptions extends Record<string, unknown> = 
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
 export interface TestResultProvider {
-  testResult: { code: number; stdout: string; stderr: string };
+  testResult: { exitCode: number; stdout: string; stderr: string };
 }
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
@@ -537,10 +543,12 @@ export function webpackTestFixture(): MockFixture {
 
       await run('npx', ['webpack'], { cwd: ctx.root, reject: true });
 
-      const { code, stdout, stderr } = await run('node', [`${ctx.root}/dist/index.js`]);
+      const { exitCode, stdout, stderr } = await run('node', [
+        `${ctx.root}/dist/index.js`
+      ]);
 
       ctx.testResult = {
-        code,
+        exitCode,
         stdout,
         stderr
       };
@@ -571,14 +579,14 @@ export function nodeImportTestFixture(): MockFixture {
 
       ctx.treeOutput = await getTreeOutput(ctx);
 
-      const { code, stdout, stderr } = await run(
+      const { exitCode, stdout, stderr } = await run(
         'node',
         ['--experimental-json-modules', indexPath],
         { cwd: ctx.root }
       );
 
       ctx.testResult = {
-        code,
+        exitCode,
         stdout,
         stderr
       };

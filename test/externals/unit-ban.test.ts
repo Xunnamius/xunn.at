@@ -1,11 +1,14 @@
 import { BANNED_KEY } from 'universe/backend';
 import { setupTestDb } from 'testverse/db';
 import { GuruMeditationError } from 'universe/error';
-import { withMockedEnv } from './setup';
+import { withMockedEnv } from 'testverse/setup';
 import banHammer from 'externals/ban-hammer';
 
 import type { InternalRequestLogEntry, InternalLimitedLogEntry } from 'types/global';
 import type { WithId } from 'mongodb';
+
+const TEST_MARGIN_MS = 1000;
+const TEN_MINUTES_MS = 10 * 60 * 1000;
 
 const { getDb } = setupTestDb();
 
@@ -187,9 +190,10 @@ describe('external-scripts/ban-hammer', () => {
     expect(untils).toBeArrayOfSize(3);
 
     untils.forEach((u) => {
-      // ? If tests are failing, try make toBeAround param #2 to be > 1000
-      // @ts-expect-error -- toBeAround is defined
-      expect(u.until).toBeAround(now + 10 * 60 * 1000, 1000);
+      expect(u.until).toBeWithin(
+        now + TEN_MINUTES_MS - TEST_MARGIN_MS,
+        now + TEN_MINUTES_MS + TEST_MARGIN_MS
+      );
     });
 
     await (await getRateLimitsCollection()).deleteMany({});
@@ -207,9 +211,10 @@ describe('external-scripts/ban-hammer', () => {
     expect(untils).toBeArrayOfSize(3);
 
     untils.forEach((u) => {
-      // ? If tests are failing, try make toBeAround param #2 to be > 1000
-      // @ts-expect-error -- toBeAround is defined
-      expect(u.until).toBeAround(now + 20 * 60 * 1000, 1000);
+      expect(u.until).toBeWithin(
+        now + 2 * TEN_MINUTES_MS - TEST_MARGIN_MS,
+        now + 2 * TEN_MINUTES_MS + TEST_MARGIN_MS
+      );
     });
 
     await withMockedEnv(
@@ -226,9 +231,10 @@ describe('external-scripts/ban-hammer', () => {
     expect(untils).toBeArrayOfSize(3);
 
     untils.forEach((u) => {
-      // ? If tests are failing, try make toBeAround param #2 to be > 1000
-      // @ts-expect-error -- toBeAround is defined
-      expect(u.until).toBeAround(now + 20 * 60 * 5000, 5000);
+      expect(u.until).toBeWithin(
+        now + 10 * TEN_MINUTES_MS - TEST_MARGIN_MS,
+        now + 10 * TEN_MINUTES_MS + TEST_MARGIN_MS
+      );
     });
   });
 

@@ -13,14 +13,14 @@ export type Options = {
 export default async function (req: NextApiRequest, res: NextApiResponse) {
   debug('entered middleware runtime');
 
-  if (res.writableEnded) {
-    debug('res.end called: middleware skipped');
-  } else {
-    const send = res.send;
-    res.send = (...args) => {
-      debug('res.send called');
+  const send = res.end;
+  res.end = ((...args: Parameters<typeof res.end>) => {
+    const sent = res.writableEnded;
+    send(...args);
+
+    if (!sent) {
+      debug('logging request after initial call to res.end');
       void addToRequestLog({ req, res });
-      send(...args);
-    };
-  }
+    }
+  }) as typeof res.end;
 }

@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import { WithId } from 'mongodb';
 import { toss } from 'toss-expression';
 import * as Backend from 'universe/backend';
@@ -11,14 +10,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { InternalRequestLogEntry, InternalLimitedLogEntry } from 'types/global';
 
-jest.mock('node-fetch');
-
-const mockedFetch = asMockedFunction(fetch);
 const { getDb } = setupTestDb();
-
-beforeEach(() =>
-  mockedFetch.mockImplementation(() => toss(new TestError('illegal fetch attempt')))
-);
 
 describe('::addToRequestLog', () => {
   it('adds request to log as expected', async () => {
@@ -32,7 +24,7 @@ describe('::addToRequestLog', () => {
     const req2 = {
       headers: {
         'x-forwarded-for': '8.8.8.8',
-        key: Backend.BANNED_KEY
+        authorization: `Bearer ${Backend.BANNED_KEY}`
       },
       method: 'GET',
       url: '/api/route/path2'
@@ -95,7 +87,7 @@ describe('::isRateLimited', () => {
     const req2 = await Backend.isRateLimited({
       headers: {
         'x-forwarded-for': '8.8.8.8',
-        key: Backend.BANNED_KEY
+        authorization: `Bearer ${Backend.BANNED_KEY}`
       },
       method: 'GET',
       url: '/api/route/path2'
@@ -104,7 +96,7 @@ describe('::isRateLimited', () => {
     const req3 = await Backend.isRateLimited({
       headers: {
         'x-forwarded-for': '1.2.3.4',
-        key: 'fake-key'
+        authorization: 'Bearerfake-key'
       },
       method: 'POST',
       url: '/api/route/path1'
@@ -121,7 +113,7 @@ describe('::isRateLimited', () => {
     const req5 = await Backend.isRateLimited({
       headers: {
         'x-forwarded-for': '1.2.3.4',
-        key: Backend.BANNED_KEY
+        authorization: `Bearer ${Backend.BANNED_KEY}`
       },
       method: 'POST',
       url: '/api/route/path1'
@@ -155,7 +147,7 @@ describe('::isRateLimited', () => {
     const req2 = {
       headers: {
         'x-forwarded-for': '8.8.8.8',
-        key: 'fake-key'
+        authorization: 'Bearerfake-key'
       },
       method: 'GET',
       url: '/api/route/path2'

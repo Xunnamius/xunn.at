@@ -1,14 +1,9 @@
 import { getClientIp } from 'request-ip';
 import { getDb } from 'universe/backend/db';
 
-import { HttpStatusCode } from '@xunnamius/types';
-import type { NextApiRequest } from 'next';
-
-import type {
-  InternalRequestLogEntry,
-  InternalLimitedLogEntry,
-  NextApiState
-} from 'types/global';
+import type { HttpStatusCode } from '@xunnamius/types';
+import type { NextApiRequest, NextApiResponse } from 'next';
+import type { InternalRequestLogEntry, InternalLimitedLogEntry } from 'types/global';
 
 export async function isRateLimited(req: NextApiRequest) {
   const ip = getClientIp(req);
@@ -36,7 +31,13 @@ export async function isRateLimited(req: NextApiRequest) {
  * Note that this async function does not have to be awaited. It's fire and
  * forget!
  */
-export async function addToRequestLog({ req, res }: NextApiState) {
+export async function addToRequestLog({
+  req,
+  res
+}: {
+  req: NextApiRequest;
+  res: NextApiResponse;
+}) {
   await (await getDb({ name: 'system' }))
     .collection<InternalRequestLogEntry>('request-log')
     .insertOne({
@@ -47,4 +48,14 @@ export async function addToRequestLog({ req, res }: NextApiState) {
       resStatusCode: res.statusCode as HttpStatusCode,
       time: Date.now()
     });
+}
+
+export function isDueForContrivedError() {
+  // TODO
+  return false;
+}
+
+export async function isValidAuthHeader(header: string) {
+  // TODO
+  return false;
 }

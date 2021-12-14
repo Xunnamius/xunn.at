@@ -41,7 +41,7 @@ module.exports = () => {
     env: {
       RESULTS_PER_PAGE: process.env.RESULTS_PER_PAGE,
       IGNORE_RATE_LIMITS: process.env.IGNORE_RATE_LIMITS,
-      LOCKOUT_ALL_KEYS: process.env.LOCKOUT_ALL_KEYS,
+      LOCKOUT_ALL_CLIENTS: process.env.LOCKOUT_ALL_CLIENTS,
       DISALLOWED_METHODS: process.env.DISALLOWED_METHODS,
       MAX_CONTENT_LENGTH_BYTES: process.env.MAX_CONTENT_LENGTH_BYTES
     },

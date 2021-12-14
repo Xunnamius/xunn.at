@@ -24,7 +24,7 @@ demonstrating your issue *using as few lines of code as possible*. If we can't
 reproduce the problem on our side, how can we ever hope to fix it for you 🤷🏾?
 
 If your issue is simple enough that it doesn't warrant a demo repo, include
-instead the simplest most basic possible steps to reproduce your problem; e.g.:
+instead the simplest most Bearerpossible steps to reproduce your problem; e.g.:
 
 1. Clone the dummy repo I made based on the docs example: https://github.com/...
 2. Run `npm install`

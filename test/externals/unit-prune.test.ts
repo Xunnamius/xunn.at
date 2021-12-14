@@ -3,7 +3,7 @@ import pruneData from 'externals/prune-data';
 
 import type { InternalRequestLogEntry } from 'types/global';
 import type { WithId } from 'mongodb';
-import { withMockedEnv } from './setup';
+import { withMockedEnv } from '../setup';
 
 const testCollections = ['request-log', 'limited-log-mview'];
 

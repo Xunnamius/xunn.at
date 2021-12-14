@@ -1,4 +1,4 @@
-import * as impl from './parse-query';
+import * as impl from '../../../src/backend/gitpkg/parse-url-query/plugins/custom-scripts/parse-query';
 
 test('check if query key is custom script', () => {
   expect(impl.queryKeyIsCustomScript('scripts.postinstall')).toBe(true);
