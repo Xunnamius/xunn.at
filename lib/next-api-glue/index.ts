@@ -1,13 +1,13 @@
 import { toss } from 'toss-expression';
 import { sendNotImplementedError } from 'multiverse/next-api-respond';
-import { name as pkgName } from 'package';
-import { debugFactory, Debugger } from 'multiverse/debug-extended';
+import { debugFactory } from 'multiverse/debug-extended';
 
+import type { Debugger } from 'multiverse/debug-extended';
 import type { NextApiRequest, NextApiResponse, NextApiHandler } from 'next';
 import type { NoInfer } from '@xunnamius/types';
 import type { Promisable } from 'type-fest';
 
-const debug = debugFactory(`${pkgName}:glue`);
+const debug = debugFactory('next-api-glue:runtime');
 
 export type Middleware<
   Options extends Record<string, unknown> = Record<string, unknown>
