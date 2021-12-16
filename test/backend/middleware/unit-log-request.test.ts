@@ -14,7 +14,7 @@ beforeEach(() => {
   mockAddToRequestLog.mockReturnValue(Promise.resolve());
 });
 
-it('logs requests on send', async () => {
+it('logs requests on call to res.send', async () => {
   expect.hasAssertions();
 
   await testApiHandler({
@@ -32,7 +32,7 @@ it('logs requests on send', async () => {
   });
 });
 
-it('logs requests on end', async () => {
+it('logs requests on call to res.end', async () => {
   expect.hasAssertions();
 
   await testApiHandler({
@@ -41,6 +41,30 @@ it('logs requests on end', async () => {
         withMiddleware(async (_req, res) => res.status(404).end(), {
           use: [logRequest]
         })
+      )
+    ),
+    test: async ({ fetch }) => {
+      await Promise.all([fetch(), fetch(), fetch()]);
+      expect(mockAddToRequestLog).toBeCalledTimes(3);
+    }
+  });
+});
+
+it('logs requests once on multiple calls to res.end', async () => {
+  expect.hasAssertions();
+
+  await testApiHandler({
+    handler: wrapHandler(
+      wrapHandler(
+        withMiddleware(
+          async (_req, res) => {
+            res.status(404).end();
+            res.end();
+          },
+          {
+            use: [logRequest]
+          }
+        )
       )
     ),
     test: async ({ fetch }) => {

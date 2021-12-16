@@ -1,12 +1,12 @@
+import { debugNamespace } from 'universe/constants';
 import { isValidAuthHeader } from 'universe/backend/request';
 import { sendHttpUnauthenticated } from 'multiverse/next-api-respond';
-import { name as pkgName } from 'package';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { MiddlewareContext } from 'multiverse/next-api-glue';
 
-const debug = debugFactory(`${pkgName}:glue:auth-request`);
+const debug = debugFactory(`${debugNamespace}:glue:auth-request`);
 
 export type Options = {
   /**

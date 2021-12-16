@@ -1,13 +1,13 @@
+import { debugNamespace } from 'universe/constants';
 import { getEnv } from 'universe/backend/env';
 import { sendHttpBadMethod } from 'multiverse/next-api-respond';
-import { name as pkgName } from 'package';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import type { ValidHttpMethod } from 'universe/backend';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { MiddlewareContext } from 'multiverse/next-api-glue';
 
-const debug = debugFactory(`${pkgName}:glue:check-method`);
+const debug = debugFactory(`${debugNamespace}:glue:check-method`);
 
 export type Options = {
   /**

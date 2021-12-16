@@ -1,10 +1,10 @@
+import { debugNamespace } from 'universe/constants';
 import { addToRequestLog } from 'universe/backend/request';
-import { name as pkgName } from 'package';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const debug = debugFactory(`${pkgName}:glue:log-request`);
+const debug = debugFactory(`${debugNamespace}:glue:log-request`);
 
 export type Options = {
   // No options

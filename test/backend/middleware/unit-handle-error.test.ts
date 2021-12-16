@@ -1,6 +1,6 @@
 import { withMiddleware } from 'multiverse/next-api-glue';
 import { testApiHandler } from 'next-test-api-route-handler';
-import { itemFactory, wrapHandler } from 'testverse/setup';
+import { itemFactory, noopHandler, wrapHandler } from 'testverse/setup';
 import { toss } from 'toss-expression';
 import handleError from 'universe/backend/middleware/handle-error';
 
@@ -32,23 +32,47 @@ it('sends correct HTTP error codes when certain errors occur', async () => {
     ['strange error', 500] // ? This too
   ]);
 
-  let expectedStatus: number;
-  let expectedError: AppError | string;
+  await Promise.all(
+    factory.items.map(async (item) => {
+      const [expectedError, expectedStatus] = item;
+
+      await testApiHandler({
+        handler: wrapHandler(
+          withMiddleware(async () => toss(expectedError), {
+            use: [],
+            useOnError: [handleError]
+          })
+        ),
+        test: async ({ fetch }) =>
+          fetch().then((res) => expect(res.status).toStrictEqual(expectedStatus))
+      });
+    })
+  );
+});
+
+it('throws without calling res.end if response is no longer writable', async () => {
+  expect.hasAssertions();
 
   await testApiHandler({
-    handler: wrapHandler(
-      withMiddleware(async () => toss(expectedError), {
-        use: [],
-        useOnError: [handleError]
-      })
-    ),
+    handler: async (rq, rs) => {
+      await expect(
+        withMiddleware(noopHandler, {
+          use: [
+            (_req, res) => {
+              // eslint-disable-next-line jest/unbound-method
+              const send = res.end;
+              res.end = ((...args: Parameters<typeof res.end>) => {
+                send(...args);
+                throw new Error('bad bad not good');
+              }) as unknown as typeof res.end;
+            }
+          ],
+          useOnError: [handleError]
+        })(rq, rs)
+      ).rejects.toMatchObject({ message: 'bad bad not good' });
+    },
     test: async ({ fetch }) => {
-      await Promise.all(
-        factory.items.map(async (item) => {
-          [expectedError, expectedStatus] = item;
-          return fetch().then((res) => expect(res.status).toStrictEqual(expectedStatus));
-        })
-      );
+      expect((await fetch()).status).toBe(200);
     }
   });
 });

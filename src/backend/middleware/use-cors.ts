@@ -1,10 +1,10 @@
-import { name as pkgName } from 'package';
+import { debugNamespace } from 'universe/constants';
 import Cors from 'cors';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const debug = debugFactory(`${pkgName}:glue:use-cors`);
+const debug = debugFactory(`${debugNamespace}:glue:use-cors`);
 
 let cors: ReturnType<typeof Cors>;
 

@@ -1,5 +1,5 @@
-import { name as pkgName } from 'package';
-import debugFactory from 'debug';
+import { debugNamespace } from 'universe/constants';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import {
   GuruMeditationError,
@@ -23,7 +23,7 @@ import type { JsonError } from '@xunnamius/types';
 import type { MiddlewareContext } from 'multiverse/next-api-glue';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const debug = debugFactory(`${pkgName}:glue:handle-error`);
+const debug = debugFactory(`${debugNamespace}:glue:handle-error`);
 
 export type Options = {
   // No options
@@ -40,11 +40,18 @@ export default async function (
     runtime: { error }
   } = context;
 
+  if (res.writableEnded) {
+    // ? We're past the point where we're able to change the response.
+    debug('cannot handle error: response is no longer writable');
+    debug('throwing unhandleable error');
+    throw error;
+  }
+
   const errorJson: Partial<JsonError> = (error as { message: string }).message
     ? { error: (error as { message: string }).message }
     : {};
 
-  debug('encountered error condition: %O', errorJson.error || '(no message)');
+  debug('handling error: %O', errorJson.error || '(no message)');
 
   if (error instanceof GuruMeditationError) {
     sendHttpError(res, {

@@ -1,7 +1,7 @@
+import { debugNamespace } from 'universe/constants';
 import { getEnv } from 'universe/backend/env';
 import { isRateLimited } from 'universe/backend/request';
-import { name as pkgName } from 'package';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import {
   sendHttpRateLimited,
@@ -10,7 +10,7 @@ import {
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const debug = debugFactory(`${pkgName}:glue:limit-request`);
+const debug = debugFactory(`${debugNamespace}:glue:limit-request`);
 
 export type Options = {
   // No options
