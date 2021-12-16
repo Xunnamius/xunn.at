@@ -25,18 +25,25 @@ export interface ExtendedDebugger extends Debugger {
  * An [[`ExtendedDebug`]] instance that returns an [[`ExtendedDebugger`]]
  * instance via [[`extendDebugger`]].
  */
-export function debugFactory(...args: Parameters<Debug>) {
+const debugFactory = ((...args: Parameters<Debug>) => {
   return extendDebugger(getDebugger(...args));
-}
+}) as ExtendedDebug;
+
+Object.assign(debugFactory, getDebugger);
+
+export { debugFactory };
 
 /**
  * Extends [[`Debugger`]] instance with several convenience methods,
  * transforming it into an [[`ExtendedDebugger`]] instance.
  */
 export function extendDebugger(instance: Debugger) {
+  const extend = instance.extend;
   const finalInstance = instance as ExtendedDebugger;
+
   finalInstance.error = finalInstance.extend('<error>');
   finalInstance.warn = finalInstance.extend('<warn>');
-  finalInstance.extend = (...args) => extendDebugger(finalInstance.extend(...args));
+  finalInstance.extend = (...args) => extendDebugger(extend(...args));
+
   return finalInstance;
 }
