@@ -10,14 +10,14 @@ Note that externals must first be compiled before they can be run, i.e.
 ## Example Template
 
 ```Typescript
-import { name as pkgName } from 'package';
+import { debugNamespace as namespace } from 'universe/constants';
 import { getEnv } from 'universe/backend/env';
 import { ExternalError, IllegalExternalEnvironmentError } from 'universe/backend/error';
 import { getDb, closeDb } from 'universe/backend/db';
-import debugFactory from 'debug';
+import {debugFactory} from 'multiverse/debug-extended';
 
 // TODO:
-const debugNamespace = `${pkgName}:EXTERNAL_SCRIPT_NAME_HERE`;
+const debugNamespace = `${namespace}:EXTERNAL_SCRIPT_NAME_HERE`;
 
 const log = debugFactory(debugNamespace);
 const debug = debugFactory(debugNamespace);

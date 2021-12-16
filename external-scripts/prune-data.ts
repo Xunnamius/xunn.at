@@ -1,11 +1,11 @@
-import { name as pkgName } from 'package';
+import { debugNamespace as namespace } from 'universe/constants';
 import { getEnv } from 'universe/backend/env';
 import { ExternalError, IllegalExternalEnvironmentError } from 'universe/error';
 import { getDb } from 'universe/backend/db';
 import { toss } from 'toss-expression';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 
-const debugNamespace = `${pkgName}:prune-data`;
+const debugNamespace = `${namespace}:prune-data`;
 
 const log = debugFactory(debugNamespace);
 const debug = debugFactory(debugNamespace);

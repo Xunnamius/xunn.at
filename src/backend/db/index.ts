@@ -1,14 +1,14 @@
-import { name as pkgName } from 'package';
+import { debugNamespace } from 'universe/constants';
 import { MongoClient, ObjectId } from 'mongodb';
 import { toss } from 'toss-expression';
 import { GuruMeditationError, InvalidConfigurationError } from 'universe/error';
 import { getEnv } from 'universe/backend/env';
 import { schema } from 'universe/backend/db/schema';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import type { Db, Collection, WithId } from 'mongodb';
 
-const debug = debugFactory(`${pkgName}:db`);
+const debug = debugFactory(`${debugNamespace}:db`);
 
 export type InternalMemory = {
   client: MongoClient;

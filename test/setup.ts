@@ -1,3 +1,4 @@
+import { debugNamespace } from 'universe/constants';
 import { name as pkgName, version as pkgVersion } from 'package';
 import { verifyEnvironment } from '../expect-env';
 import { TestError, GuruMeditationError } from 'universe/error';
@@ -8,7 +9,7 @@ import { toss } from 'toss-expression';
 import { defaultConfig } from 'universe/backend/api';
 import execa from 'execa';
 import uniqueFilename from 'unique-filename';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 import gitFactory from 'simple-git';
 import 'jest-extended/all';
 import 'jest-extended';
@@ -19,7 +20,7 @@ import type { Promisable } from 'type-fest';
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 
 const { writeFile, access: accessFile } = fs;
-const debug = debugFactory(`${pkgName}:jest-setup`);
+const debug = debugFactory(`${debugNamespace}:jest-setup`);
 
 debug(`pkgName: "${pkgName}"`);
 debug(`pkgVersion: "${pkgVersion}"`);
@@ -310,14 +311,57 @@ export async function withMockedOutput(
     infoSpy: jest.SpyInstance;
     stdoutSpy: jest.SpyInstance;
     stdErrSpy: jest.SpyInstance;
-  }) => Promisable<void>
+  }) => Promisable<void>,
+  options?: {
+    /**
+     * Determine if spies provide mock implementations for output functions,
+     * thus preventing any output to the terminal, or if spies should
+     * passthrough output as normal.
+     *
+     * Passthrough is disabled for all spies by default. Pass `true` to enable
+     * passthrough for a specific spy.
+     */
+    passthrough?: {
+      /**
+       * @default false
+       */
+      logSpy?: boolean;
+      /**
+       * @default false
+       */
+      warnSpy?: boolean;
+      /**
+       * @default false
+       */
+      errorSpy?: boolean;
+      /**
+       * @default false
+       */
+      infoSpy?: boolean;
+      /**
+       * @default false
+       */
+      stdoutSpy?: boolean;
+      /**
+       * @default false
+       */
+      stdErrSpy?: boolean;
+    };
+  }
 ) {
-  const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
-  const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-  const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
-  const stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
-  const stdErrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  const logSpy = jest.spyOn(console, 'log');
+  const warnSpy = jest.spyOn(console, 'warn');
+  const errorSpy = jest.spyOn(console, 'error');
+  const infoSpy = jest.spyOn(console, 'info');
+  const stdoutSpy = jest.spyOn(process.stdout, 'write');
+  const stdErrSpy = jest.spyOn(process.stderr, 'write');
+
+  !options?.passthrough?.logSpy && logSpy.mockImplementation(() => undefined);
+  !options?.passthrough?.warnSpy && warnSpy.mockImplementation(() => undefined);
+  !options?.passthrough?.errorSpy && errorSpy.mockImplementation(() => undefined);
+  !options?.passthrough?.infoSpy && infoSpy.mockImplementation(() => undefined);
+  !options?.passthrough?.stdoutSpy && stdoutSpy.mockImplementation(() => true);
+  !options?.passthrough?.stdErrSpy && stdErrSpy.mockImplementation(() => true);
 
   try {
     await fn({

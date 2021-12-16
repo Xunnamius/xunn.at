@@ -1,14 +1,14 @@
-import { name as pkgName } from 'package';
+import { debugNamespace } from 'universe/constants';
 import { parse as parseAsBytes } from 'bytes';
 import { isServer } from 'is-server-side';
 import { IllegalEnvironmentError } from 'universe/error';
 import { validHttpMethods } from 'universe/backend';
 import { getEnv as getCustomizedEnv } from 'universe/backend/env/app';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import type { ValidHttpMethod } from 'universe/backend';
 
-const debug = debugFactory(`${pkgName}:env`);
+const debug = debugFactory(`${debugNamespace}:env`);
 
 // TODO: unit test env.ts and other testable abstraction layers
 

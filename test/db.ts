@@ -1,11 +1,11 @@
-import { name as pkgName } from 'package';
+import { debugNamespace } from 'universe/constants';
 import { MongoClient } from 'mongodb';
 import { getEnv } from 'universe/backend/env';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { schema } from 'universe/backend/db/schema';
 import { getDummyData } from 'testverse/db.schema';
 import { InvalidConfigurationError } from 'universe/error';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import {
   overwriteMemory,
@@ -19,7 +19,7 @@ import {
 
 import type { Document } from 'mongodb';
 
-const debug = debugFactory(`${pkgName}:test-db`);
+const debug = debugFactory(`${debugNamespace}:test-db`);
 
 export * from 'testverse/db.schema';
 

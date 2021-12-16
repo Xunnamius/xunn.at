@@ -1,10 +1,10 @@
-import { name as pkgName } from 'package';
+import { debugNamespace as namespace } from 'universe/constants';
 import { getEnv } from 'universe/backend/env';
 import { ExternalError, IllegalExternalEnvironmentError } from 'universe/error';
 import { getDb } from 'universe/backend/db';
-import debugFactory from 'debug';
+import { debugFactory } from 'multiverse/debug-extended';
 
-const debugNamespace = `${pkgName}:ban-hammer`;
+const debugNamespace = `${namespace}:ban-hammer`;
 
 const oneSecondInMs = 1000;
 const log = debugFactory(debugNamespace);
