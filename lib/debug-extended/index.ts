@@ -6,7 +6,7 @@ import type { Debug, Debugger } from 'debug';
 export type { Debug, Debugger };
 
 /**
- * A Debug factory interface that returns [[`ExtendedDebugger`]] instances.
+ * A Debug factory interface that returns `ExtendedDebugger` instances.
  */
 export interface ExtendedDebug extends Debug {
   (...args: Parameters<Debug>): ExtendedDebugger;
@@ -22,8 +22,8 @@ export interface ExtendedDebugger extends Debugger {
 }
 
 /**
- * An [[`ExtendedDebug`]] instance that returns an [[`ExtendedDebugger`]]
- * instance via [[`extendDebugger`]].
+ * An `ExtendedDebug` instance that returns an `ExtendedDebugger` instance via
+ * `extendDebugger`.
  */
 const debugFactory = ((...args: Parameters<Debug>) => {
   return extendDebugger(getDebugger(...args));
@@ -34,8 +34,8 @@ Object.assign(debugFactory, getDebugger);
 export { debugFactory };
 
 /**
- * Extends [[`Debugger`]] instance with several convenience methods,
- * transforming it into an [[`ExtendedDebugger`]] instance.
+ * Extends `Debugger` instance with several convenience methods, transforming it
+ * into an `ExtendedDebugger` instance.
  */
 export function extendDebugger(instance: Debugger) {
   const extend = instance.extend;
