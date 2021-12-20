@@ -6,7 +6,7 @@ module.exports = {
   testEnvironment: 'node',
   testRunner: 'jest-circus/runner',
   // ? 1 hour so MMS and other tools don't choke during debugging
-  testTimeout: 60000,
+  testTimeout: 5000,
   verbose: false,
   testPathIgnorePatterns: ['/node_modules/'],
   // ! If changed, also update these aliases in tsconfig.json,
@@ -20,13 +20,5 @@ module.exports = {
     '^package$': '<rootDir>/package.json'
   },
   setupFilesAfterEnv: ['./test/setup.ts'],
-  collectCoverageFrom: ['src/**/*.ts?(x)', 'external-scripts/**/*.ts?(x)'],
-  transformIgnorePatterns: [
-    `/node_modules/(?!${[
-      'node-fetch',
-      'fetch-blob',
-      'data-uri-to-buffer',
-      'formdata-polyfill'
-    ].join('|')})`
-  ]
+  collectCoverageFrom: ['src/**/*.ts?(x)', 'external-scripts/**/*.ts?(x)']
 };
