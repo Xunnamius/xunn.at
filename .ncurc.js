@@ -2,7 +2,10 @@
 
 module.exports = {
   reject: [
-    // ? Pin CJS version
-    'execa'
+    // ? Pin the CJS version of execa
+    'execa',
+    // ? Pin the CJS version of node-fetch (and its types)
+    'node-fetch',
+    '@types/node-fetch'
   ]
 };
