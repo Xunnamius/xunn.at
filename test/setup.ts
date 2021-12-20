@@ -1,7 +1,7 @@
 import { debugNamespace } from 'universe/constants';
 import { name as pkgName, version as pkgVersion } from 'package';
 import { verifyEnvironment } from '../expect-env';
-import { TestError, GuruMeditationError } from 'universe/error';
+import { TrialError, GuruMeditationError } from 'universe/error';
 import { tmpdir } from 'os';
 import { promises as fs } from 'fs';
 import { resolve } from 'path';
@@ -49,7 +49,7 @@ export const wrapHandler = (handler: NextApiHandler) => {
 
 // TODO: XXX: add these brand new tools to where they're supposed to be!
 
-export class FactoryExhaustionError extends TestError {}
+export class FactoryExhaustionError extends TrialError {}
 export function itemFactory<T>(testItems: T[]) {
   const nextItem = Object.assign(
     () => {
@@ -230,7 +230,9 @@ export function isolatedImport<T = unknown>(args: {
         }`
       );
 
-      return args.useDefault === true || (args.useDefault !== false && r.__esModule)
+      return r.default &&
+        (args.useDefault === true ||
+          (args.useDefault !== false && r.__esModule && Object.keys(r).length == 1))
         ? r.default
         : r;
     })(require(args.path));
@@ -249,9 +251,9 @@ export function isolatedImportFactory<T = unknown>(args: {
 
 // TODO: XXX: make this into a separate package (along with the above)
 /**
- * While [[`isolatedImport`]] performs a module import as if it were being
- * imported for the first time, `protectedImport` wraps [[`isolatedImport`]]
- * with [[`withMockedExit`]]. This makes `protectedImport` useful for testing
+ * While `isolatedImport` performs a module import as if it were being
+ * imported for the first time, `protectedImport` wraps `isolatedImport`
+ * with `withMockedExit`. This makes `protectedImport` useful for testing
  * IIFE modules such as CLI entry points.
  */
 export function protectedImport<T = unknown>(args: {
