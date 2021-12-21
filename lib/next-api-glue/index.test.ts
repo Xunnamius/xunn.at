@@ -3,6 +3,7 @@ import { middlewareFactory, withMiddleware } from 'multiverse/next-api-glue';
 import { withMockedOutput } from 'testverse/setup';
 import { toss } from 'toss-expression';
 import { debugFactory } from 'multiverse/debug-extended';
+import { DummyError } from 'universe/error';
 
 import type { NextApiRequest, NextApiResponse, NextConfig } from 'next';
 import type { Promisable } from 'type-fest';
@@ -932,6 +933,61 @@ describe('::middlewareFactory', () => {
     });
   });
 
+  it('handles appending and prepending to middleware chains', async () => {
+    expect.hasAssertions();
+
+    type myMiddlewareOptions = { customOption: boolean };
+
+    const myMiddleware = (
+      _: NextApiRequest,
+      res: NextApiResponse,
+      { options: { customOption } }: MiddlewareContext<myMiddlewareOptions>
+    ) => {
+      res.status(200).send({ customOption });
+    };
+
+    const customOption = true;
+
+    await testApiHandler({
+      handler: middlewareFactory<myMiddlewareOptions>({
+        use: [myMiddleware],
+        options: { customOption }
+      })(undefined, { prependUse: [(_, res) => res.status(201).send({ a: 1 })] }),
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(201);
+        await expect(res.json()).resolves.toStrictEqual({ a: 1 });
+      }
+    });
+
+    await testApiHandler({
+      handler: middlewareFactory({
+        use: [(_, res) => void res.status(202)]
+      })(undefined, { appendUse: [(_, res) => res.send({ b: 1 })] }),
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(202);
+        await expect(res.json()).resolves.toStrictEqual({ b: 1 });
+      }
+    });
+
+    await testApiHandler({
+      handler: middlewareFactory<myMiddlewareOptions>({
+        use: [myMiddleware],
+        options: { customOption }
+      })(undefined, {
+        prependUse: [() => toss(new DummyError('bad bad not good'))],
+        prependUseOnError: [(_, res) => void res.status(203)],
+        appendUseOnError: [(_, res) => res.send({ c: 1 })]
+      }),
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(203);
+        await expect(res.json()).resolves.toStrictEqual({ c: 1 });
+      }
+    });
+  });
+
   it('supports type generics', async () => {
     expect.assertions(0);
 
@@ -994,19 +1050,26 @@ describe('::middlewareFactory', () => {
       use: [myPartialMiddleware]
     })(undefined, {
       // @ts-expect-error: MiddlewareContext != MiddlewareContext<myMiddlewareOptions>
-      use: [myMiddleware]
+      appendUse: [myMiddleware]
     });
 
     middlewareFactory({
       use: [myPartialMiddleware]
     })(undefined, {
-      use: [myPartialMiddleware]
+      appendUse: [myPartialMiddleware],
+      appendUseOnError: [myPartialMiddleware]
     });
 
-    middlewareFactory<myMiddlewareOptions & Partial<myMiddlewareOptions>>({
+    middlewareFactory<myMiddlewareOptions>({
       use: [myPartialMiddleware]
     })(undefined, {
-      use: [myMiddleware],
+      prependUse: [myMiddleware],
+      prependUseOnError: [myMiddleware]
+    });
+
+    middlewareFactory<myMiddlewareOptions>({
+      use: [myPartialMiddleware]
+    })(undefined, {
       // @ts-expect-error: bad type for required property: customOption
       options: { customOption: 5 }
     });

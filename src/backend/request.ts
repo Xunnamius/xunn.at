@@ -5,6 +5,8 @@ import type { HttpStatusCode } from '@xunnamius/types';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { InternalRequestLogEntry, InternalLimitedLogEntry } from 'types/global';
 
+type ShortLinkTypes = 'link' | 'github-pkg';
+
 export async function isRateLimited(req: NextApiRequest) {
   const ip = getClientIp(req);
   const key = req.headers?.key?.toString() || null;
@@ -58,4 +60,35 @@ export function isDueForContrivedError() {
 export async function isValidAuthHeader(header: string) {
   // TODO
   return false;
+}
+
+export async function resolveShortId({
+  shortId
+}: {
+  shortId: string | undefined;
+}): Promise<{
+  type: ShortLinkTypes;
+  pseudoFilename: string;
+  user: string;
+  repo: string;
+  commit: string;
+  subdir: string;
+}> {
+  // const { customScripts: cs, commitIshInfo: cii } = pkgOpts;
+  // const { commitIshInfo: cii } = pkgOpts;
+
+  void shortId;
+  const user = '';
+  const repo = '';
+  const commit = '';
+  const subdir = '';
+
+  return {
+    type: 'github-pkg',
+    pseudoFilename: `${[user, repo, subdir, commit].filter(Boolean).join('-')}.tgz`,
+    user,
+    repo,
+    commit,
+    subdir
+  };
 }

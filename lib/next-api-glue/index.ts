@@ -310,27 +310,37 @@ export function middlewareFactory<
   useOnError?: Middleware<NoInfer<Options>>[];
   options?: Partial<MiddlewareContext<NoInfer<Options>>['options']> & NoInfer<Options>;
 }) {
-  return (
+  return <PassedOptions extends Record<string, unknown> = Record<string, unknown>>(
     handler: NextApiHandler | undefined,
     params?: {
-      use?: Middleware<NoInfer<Options>>[];
-      useOnError?: Middleware<NoInfer<Options>>[];
-      options?: Partial<MiddlewareContext<NoInfer<Options>>['options']>;
+      prependUse?: Middleware<NoInfer<Options>>[];
+      appendUse?: Middleware<NoInfer<Options>>[];
+      prependUseOnError?: Middleware<NoInfer<Options>>[];
+      appendUseOnError?: Middleware<NoInfer<Options>>[];
+      options?: Partial<MiddlewareContext<NoInfer<Options>>['options']> &
+        NoInfer<PassedOptions>;
     }
   ) => {
     const {
-      use: passedUse,
-      useOnError: passedUseOnError,
+      prependUse,
+      appendUse,
+      prependUseOnError,
+      appendUseOnError,
       options: passedOptions
     } = { ...params };
 
-    return withMiddleware<NoInfer<Options>>(handler, {
-      use: [...defaultUse, ...(passedUse || [])],
-      useOnError: [...(defaultUseOnError || []), ...(passedUseOnError || [])],
+    return withMiddleware<NoInfer<Options> & NoInfer<PassedOptions>>(handler, {
+      use: [...(prependUse || []), ...defaultUse, ...(appendUse || [])],
+      useOnError: [
+        ...(prependUseOnError || []),
+        ...(defaultUseOnError || []),
+        ...(appendUseOnError || [])
+      ],
       options: { ...defaultOptions, ...passedOptions } as Partial<
-        MiddlewareContext<NoInfer<Options>>['options']
+        MiddlewareContext<NoInfer<Options> & NoInfer<PassedOptions>>['options']
       > &
-        NoInfer<Options>
+        NoInfer<Options> &
+        NoInfer<PassedOptions>
     });
   };
 }

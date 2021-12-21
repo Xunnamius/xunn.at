@@ -1,19 +1,15 @@
 import { withMiddleware } from 'multiverse/next-api-glue';
 import { testApiHandler } from 'next-test-api-route-handler';
-import { itemFactory, noopHandler, wrapHandler } from 'testverse/setup';
+import { itemFactory, noopHandler, withMockedOutput, wrapHandler } from 'testverse/setup';
 import { toss } from 'toss-expression';
-import handleError, {
-  Options,
-  ErrorHandler
-} from 'universe/backend/middleware/handle-error';
+import handleError, { Options } from 'universe/backend/middleware/handle-error';
 
 import {
   ValidationError,
-  InvalidIdError,
   InvalidEnvironmentError,
   InvalidConfigurationError,
-  InvalidParameterError,
-  InvalidTokenError,
+  InvalidItemError,
+  InvalidSecretError,
   AuthError,
   NotAuthenticatedError,
   NotAuthorizedError,
@@ -32,11 +28,10 @@ it('sends correct HTTP error codes when certain errors occur', async () => {
   const factory = itemFactory<[AppError | string, number]>([
     [new ValidationError(), 400],
     [new ValidationError(''), 400], // ! Edge case for code coverage
-    [new InvalidIdError(), 400],
     [new InvalidEnvironmentError(), 400],
     [new InvalidConfigurationError(), 400],
-    [new InvalidParameterError(), 400],
-    [new InvalidTokenError(), 400],
+    [new InvalidItemError(), 400],
+    [new InvalidSecretError(), 400],
     [new AuthError(), 403],
     [new NotAuthenticatedError(), 403],
     [new NotAuthorizedError(), 403],
@@ -55,16 +50,21 @@ it('sends correct HTTP error codes when certain errors occur', async () => {
     factory.items.map(async (item) => {
       const [expectedError, expectedStatus] = item;
 
-      await testApiHandler({
-        handler: wrapHandler(
-          withMiddleware(async () => toss(expectedError), {
-            use: [],
-            useOnError: [handleError]
-          })
-        ),
-        test: async ({ fetch }) =>
-          fetch().then((res) => expect(res.status).toStrictEqual(expectedStatus))
-      });
+      await withMockedOutput(
+        async () => {
+          await testApiHandler({
+            handler: wrapHandler(
+              withMiddleware(async () => toss(expectedError), {
+                use: [],
+                useOnError: [handleError]
+              })
+            ),
+            test: async ({ fetch }) =>
+              fetch().then((res) => expect(res.status).toStrictEqual(expectedStatus))
+          });
+        },
+        { passthrough: { stdErrSpy: true } }
+      );
     })
   );
 });
@@ -99,7 +99,9 @@ it('throws without calling res.end if response is no longer writable', async () 
 it('supports pluggable error handlers', async () => {
   expect.hasAssertions();
 
-  const MyError = class extends Error {};
+  const MyError = class extends DummyError {};
+
+  const MyUnusedError = class extends Error {};
 
   await testApiHandler({
     rejectOnHandlerError: true,
@@ -113,6 +115,12 @@ it('supports pluggable error handlers', async () => {
       options: {
         errorHandlers: new Map([
           [
+            MyUnusedError,
+            (res) => {
+              res.status(555).end();
+            }
+          ],
+          [
             MyError,
             (res, errorJson) => {
               res.status(200).send(errorJson);
@@ -125,6 +133,35 @@ it('supports pluggable error handlers', async () => {
       expect((await fetch()).status).toBe(200);
       await expect((await fetch()).json()).resolves.toStrictEqual({
         error: 'bad bad not good'
+      });
+    }
+  });
+
+  await testApiHandler({
+    rejectOnHandlerError: true,
+    handler: withMiddleware<Options>(undefined, {
+      use: [
+        () => {
+          throw new MyError('bad good not good');
+        }
+      ],
+      useOnError: [handleError],
+      options: {
+        errorHandlers: new Map([
+          [
+            // ? Should catch every error
+            Error,
+            (res, errorJson) => {
+              res.status(201).send(errorJson);
+            }
+          ]
+        ])
+      }
+    }),
+    test: async ({ fetch }) => {
+      expect((await fetch()).status).toBe(201);
+      await expect((await fetch()).json()).resolves.toStrictEqual({
+        error: 'bad good not good'
       });
     }
   });

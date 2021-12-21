@@ -45,7 +45,7 @@ export type Options = {
 };
 
 export default async function (
-  _req: NextApiRequest,
+  req: NextApiRequest,
   res: NextApiResponse,
   context: MiddlewareContext<Options>
 ) {
@@ -86,6 +86,7 @@ export default async function (
   );
 
   if (error instanceof GuruMeditationError) {
+    console.error(`sanity check failed on request: ${req.url}\n`, error);
     sendHttpError(res, {
       error: 'sanity check failed: please report exactly what you did just now!'
     });
@@ -96,6 +97,7 @@ export default async function (
   } else if (error instanceof NotFoundError) {
     sendHttpNotFound(res, errorJson);
   } else if (error instanceof AppError) {
+    console.error(`exception on request: ${req.url}\n`, error);
     sendHttpError(res, errorJson);
   } else {
     sendHttpError(res);
