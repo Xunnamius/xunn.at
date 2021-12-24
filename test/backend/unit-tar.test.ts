@@ -1,109 +1,200 @@
-import { extractAndRepack } from 'universe/backend/tar';
-import { TrialError } from 'universe/error';
-import { pipeline } from 'stream/promises';
+import { extractSubdirAndRepack, getEntries } from 'universe/backend/tar';
+import { pipeline as promisedPipeline } from 'stream/promises';
+import { createReadStream } from 'fs';
+import { Gunzip } from 'minizlib';
 
-async function getEntries(readableStream: Readable) {
-  const entries: TarEntry[] = [];
+import type { Entry } from 'universe/backend/tar';
 
-  for await (const item of readableStream) {
-    if (isTarEntry(item)) {
-      entries.push(item);
-    } else {
-      throw new TrialError('invalid tar entry');
+const makeFixtureStream = (name: string) => {
+  return createReadStream(`${__dirname}/../fixtures/${name}.tar.gz`).pipe(
+    new Gunzip()
+  ) as unknown as NodeJS.ReadWriteStream;
+};
+
+const tar = {
+  fileroot: () => makeFixtureStream('file-root'),
+  monorepo: () => makeFixtureStream('monorepo'),
+  multiroot: () => makeFixtureStream('multi-root')
+};
+
+const expectedEntries: Record<string, Entry[]> = {
+  monorepo: [
+    {
+      headers: expect.objectContaining({ name: 'monorepo/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/package.json' }),
+      data:
+        '{\n' +
+        '  "name": "dummy-monorepo",\n' +
+        '  "workspaces": [\n' +
+        '    "packages/pkg-1",\n' +
+        '    "packages/pkg-2"\n' +
+        '  ]\n' +
+        '}\n'
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-1/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-1/package.json' }),
+      data:
+        '{\n' +
+        '  "name": "dummy-monorepo-pkg-2",\n' +
+        '  "version": "1.0.0",\n' +
+        '  "main": "index.js"\n' +
+        '}\n'
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-1/index.js' }),
+      data: "console.log('dummy monorepo pkg-1 test');\n"
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-2/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-2/package.json' }),
+      data:
+        '{\n' +
+        '  "name": "dummy-monorepo-pkg-2",\n' +
+        '  "version": "1.0.0",\n' +
+        '  "main": "index.js"\n' +
+        '}\n'
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-2/index.js' }),
+      data: "console.log('dummy monorepo pkg-2 test');\n"
     }
-  }
-
-  return entries;
-}
-
-function* tarEntries({ count = 10, depth = 3, root = '' } = {}): Generator<TarEntry> {
-  const dirs: Record<string, true> = {};
-
-  if (root) {
-    dirs[root] = true;
-    yield { headers: { name: root, type: 'directory' } };
-  }
-
-  for (let i = 0; i < count; i++) {
-    const dirName =
-      root + [...new Array(i % depth).keys()].map((dir) => `dir${dir}/`).join('');
-
-    if (dirName && !dirs[dirName]) {
-      dirs[dirName] = true;
-      yield { headers: { name: dirName, type: 'directory' } };
+  ],
+  pkg1: [
+    {
+      headers: expect.objectContaining({ name: 'pkg-1/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'pkg-1/package.json' }),
+      data:
+        '{\n' +
+        '  "name": "dummy-monorepo-pkg-2",\n' +
+        '  "version": "1.0.0",\n' +
+        '  "main": "index.js"\n' +
+        '}\n'
+    },
+    {
+      headers: expect.objectContaining({ name: 'pkg-1/index.js' }),
+      data: "console.log('dummy monorepo pkg-1 test');\n"
     }
+  ],
+  pkg2: [
+    {
+      headers: expect.objectContaining({ name: 'pkg-2/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'pkg-2/package.json' }),
+      data:
+        '{\n' +
+        '  "name": "dummy-monorepo-pkg-2",\n' +
+        '  "version": "1.0.0",\n' +
+        '  "main": "index.js"\n' +
+        '}\n'
+    },
+    {
+      headers: expect.objectContaining({ name: 'pkg-2/index.js' }),
+      data: "console.log('dummy monorepo pkg-2 test');\n"
+    }
+  ]
+};
 
-    const fileName = dirName + `file${i}.data`;
-    yield { headers: { name: fileName }, content: String(i) };
-  }
-}
-
-test('do not extract sub folder (only extract root folder)', async () => {
+it("throws if archive root isn't a single directory", async () => {
   expect.hasAssertions();
 
-  const entries = Readable.from(tarEntries({ root: 'root/' }));
-  const extractionTransform = extractSubFolder('');
-
-  await Promise.all([
-    streamPipeline(entries, extractionTransform),
-    expect(getEntries(extractionTransform)).resolves.toStrictEqual<TarEntry[]>([
-      ...tarEntries({ root: '' })
+  await expect(() =>
+    promisedPipeline([
+      tar.multiroot(),
+      extractSubdirAndRepack({ subdir: 'packages/pkg-1' })
     ])
-  ]);
+  ).rejects.toThrow('invalid archive: multi-directory root not allowed');
 });
 
-test('extract sub folder', async () => {
+it('getEntries also works as a function that returns an array', async () => {
   expect.hasAssertions();
 
-  const sub = 'dir1/';
-  const entries = Readable.from(tarEntries({ root: 'root/' }));
-  const extractionTransform = extractSubFolder(sub);
-
-  await Promise.all([
-    streamPipeline(entries, extractionTransform),
-    expect(getEntries(extractionTransform)).resolves.toStrictEqual<TarEntry[]>(
-      [...tarEntries({ root: '' })].filter((e) => e.headers.name.startsWith(sub))
-    )
-  ]);
-});
-
-test('throw error when there is multiple files or dirs at root', async () => {
-  expect.hasAssertions();
-
-  const entries = Readable.from(tarEntries({ root: '' }));
-  const extractionTransform = extractSubFolder('dir1');
-
-  const done = expect(streamPipeline(entries, extractionTransform)).rejects.toMatchObject(
-    { x: 1 }
+  await expect(getEntries(tar.monorepo())).resolves.toStrictEqual(
+    expectedEntries.monorepo
   );
-  extractionTransform.read();
-  await done;
 });
 
-test('prepend path', async () => {
+it("throws if archive root isn't a directory", async () => {
   expect.hasAssertions();
 
-  await Promise.all(
-    [undefined, '', 'root', 'root/']
-      .map((prepend) => {
-        return ['', 'd2/'].map(async (root) => {
-          const entries = Readable.from(tarEntries({ root }));
-          const prependTransform = prependPath(prepend);
+  await expect(() =>
+    promisedPipeline([
+      tar.fileroot(),
+      extractSubdirAndRepack({ subdir: 'packages/pkg-1' })
+    ])
+  ).rejects.toThrow('invalid archive: first entry must be a directory');
+});
 
-          await Promise.all([
-            expect(streamPipeline(entries, prependTransform)).resolves.toBeUndefined(),
-            expect(getEntries(prependTransform)).resolves.toStrictEqual(
-              [...tarEntries({ root })].map((entry) => ({
-                ...entry,
-                headers: {
-                  ...entry.headers,
-                  name: (prepend || '') + entry.headers.name
-                }
-              }))
-            )
-          ]);
-        });
-      })
-      .flat(2)
-  );
+it('extracts root directory (passthrough) if subdir is empty', async () => {
+  expect.hasAssertions();
+
+  const entries: Entry[] = [];
+
+  await promisedPipeline([
+    tar.monorepo(),
+    extractSubdirAndRepack({ subdir: '' }),
+    getEntries(entries)
+  ]);
+
+  expect(entries).toStrictEqual(expectedEntries.monorepo);
+});
+
+it('repacks monorepo archive with pkg-1 at subdir as root', async () => {
+  expect.hasAssertions();
+
+  const entries: Entry[] = [];
+
+  await promisedPipeline([
+    tar.monorepo(),
+    extractSubdirAndRepack({ subdir: 'packages/pkg-1' }),
+    getEntries(entries)
+  ]);
+
+  expect(entries).toStrictEqual(expectedEntries.pkg1);
+});
+
+it('repacks monorepo archive with pkg-2 at subdir as root', async () => {
+  expect.hasAssertions();
+
+  const entries: Entry[] = [];
+
+  await promisedPipeline([
+    tar.monorepo(),
+    extractSubdirAndRepack({ subdir: 'packages/pkg-2' }),
+    getEntries(entries)
+  ]);
+
+  expect(entries).toStrictEqual(expectedEntries.pkg2);
+});
+
+it('repacks monorepo archive with pkg-2 at subdir as root even if subdir ends in /', async () => {
+  expect.hasAssertions();
+
+  const entries: Entry[] = [];
+
+  await promisedPipeline([
+    tar.monorepo(),
+    extractSubdirAndRepack({ subdir: 'packages/pkg-2/' }),
+    getEntries(entries)
+  ]);
+
+  expect(entries).toStrictEqual(expectedEntries.pkg2);
 });
