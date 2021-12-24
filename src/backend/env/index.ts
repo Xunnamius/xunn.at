@@ -1,7 +1,7 @@
 import { debugNamespace } from 'universe/constants';
 import { parse as parseAsBytes } from 'bytes';
 import { isServer } from 'is-server-side';
-import { IllegalEnvironmentError } from 'universe/error';
+import { InvalidEnvironmentError } from 'universe/error';
 import { validHttpMethods } from 'universe/backend';
 import { getEnv as getCustomizedEnv } from 'universe/backend/env/app';
 import { debugFactory } from 'multiverse/debug-extended';
@@ -19,6 +19,7 @@ const envToArray = (envVal: string) => {
     .filter(Boolean);
 };
 
+/* istanbul ignore next */
 export function getEnv() {
   const env = getCustomizedEnv({
     NODE_ENV:
@@ -113,7 +114,7 @@ export function getEnv() {
   }
 
   if (errors.length) {
-    throw new IllegalEnvironmentError(
+    throw new InvalidEnvironmentError(
       `illegal environment detected:\n - ${errors.join('\n - ')}`
     );
   } else return env;

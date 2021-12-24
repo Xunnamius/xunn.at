@@ -1,7 +1,8 @@
 import fetch, { FetchError } from 'node-fetch';
-import { pipeline } from 'stream/promises';
+import { pipeline as promisedPipeline } from 'stream/promises';
 import { HttpError } from 'named-app-errors';
-import { extractAndRepack } from 'universe/backend/tar';
+import { extractSubdirAndRepack } from 'universe/backend/tar';
+import { Gzip, Gunzip, constants } from 'minizlib';
 
 import type { NextApiResponse } from 'next';
 
@@ -22,8 +23,17 @@ export async function githubPackageDownloadPipeline({
     throw new HttpError(codeloadRes, `download from url failed: ${url}`);
   } else {
     try {
-      // TODO: prepend?
-      await pipeline([codeloadRes.body, extractAndRepack({ subdir, prepend: '' }), res]);
+      await promisedPipeline([
+        codeloadRes.body,
+        ...(subdir
+          ? [
+              new Gunzip(),
+              extractSubdirAndRepack({ subdir }),
+              new Gzip({ level: constants.Z_BEST_COMPRESSION })
+            ]
+          : []),
+        res
+      ]);
     } catch (e) {
       if (e instanceof FetchError) {
         throw new HttpError(e.message);
