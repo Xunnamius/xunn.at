@@ -1,27 +1,48 @@
 import { withMiddleware } from 'universe/backend/middleware';
 import { githubPackageDownloadPipeline } from 'universe/backend/github-pkg';
 import { resolveShortId } from 'universe/backend/request';
+import { AppError } from 'universe/error';
 
 // ? https://nextjs.org/docs/api-routes/api-middlewares#custom-config
 export { defaultConfig as config } from 'universe/backend/api';
 
 export default withMiddleware(
   async (req, res) => {
-    const { shortId } = req.query;
-    const { type, ...shortData } = await resolveShortId({ shortId: shortId.toString() });
+    const { shortId: rawShortId } = req.query;
+    const [shortId, commitish] = rawShortId.toString().split('@');
+    const shortData = await resolveShortId({ shortId: shortId.toString() });
 
     res.status(200);
 
-    if (type == 'link') {
-      // TODO
-    } else if (type == 'github-pkg') {
-      const { pseudoFilename, ...repoData } = shortData;
+    if (shortData.type == 'link') {
+      res.redirect(shortData.fullLink);
+    } else if (shortData.type == 'github-pkg') {
+      const {
+        pseudoFilename,
+        tagPrefix,
+        defaultCommit,
+        type: _,
+        ...repoData
+      } = shortData;
 
       res
-        .setHeader('Content-Disposition', `attachment; filename="${pseudoFilename}"`)
+        .setHeader(
+          'Content-Disposition',
+          `attachment; filename="${pseudoFilename(commitish || defaultCommit)}"`
+        )
         .setHeader('Content-Type', 'application/gzip');
 
-      await githubPackageDownloadPipeline({ res, repoData });
+      await githubPackageDownloadPipeline({
+        res,
+        repo: {
+          ...repoData,
+          potentialCommits: commitish
+            ? [commitish, `${tagPrefix}${commitish}`]
+            : [defaultCommit]
+        }
+      });
+    } else {
+      throw new AppError('bad short link entry in database');
     }
   },
   {
