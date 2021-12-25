@@ -18,6 +18,7 @@ import type { Debugger } from 'debug';
 import type { SimpleGit } from 'simple-git';
 import type { Promisable } from 'type-fest';
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
+import type { Entry } from 'universe/backend/tar';
 
 const { writeFile, access: accessFile } = fs;
 const debug = debugFactory(`${debugNamespace}:jest-setup`);
@@ -45,6 +46,102 @@ export const wrapHandler = (handler: NextApiHandler) => {
   const api = async (req: NextApiRequest, res: NextApiResponse) => handler(req, res);
   api.config = defaultConfig;
   return api;
+};
+
+export const expectedEntries: Record<string, Entry[]> = {
+  monorepo: [
+    {
+      headers: expect.objectContaining({ name: 'monorepo/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/package.json' }),
+      data:
+        '{\n' +
+        '  "name": "dummy-monorepo",\n' +
+        '  "workspaces": [\n' +
+        '    "packages/pkg-1",\n' +
+        '    "packages/pkg-2"\n' +
+        '  ]\n' +
+        '}\n'
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-1/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-1/package.json' }),
+      data:
+        '{\n' +
+        '  "name": "dummy-monorepo-pkg-2",\n' +
+        '  "version": "1.0.0",\n' +
+        '  "main": "index.js"\n' +
+        '}\n'
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-1/index.js' }),
+      data: "console.log('dummy monorepo pkg-1 test');\n"
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-2/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-2/package.json' }),
+      data:
+        '{\n' +
+        '  "name": "dummy-monorepo-pkg-2",\n' +
+        '  "version": "1.0.0",\n' +
+        '  "main": "index.js"\n' +
+        '}\n'
+    },
+    {
+      headers: expect.objectContaining({ name: 'monorepo/packages/pkg-2/index.js' }),
+      data: "console.log('dummy monorepo pkg-2 test');\n"
+    }
+  ],
+  pkg1: [
+    {
+      headers: expect.objectContaining({ name: 'pkg-1/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'pkg-1/package.json' }),
+      data:
+        '{\n' +
+        '  "name": "dummy-monorepo-pkg-2",\n' +
+        '  "version": "1.0.0",\n' +
+        '  "main": "index.js"\n' +
+        '}\n'
+    },
+    {
+      headers: expect.objectContaining({ name: 'pkg-1/index.js' }),
+      data: "console.log('dummy monorepo pkg-1 test');\n"
+    }
+  ],
+  pkg2: [
+    {
+      headers: expect.objectContaining({ name: 'pkg-2/' }),
+      data: ''
+    },
+    {
+      headers: expect.objectContaining({ name: 'pkg-2/package.json' }),
+      data:
+        '{\n' +
+        '  "name": "dummy-monorepo-pkg-2",\n' +
+        '  "version": "1.0.0",\n' +
+        '  "main": "index.js"\n' +
+        '}\n'
+    },
+    {
+      headers: expect.objectContaining({ name: 'pkg-2/index.js' }),
+      data: "console.log('dummy monorepo pkg-2 test');\n"
+    }
+  ]
 };
 
 // TODO: XXX: add these brand new tools to where they're supposed to be!
