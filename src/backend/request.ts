@@ -66,29 +66,39 @@ export async function resolveShortId({
   shortId
 }: {
   shortId: string | undefined;
-}): Promise<{
-  type: ShortLinkTypes;
-  pseudoFilename: string;
-  user: string;
-  repo: string;
-  commit: string;
-  subdir: string;
-}> {
+}): Promise<
+  | {
+      type: 'github-pkg';
+      pseudoFilename: (commit: string) => string;
+      user: string;
+      repo: string;
+      tagPrefix: string;
+      defaultCommit: string;
+      subdir: string;
+    }
+  | { type: 'link'; fullLink: string }
+> {
   // const { customScripts: cs, commitIshInfo: cii } = pkgOpts;
   // const { commitIshInfo: cii } = pkgOpts;
 
   void shortId;
   const user = '';
   const repo = '';
-  const commit = '';
+  const tagPrefix = '';
+  const defaultCommit = '';
   const subdir = '';
 
   return {
     type: 'github-pkg',
-    pseudoFilename: `${[user, repo, subdir, commit].filter(Boolean).join('-')}.tgz`,
+    pseudoFilename: (commit) =>
+      `${[user, repo, subdir, commit]
+        .filter(Boolean)
+        .join('-')
+        .replace(/[^a-z0-9-]/gi, '-')}.tgz`,
     user,
     repo,
-    commit,
+    tagPrefix,
+    defaultCommit,
     subdir
   };
 }
