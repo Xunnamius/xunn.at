@@ -1,4 +1,4 @@
-import { ValidationError } from 'named-app-errors';
+import { ValidationError } from 'universe/error';
 import { Transform, pipeline } from 'stream';
 import { pipeline as promisedPipeline } from 'stream/promises';
 import { extract as extractStream, pack as repackStream } from 'tar-stream';
@@ -49,9 +49,11 @@ export function extractSubdirAndRepack({ subdir }: { subdir: string }) {
   let tarRoot: string | null = null;
   let targetRoot: string | null = null;
   let newRoot: string | null = null;
+  let tarIsEmpty = true;
 
   xstream.on('entry', (headers, readableEntryStream, next) => {
     if (!subdir) {
+      tarIsEmpty = false;
       pipeline(readableEntryStream, pstream.entry(headers), (err) => next(err));
     } else {
       if (tarRoot === null) {
@@ -67,6 +69,7 @@ export function extractSubdirAndRepack({ subdir }: { subdir: string }) {
       } else if (tarRoot && targetRoot && headers.name.startsWith(tarRoot)) {
         // ? Exclude unwanted files/directories
         if (headers.name.startsWith(targetRoot)) {
+          tarIsEmpty = false;
           // ? Modify file path if necessary
           headers.name = `${newRoot}${headers.name.slice(targetRoot.length)}`;
           // ? Commit modifications
@@ -97,8 +100,12 @@ export function extractSubdirAndRepack({ subdir }: { subdir: string }) {
       });
 
       xstream.on('finish', () => {
-        // ? Flush the final outgoing chunk(s) downstream.
-        pstream.finalize();
+        if (tarIsEmpty) {
+          destroyStreams(this, new ValidationError(`invalid subdirectory: ${subdir}`));
+        } else {
+          // ? Flush the final outgoing chunk(s) downstream.
+          pstream.finalize();
+        }
       });
 
       begin();
