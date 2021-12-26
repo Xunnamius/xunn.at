@@ -84,23 +84,38 @@ export const dummyLinkData: DummyLinkData = {
       type: 'uri',
       shortId: 'aaa',
       createdAt: now,
-      realLink: 'https://fake1.fake1'
+      realLink: 'https://fake1.fake1',
+      headers: 'header-1'
     },
     {
       _id: new ObjectId(),
       type: 'file',
       shortId: 'bbb',
       createdAt: now,
-      name: 'file-b',
-      resourceLink: 'https://fake2.fake2'
+      name: 'file-b.xml',
+      resourceLink: 'https://fake2.fake2',
+      headers: ['header-2', { 'header-3': 'header-3-value' }]
     },
     {
       _id: new ObjectId(),
-      type: 'media',
+      type: 'badge',
       shortId: 'ccc',
       createdAt: now,
-      name: 'file-c',
-      resourceLink: 'https://fake3.fake3'
+      color: 'yellow',
+      label: 'label-1',
+      labelColor: 'black',
+      message: 'message-1',
+      headers: { 'header-4': 'header-4-value' }
+    },
+    {
+      _id: new ObjectId(),
+      type: 'badge',
+      shortId: 'zzz',
+      createdAt: now + 12345,
+      color: 'green',
+      label: 'label-2',
+      labelColor: 'white',
+      message: 'message-2'
     },
     {
       _id: new ObjectId(),

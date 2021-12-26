@@ -11,13 +11,23 @@ export interface LinkId extends ObjectId {}
 export interface UnixEpochMs extends Number {}
 
 /**
- * The shape of a URI type link mapping.
+ * The shape of a link mapping headers field entry. Headers are sent to the user
+ * as part of the HTTP response. A string will cause the header to be forwarded
+ * as-is if it exists. Otherwise, the header will be set/overwritten to the
+ * given value.
+ */
+export type InternalLinkMapHeader = string | { [header: string]: string };
+export type InternalLinkMapHeaders = InternalLinkMapHeader | InternalLinkMapHeader[];
+
+/**
+ * The shape of a bare URI type link mapping.
  */
 export type InternalLinkMapEntryUri = {
   type: 'uri';
   shortId: string;
   createdAt: UnixEpochMs;
   realLink: string;
+  headers?: InternalLinkMapHeaders;
 };
 
 /**
@@ -29,17 +39,21 @@ export type InternalLinkMapEntryFile = {
   createdAt: UnixEpochMs;
   resourceLink: string;
   name: string;
+  headers?: InternalLinkMapHeaders;
 };
 
 /**
- * The shape of a media (audio, video, etc) type link mapping.
+ * The shape of a svg badge type link mapping.
  */
-export type InternalLinkMapEntryMedia = {
-  type: 'media';
+export type InternalLinkMapEntryBadge = {
+  type: 'badge';
   shortId: string;
   createdAt: UnixEpochMs;
-  resourceLink: string;
-  name: string;
+  label: string;
+  message: string;
+  color: string;
+  labelColor: string;
+  headers?: InternalLinkMapHeaders;
 };
 
 /**
@@ -60,7 +74,7 @@ export type InternalLinkMapEntryGithubPkg = {
 export type LinkMapEntryType =
   | InternalLinkMapEntryUri['type']
   | InternalLinkMapEntryFile['type']
-  | InternalLinkMapEntryMedia['type']
+  | InternalLinkMapEntryBadge['type']
   | InternalLinkMapEntryGithubPkg['type'];
 
 /**
@@ -69,7 +83,7 @@ export type LinkMapEntryType =
 export type InternalLinkMapEntry =
   | InternalLinkMapEntryUri
   | InternalLinkMapEntryFile
-  | InternalLinkMapEntryMedia
+  | InternalLinkMapEntryBadge
   | InternalLinkMapEntryGithubPkg;
 
 /**
