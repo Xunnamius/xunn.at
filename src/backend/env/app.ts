@@ -1,7 +1,7 @@
 // ? Environment variables specific to this application are defined here.
 
 type CustomEnv = {
-  //CUSTOM_VAR: string;
+  GITHUB_PAT: string | null;
 };
 
 /**
@@ -11,7 +11,7 @@ type CustomEnv = {
  */
 export function getEnv<T>(env: T): T & CustomEnv {
   return {
-    ...env
-    //CUSTOM_VAR: 'custom value'
+    ...env,
+    GITHUB_PAT: process.env.GITHUB_PAT || null
   };
 }
