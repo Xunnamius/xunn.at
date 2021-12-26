@@ -19,7 +19,8 @@ import {
   TrialError,
   DummyError,
   AppError,
-  GuruMeditationError
+  GuruMeditationError,
+  NotImplementedError
 } from 'universe/error';
 
 it('sends correct HTTP error codes when certain errors occur', async () => {
@@ -42,6 +43,7 @@ it('sends correct HTTP error codes when certain errors occur', async () => {
     [new DummyError(), 500],
     [new AppError(), 500],
     [new GuruMeditationError(), 500],
+    [new NotImplementedError(), 501],
     [new Error(), 500], // ? Every other error type should return 500
     ['strange error', 500] // ? This too
   ]);

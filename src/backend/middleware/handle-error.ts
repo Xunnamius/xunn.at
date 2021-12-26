@@ -2,9 +2,10 @@ import { debugNamespace } from 'universe/constants';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import {
+  NotImplementedError,
   GuruMeditationError,
-  NotFoundError,
   ValidationError,
+  NotFoundError,
   AuthError,
   AppError
 } from 'universe/error';
@@ -13,7 +14,8 @@ import {
   sendHttpError,
   sendHttpNotFound,
   sendHttpUnauthorized,
-  sendHttpBadRequest
+  sendHttpBadRequest,
+  sendNotImplementedError
 } from 'multiverse/next-api-respond';
 
 import type { JsonError } from '@xunnamius/types';
@@ -96,6 +98,8 @@ export default async function (
     sendHttpUnauthorized(res, errorJson);
   } else if (error instanceof NotFoundError) {
     sendHttpNotFound(res, errorJson);
+  } else if (error instanceof NotImplementedError) {
+    sendNotImplementedError(res);
   } else if (error instanceof AppError) {
     console.error(`exception on request: ${req.url}\n`, error);
     sendHttpError(res, errorJson);
