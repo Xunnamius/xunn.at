@@ -9,13 +9,14 @@ import { debugFactory } from 'multiverse/debug-extended';
 import type { Db, Collection, WithId } from 'mongodb';
 
 const debug = debugFactory(`${debugNamespace}:db`);
+let memory: InternalMemory | null = null;
+
+type createIndexParams = Parameters<Db['createIndex']>;
 
 export type InternalMemory = {
   client: MongoClient;
   databases: Record<string, Db>;
 };
-
-type createIndexParams = Parameters<Db['createIndex']>;
 
 export type CollectionSchema = {
   name: string;
@@ -36,8 +37,6 @@ export type DbSchema = {
 
   aliases: Record<string, string>;
 };
-
-let memory: InternalMemory | null = null;
 
 /**
  * Mutates internal memory. Used for testing purposes.
@@ -82,7 +81,8 @@ export async function closeClient() {
 }
 
 /**
- * Accepts a database alias and returns its real name.
+ * Accepts a database alias and returns its real name. If the actual database
+ * is not listed in the schema, an error is thrown.
  */
 export function getNameFromAlias(alias: string) {
   const nameActual = schema.aliases[alias] || alias;
