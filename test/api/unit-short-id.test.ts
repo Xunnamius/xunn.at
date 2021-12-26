@@ -31,7 +31,7 @@ beforeEach(() => {
   });
 });
 
-it('short links redirect to full links', async () => {
+it('uri links redirect to real links', async () => {
   expect.hasAssertions();
 
   mockResolveShortId.mockImplementationOnce(() =>
@@ -52,7 +52,7 @@ it('short links redirect to full links', async () => {
   });
 });
 
-it('package link calls pipeline with expected parameters', async () => {
+it('package links call pipeline with expected parameters', async () => {
   expect.hasAssertions();
 
   mockResolveShortId.mockImplementationOnce(() =>
@@ -124,7 +124,15 @@ it('package links support @commitish', async () => {
   });
 });
 
-it('only package link responses have special headers', async () => {
+it('badge links call pipeline with expected parameters', async () => {
+  expect.hasAssertions();
+});
+
+it('file links call pipeline with expected parameters', async () => {
+  expect.hasAssertions();
+});
+
+it('only package link responses have github-pkg-specific headers', async () => {
   expect.hasAssertions();
 
   mockResolveShortId.mockImplementation(() =>
@@ -166,7 +174,11 @@ it('only package link responses have special headers', async () => {
   });
 });
 
-it('removes special headers on error', async () => {
+it('custom headers are applied to uri, badge, and file links', async () => {
+  expect.hasAssertions();
+});
+
+it('removes github-pkg-specific headers on error', async () => {
   expect.hasAssertions();
 
   mockResolveShortId.mockImplementation(() =>
@@ -211,6 +223,10 @@ it('removes special headers on error', async () => {
   );
 });
 
+it('removes custom headers on error', async () => {
+  expect.hasAssertions();
+});
+
 it('throws on illegal short link type', async () => {
   expect.hasAssertions();
 
@@ -231,11 +247,15 @@ it('throws on illegal short link type', async () => {
           expect(res.status).toBe(500);
           await expect(res.json()).resolves.toStrictEqual({
             success: false,
-            error: '"bad type" short links are not supported'
+            error: '"bad type" short links are not currently supported'
           });
         }
       });
     },
     { passthrough: { stdErrSpy: true } }
   );
+});
+
+it('throws on illegal short link type', async () => {
+  expect.hasAssertions();
 });

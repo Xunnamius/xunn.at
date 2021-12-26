@@ -1,5 +1,6 @@
 import { isolatedImportFactory, withMockedEnv } from 'testverse/setup';
 import { Db, MongoClient } from 'mongodb';
+import { asMockedClass } from '@xunnamius/jest-types';
 
 import type { DbSchema } from 'universe/backend/db';
 
@@ -33,7 +34,7 @@ jest.mock('universe/backend/db/schema', () => {
 jest.mock('mongodb');
 
 let mockDbSchema: DbSchema;
-const mockMongoClient = MongoClient as jest.MockedClass<typeof MongoClient>;
+const mockMongoClient = asMockedClass(MongoClient);
 
 const importDbLib = isolatedImportFactory<typeof import('universe/backend/db')>({
   path: 'universe/backend/db'

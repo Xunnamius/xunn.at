@@ -1,7 +1,7 @@
 import { withMiddleware } from 'universe/backend/middleware';
 import { githubPackageDownloadPipeline } from 'universe/backend/github-pkg';
 import { resolveShortId } from 'universe/backend/request';
-import { AppError } from 'universe/error';
+import { AppError, NotImplementedError } from 'universe/error';
 
 // ? https://nextjs.org/docs/api-routes/api-middlewares#custom-config
 export { defaultConfig as config } from 'universe/backend/api';
@@ -14,9 +14,7 @@ export default withMiddleware(
 
     res.status(200);
 
-    if (shortData.type == 'uri') {
-      res.redirect(shortData.realLink);
-    } else if (shortData.type == 'github-pkg') {
+    if (shortData.type == 'github-pkg') {
       const {
         pseudoFilename,
         tagPrefix,
@@ -42,7 +40,22 @@ export default withMiddleware(
         }
       });
     } else {
-      throw new AppError(`"${shortData.type}" short links are not supported`);
+      // TODO: handle custom headers
+      if (shortData.type == 'uri') {
+        res.redirect(shortData.realLink);
+      } else if (shortData.type == 'badge') {
+        // TODO: handle badge specifics using helper function
+      } else if (shortData.type == 'file') {
+        // TODO: handle file specifics
+        // These types of links should redirect to a frontend UI: xunn.at/view/X
+        throw new NotImplementedError();
+      } else {
+        throw new AppError(
+          `"${
+            (shortData as { type: string }).type
+          }" short links are not currently supported`
+        );
+      }
     }
   },
   {
