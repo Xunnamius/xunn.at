@@ -1,4 +1,4 @@
-import { BANNED_KEY } from 'universe/backend';
+import { BANNED_TOKEN } from 'universe/backend';
 import { setupTestDb } from 'testverse/db';
 import { GuruMeditationError } from 'universe/error';
 import { withMockedEnv } from 'testverse/setup';
@@ -48,13 +48,13 @@ describe('external-scripts/ban-hammer', () => {
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
-      { key: BANNED_KEY }
+      { key: BANNED_TOKEN }
     ]);
 
     await (await getRateLimitsCollection()).deleteMany({});
     await (
       await getRequestLogCollection()
-    ).updateMany({ key: BANNED_KEY }, { $set: { ip: '9.8.7.6' } });
+    ).updateMany({ key: BANNED_TOKEN }, { $set: { ip: '9.8.7.6' } });
 
     await withMockedEnv(
       banHammer,
@@ -68,7 +68,7 @@ describe('external-scripts/ban-hammer', () => {
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
       { ip: '9.8.7.6' },
-      { key: BANNED_KEY }
+      { key: BANNED_TOKEN }
     ]);
 
     await (await getRateLimitsCollection()).deleteMany({});
@@ -76,7 +76,7 @@ describe('external-scripts/ban-hammer', () => {
       await getRequestLogCollection()
     ).insertOne({
       ip: '1.2.3.4',
-      key: BANNED_KEY,
+      key: BANNED_TOKEN,
       method: 'PUT',
       resStatusCode: 200,
       route: 'jest/test',
@@ -105,7 +105,7 @@ describe('external-scripts/ban-hammer', () => {
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
-      { key: BANNED_KEY }
+      { key: BANNED_TOKEN }
     ]);
 
     await (await getRateLimitsCollection()).deleteMany({});
@@ -134,7 +134,7 @@ describe('external-scripts/ban-hammer', () => {
 
     const now = ((_now: number) => _now - (_now % 5000) - 2000)(Date.now());
 
-    await requestLogDb.updateMany({ key: BANNED_KEY }, { $set: { ip: '9.8.7.6' } });
+    await requestLogDb.updateMany({ key: BANNED_TOKEN }, { $set: { ip: '9.8.7.6' } });
     await requestLogDb.updateMany({}, { $set: { time: now } });
 
     await withMockedEnv(
@@ -160,7 +160,7 @@ describe('external-scripts/ban-hammer', () => {
     );
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
-      { key: BANNED_KEY },
+      { key: BANNED_TOKEN },
       { ip: '9.8.7.6' },
       { ip: '1.2.3.4' }
     ]);
@@ -172,7 +172,7 @@ describe('external-scripts/ban-hammer', () => {
     await (await getRateLimitsCollection()).deleteMany({});
     await (
       await getRequestLogCollection()
-    ).updateMany({ key: BANNED_KEY }, { $set: { ip: '9.8.7.6' } });
+    ).updateMany({ key: BANNED_TOKEN }, { $set: { ip: '9.8.7.6' } });
 
     const now = Date.now();
     let untils;
@@ -266,7 +266,7 @@ describe('external-scripts/ban-hammer', () => {
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
-      { key: BANNED_KEY }
+      { key: BANNED_TOKEN }
     ]);
   });
 });

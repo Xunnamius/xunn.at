@@ -1,11 +1,12 @@
 import { ObjectId } from 'mongodb';
-import { BANNED_KEY, DUMMY_KEY, DEV_KEY } from 'universe/backend';
+import { BANNED_TOKEN, DUMMY_TOKEN, DEV_TOKEN } from 'universe/backend';
 import cloneDeep from 'clone-deep';
 
 import type { DummyData } from 'testverse/db';
 import type { WithId } from 'mongodb';
+
 import type {
-  InternalApiKey,
+  InternalApiCredential,
   InternalRequestLogEntry,
   InternalLimitedLogEntry,
   InternalLinkMapEntry
@@ -27,7 +28,7 @@ const now = Date.now();
 
 export type DummySystemData = {
   generatedAt: number;
-  keys: WithId<InternalApiKey>[];
+  tokens: WithId<InternalApiCredential>[];
   'request-log': WithId<InternalRequestLogEntry>[];
   'limited-log-mview': WithId<InternalLimitedLogEntry>[];
 };
@@ -39,27 +40,30 @@ export type DummyLinkData = {
 
 export const dummySystemData: DummySystemData = {
   generatedAt: now,
-  keys: [
+  tokens: [
     {
       _id: new ObjectId(),
       owner: 'local developer',
-      key: DEV_KEY
+      scheme: 'bearer',
+      token: DEV_TOKEN
     },
     {
       _id: new ObjectId(),
       owner: 'dummy owner',
-      key: DUMMY_KEY
+      scheme: 'bearer',
+      token: DUMMY_TOKEN
     },
     {
       _id: new ObjectId(),
       owner: 'banned dummy owner',
-      key: BANNED_KEY
+      scheme: 'bearer',
+      token: BANNED_TOKEN
     }
   ],
   'request-log': [...Array(22)].map((_, ndx) => ({
     _id: new ObjectId(),
     ip: '1.2.3.4',
-    key: ndx % 2 ? null : BANNED_KEY,
+    token: ndx % 2 ? null : BANNED_TOKEN,
     method: ndx % 3 ? 'GET' : 'POST',
     route: 'fake/route',
     time: now + 10 ** 6,
@@ -68,7 +72,7 @@ export const dummySystemData: DummySystemData = {
   'limited-log-mview': [
     { _id: new ObjectId(), ip: '1.2.3.4', until: now + 1000 * 60 * 15 },
     { _id: new ObjectId(), ip: '5.6.7.8', until: now + 1000 * 60 * 15 },
-    { _id: new ObjectId(), key: BANNED_KEY, until: now + 1000 * 60 * 60 }
+    { _id: new ObjectId(), token: BANNED_TOKEN, until: now + 1000 * 60 * 60 }
   ]
 };
 
@@ -78,14 +82,14 @@ export const dummyLinkData: DummyLinkData = {
     {
       _id: new ObjectId(),
       type: 'uri',
-      shortLink: 'aaa',
+      shortId: 'aaa',
       createdAt: now,
       realLink: 'https://fake1.fake1'
     },
     {
       _id: new ObjectId(),
       type: 'file',
-      shortLink: 'bbb',
+      shortId: 'bbb',
       createdAt: now,
       name: 'file-b',
       resourceLink: 'https://fake2.fake2'
@@ -93,7 +97,7 @@ export const dummyLinkData: DummyLinkData = {
     {
       _id: new ObjectId(),
       type: 'media',
-      shortLink: 'ccc',
+      shortId: 'ccc',
       createdAt: now,
       name: 'file-c',
       resourceLink: 'https://fake3.fake3'
@@ -101,32 +105,35 @@ export const dummyLinkData: DummyLinkData = {
     {
       _id: new ObjectId(),
       type: 'github-pkg',
-      shortLink: 'ddd',
+      shortId: 'ddd',
       createdAt: now,
-      commit: 'commit',
+      defaultCommit: 'commit',
       owner: 'owner',
       repo: 'repo',
-      subdir: null
+      subdir: null,
+      tagPrefix: 'prefix-'
     },
     {
       _id: new ObjectId(),
       type: 'github-pkg',
-      shortLink: 'eee',
+      shortId: 'eee',
       createdAt: now,
-      commit: 'commit',
+      defaultCommit: 'commit',
       owner: 'owner',
       repo: 'repo',
-      subdir: 'subdir'
+      subdir: 'subdir',
+      tagPrefix: 'prefix-'
     },
     {
       _id: new ObjectId(),
       type: 'github-pkg',
-      shortLink: 'fff',
+      shortId: 'fff',
       createdAt: now,
-      commit: 'commit-2',
+      defaultCommit: 'commit-2',
       owner: 'owner-2',
       repo: 'repo-2',
-      subdir: 'sub/d/i/r'
+      subdir: 'sub/d/i/r',
+      tagPrefix: 'prefix-'
     }
   ]
 };

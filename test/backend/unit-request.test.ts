@@ -1,14 +1,13 @@
 import { WithId } from 'mongodb';
-import { toss } from 'toss-expression';
-import * as Backend from 'universe/backend';
+import { BANNED_TOKEN } from 'universe/backend';
 import { setupTestDb, dummySystemData } from 'testverse/db';
-import { TestError } from 'universe/error';
-import { asMockedFunction, HttpStatusCode } from '@xunnamius/jest-types';
-import fetch from 'node-fetch';
+import { asMockedFunction } from '@xunnamius/jest-types';
+import { addToRequestLog, isRateLimited } from 'universe/backend/request';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { InternalRequestLogEntry, InternalLimitedLogEntry } from 'types/global';
+import type { HttpStatusCode } from '@xunnamius/types';
+import type { InternalRequestLogEntry, InternalLimitedLogEntry } from 'types/global';
 
 const { getDb } = setupTestDb();
 
@@ -24,7 +23,7 @@ describe('::addToRequestLog', () => {
     const req2 = {
       headers: {
         'x-forwarded-for': '8.8.8.8',
-        authorization: `Bearer ${Backend.BANNED_KEY}`
+        authorization: `Bearer ${BANNED_TOKEN}`
       },
       method: 'GET',
       url: '/api/route/path2'
@@ -37,8 +36,8 @@ describe('::addToRequestLog', () => {
     const _now = Date.now;
     Date.now = () => now;
 
-    await Backend.addToRequestLog({ req: req1, res: res1 });
-    await Backend.addToRequestLog({ req: req2, res: res2 });
+    await addToRequestLog({ req: req1, res: res1 });
+    await addToRequestLog({ req: req2, res: res2 });
 
     Date.now = _now;
 
@@ -63,7 +62,7 @@ describe('::addToRequestLog', () => {
 
     expect(log2).toStrictEqual({
       ip: '8.8.8.8',
-      key: Backend.BANNED_KEY,
+      key: BANNED_TOKEN,
       route: 'route/path2',
       method: 'GET',
       time: now,
@@ -78,22 +77,22 @@ describe('::isRateLimited', () => {
     const _now = Date.now;
     Date.now = () => dummySystemData.generatedAt;
 
-    const req1 = await Backend.isRateLimited({
+    const req1 = await isRateLimited({
       headers: { 'x-forwarded-for': '1.2.3.4' },
       method: 'POST',
       url: '/api/route/path1'
     } as unknown as NextApiRequest);
 
-    const req2 = await Backend.isRateLimited({
+    const req2 = await isRateLimited({
       headers: {
         'x-forwarded-for': '8.8.8.8',
-        authorization: `Bearer ${Backend.BANNED_KEY}`
+        authorization: `Bearer ${BANNED_TOKEN}`
       },
       method: 'GET',
       url: '/api/route/path2'
     } as unknown as NextApiRequest);
 
-    const req3 = await Backend.isRateLimited({
+    const req3 = await isRateLimited({
       headers: {
         'x-forwarded-for': '1.2.3.4',
         authorization: 'Bearerfake-key'
@@ -102,7 +101,7 @@ describe('::isRateLimited', () => {
       url: '/api/route/path1'
     } as unknown as NextApiRequest);
 
-    const req4 = await Backend.isRateLimited({
+    const req4 = await isRateLimited({
       headers: {
         'x-forwarded-for': '5.6.7.8'
       },
@@ -110,10 +109,10 @@ describe('::isRateLimited', () => {
       url: '/api/route/path1'
     } as unknown as NextApiRequest);
 
-    const req5 = await Backend.isRateLimited({
+    const req5 = await isRateLimited({
       headers: {
         'x-forwarded-for': '1.2.3.4',
-        authorization: `Bearer ${Backend.BANNED_KEY}`
+        authorization: `Bearer ${BANNED_TOKEN}`
       },
       method: 'POST',
       url: '/api/route/path1'
@@ -153,11 +152,11 @@ describe('::isRateLimited', () => {
       url: '/api/route/path2'
     } as unknown as NextApiRequest;
 
-    await expect(Backend.isRateLimited(req1)).resolves.toStrictEqual({
+    await expect(isRateLimited(req1)).resolves.toStrictEqual({
       limited: false,
       retryAfter: 0
     });
-    await expect(Backend.isRateLimited(req2)).resolves.toStrictEqual({
+    await expect(isRateLimited(req2)).resolves.toStrictEqual({
       limited: false,
       retryAfter: 0
     });
@@ -171,13 +170,13 @@ describe('::isRateLimited', () => {
       url: '/api/route/path1'
     } as unknown as NextApiRequest;
 
-    await expect(Backend.isRateLimited(req)).resolves.toContainEntry(['limited', true]);
+    await expect(isRateLimited(req)).resolves.toContainEntry(['limited', true]);
 
     await (await getDb({ name: 'system' }))
       .collection<InternalLimitedLogEntry>('limited-log-mview')
       .updateOne({ ip: '1.2.3.4' }, { $set: { until: Date.now() - 10 ** 5 } });
 
-    await expect(Backend.isRateLimited(req)).resolves.toStrictEqual({
+    await expect(isRateLimited(req)).resolves.toStrictEqual({
       limited: false,
       retryAfter: 0
     });
