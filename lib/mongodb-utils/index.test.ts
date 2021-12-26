@@ -1,8 +1,9 @@
 import { ObjectId } from 'mongodb';
+import { asMockedClass } from '@xunnamius/jest-types';
 
 jest.mock('mongodb');
 
-const mockObjectId = ObjectId as jest.MockedClass<typeof ObjectId>;
+const mockObjectId = asMockedClass(ObjectId);
 
 describe('::itemExists', () => {
   it('returns true if an item exists in a collection where [key] == id', () => {
