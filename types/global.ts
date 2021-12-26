@@ -1,3 +1,5 @@
+/* This file contains application-specific types */
+
 import type { ObjectId } from 'mongodb';
 import type { HttpStatusCode } from '@xunnamius/types';
 
@@ -9,45 +11,74 @@ export interface LinkId extends ObjectId {}
 export interface UnixEpochMs extends Number {}
 
 /**
+ * The shape of a URI type link mapping.
+ */
+export type InternalLinkMapEntryUri = {
+  type: 'uri';
+  shortId: string;
+  createdAt: UnixEpochMs;
+  realLink: string;
+};
+
+/**
+ * The shape of a file type link mapping.
+ */
+export type InternalLinkMapEntryFile = {
+  type: 'file';
+  shortId: string;
+  createdAt: UnixEpochMs;
+  resourceLink: string;
+  name: string;
+};
+
+/**
+ * The shape of a media (audio, video, etc) type link mapping.
+ */
+export type InternalLinkMapEntryMedia = {
+  type: 'media';
+  shortId: string;
+  createdAt: UnixEpochMs;
+  resourceLink: string;
+  name: string;
+};
+
+/**
+ * The shape of a GitHub-hosted package type link mapping.
+ */
+export type InternalLinkMapEntryGithubPkg = {
+  type: 'github-pkg';
+  shortId: string;
+  createdAt: UnixEpochMs;
+  owner: string;
+  repo: string;
+  defaultCommit: string;
+  subdir: string | null;
+  tagPrefix: string;
+};
+
+/* All valid link map entry types. */
+export type LinkMapEntryType =
+  | InternalLinkMapEntryUri['type']
+  | InternalLinkMapEntryFile['type']
+  | InternalLinkMapEntryMedia['type']
+  | InternalLinkMapEntryGithubPkg['type'];
+
+/**
  * The shape of a link map entry.
  */
 export type InternalLinkMapEntry =
-  | {
-      type: 'uri';
-      shortLink: string;
-      createdAt: UnixEpochMs;
-      realLink: string;
-    }
-  | {
-      type: 'file';
-      shortLink: string;
-      createdAt: UnixEpochMs;
-      resourceLink: string;
-      name: string;
-    }
-  | {
-      type: 'media';
-      shortLink: string;
-      createdAt: UnixEpochMs;
-      resourceLink: string;
-      name: string;
-    }
-  | {
-      type: 'github-pkg';
-      shortLink: string;
-      createdAt: UnixEpochMs;
-      owner: string;
-      repo: string;
-      commit: string;
-      subdir: string | null;
-    };
+  | InternalLinkMapEntryUri
+  | InternalLinkMapEntryFile
+  | InternalLinkMapEntryMedia
+  | InternalLinkMapEntryGithubPkg;
 
 /**
- * The shape of an API key.
+ * The shape of an API bearer token credential.
  */
-export type InternalApiKey = {
+export type InternalApiCredential = {
   owner: string;
-  key: string;
+  scheme: string;
+  token: string;
 };
 
 /**
@@ -55,7 +86,7 @@ export type InternalApiKey = {
  */
 export type InternalRequestLogEntry = {
   ip: string | null;
-  key: string | null;
+  token: string | null;
   route: string | null;
   method: string | null;
   resStatusCode: HttpStatusCode;
@@ -69,10 +100,10 @@ export type InternalLimitedLogEntry =
   | {
       until: UnixEpochMs;
       ip: string | null;
-      key?: never;
+      token?: never;
     }
   | {
       until: UnixEpochMs;
       ip?: never;
-      key: string | null;
+      token: string | null;
     };
