@@ -6,15 +6,15 @@ export const schema: DbSchema = {
       collections: [
         {
           name: 'auth',
-          indices: [{ indexSpec: 'token', options: { unique: true } }]
+          indices: [{ spec: 'token', options: { unique: true } }]
         },
         {
           name: 'request-log',
-          indices: [{ indexSpec: 'token' }, { indexSpec: 'ip' }]
+          indices: [{ spec: 'token' }, { spec: 'ip' }]
         },
         {
           name: 'limited-log-mview',
-          indices: [{ indexSpec: 'token' }, { indexSpec: 'ip' }]
+          indices: [{ spec: 'token' }, { spec: 'ip' }]
         }
       ]
     },
@@ -24,7 +24,7 @@ export const schema: DbSchema = {
           name: 'link-map',
           indices: [
             {
-              indexSpec: 'shortId',
+              spec: 'shortId',
               options: { unique: true }
             }
           ]

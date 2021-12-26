@@ -14,6 +14,7 @@ let memory: InternalMemory | null = null;
 type createIndexParams = Parameters<Db['createIndex']>;
 
 export type InternalMemory = {
+  clientIsExternal: boolean;
   client: MongoClient;
   databases: Record<string, Db>;
 };
@@ -22,7 +23,7 @@ export type CollectionSchema = {
   name: string;
   createOptions?: Parameters<Db['createCollection']>[1];
   indices?: {
-    indexSpec: createIndexParams[1];
+    spec: createIndexParams[1];
     options?: createIndexParams[2];
   }[];
 };
@@ -42,7 +43,7 @@ export type DbSchema = {
  * Mutates internal memory. Used for testing purposes.
  */
 export function overwriteMemory(newMemory: Partial<InternalMemory>) {
-  memory = { ...memory, ...newMemory } as InternalMemory;
+  memory = { clientIsExternal: false, ...memory, ...newMemory } as InternalMemory;
   debug('internal db memory overwritten');
 }
 
@@ -54,15 +55,26 @@ export async function getClient(params?: {
    * If `true`, `EXTERNAL_SCRIPTS_MONGODB_URI` is checked first to determine
    * server uri. If `false`, `MONGODB_URI` is used; this is the default (and
    * fallback).
+   *
+   * Note that this function does not close any client or database connections
+   * when switching between external and non-external URIs. If doing this, be
+   * sure to close old client connections manually or risk memory leaks!
    */
   external?: boolean;
 }) {
   !memory && (memory = {} as InternalMemory);
 
-  if (!memory.client) {
+  if (!memory.client || !!memory.clientIsExternal != !!params?.external) {
     let uri = getEnv().MONGODB_URI;
-    if (params?.external) uri = getEnv().EXTERNAL_SCRIPTS_MONGODB_URI;
-    debug(`connecting to mongo server at ${uri}`);
+
+    if (params?.external) {
+      uri = getEnv().EXTERNAL_SCRIPTS_MONGODB_URI;
+      memory.clientIsExternal = true;
+    } else {
+      memory.clientIsExternal = false;
+    }
+
+    debug(`connecting to ${params?.external ? 'external ' : ''}mongo server at ${uri}`);
     memory.client = await MongoClient.connect(uri);
   } else {
     debug('connected (from memory) to mongo server');
@@ -120,7 +132,14 @@ export async function getDb({
   external?: boolean;
 }) {
   !memory && (memory = {} as InternalMemory);
-  !memory.databases && (memory.databases = {});
+
+  if (!memory.databases) {
+    memory.databases = {};
+  } else if (!!memory.clientIsExternal != !!external) {
+    for (const k in memory.databases) {
+      delete memory.databases[k];
+    }
+  }
 
   const nameActual = getNameFromAlias(name);
 
@@ -191,7 +210,7 @@ export async function initializeDb({
       return db.createCollection(colSchema.name, colSchema.createOptions).then((col) => {
         return Promise.all(
           colSchema.indices?.map((indexSchema) =>
-            col.createIndex(indexSchema.indexSpec, indexSchema.options || {})
+            col.createIndex(indexSchema.spec, indexSchema.options || {})
           ) || []
         );
       });
@@ -199,41 +218,54 @@ export async function initializeDb({
   );
 }
 
-// TODO: XXX: turn this into a package of some sort (and abstract away key type)
-type ItemExistsOptions = { exclude_id?: ObjectId; caseInsensitive?: boolean };
+// TODO: XXX: turn this into a package of some sort
+type ItemExistsIdParam = string | ObjectId | { key: string; id: string | ObjectId };
+type ItemExistsOptions = { excludeId?: ItemExistsIdParam; caseInsensitive?: boolean };
 /**
  * Checks if an item identified by some `key` (default identifier is `"_id"`)
  * exists within `collection`.
  */
 export async function itemExists<T>(
   collection: Collection<T>,
-  id: ObjectId,
-  key?: '_id' | 'owner',
+  id: string | ObjectId,
   options?: ItemExistsOptions
 ): Promise<boolean>;
 export async function itemExists<T>(
   collection: Collection<T>,
-  id: string,
-  key: string,
+  id: { key: string; id: string | ObjectId },
   options?: ItemExistsOptions
 ): Promise<boolean>;
 export async function itemExists<T>(
   collection: Collection<T>,
-  id: ObjectId | string,
-  key = '_id',
+  id: ItemExistsIdParam,
   options?: ItemExistsOptions
 ): Promise<boolean> {
-  if (options?.exclude_id) {
-    if (!(options.exclude_id instanceof ObjectId)) {
-      throw new GuruMeditationError('expected exclude_id option to be of type ObjectId');
-    } else if (key == '_id') {
-      throw new GuruMeditationError('cannot use exclude_id option with key == "_id"');
-    }
+  let excludeIdProperty: string | null = null;
+  let excludeId: string | ObjectId | null = null;
+  const idProperty = typeof id == 'string' || id instanceof ObjectId ? '_id' : id.key;
+  id = typeof id == 'string' || id instanceof ObjectId ? id : id.id;
+
+  if (options?.excludeId) {
+    excludeIdProperty =
+      typeof options.excludeId == 'string' || options.excludeId instanceof ObjectId
+        ? '_id'
+        : options.excludeId.key;
+
+    excludeId =
+      typeof options.excludeId == 'string' || options.excludeId instanceof ObjectId
+        ? options.excludeId
+        : options.excludeId.id;
+  }
+
+  if (idProperty == excludeIdProperty) {
+    throw new GuruMeditationError(
+      `cannot lookup an item by property "${idProperty}" while also filtering results by that same property`
+    );
   }
 
   const result = collection.find({
-    [key]: id,
-    ...(options?.exclude_id ? { _id: { $ne: options.exclude_id } } : {})
+    [idProperty]: id,
+    ...(excludeIdProperty ? { [excludeIdProperty]: { $ne: excludeId } } : {})
   } as unknown as Parameters<typeof collection.find>[0]);
 
   if (options?.caseInsensitive) {
@@ -273,16 +305,14 @@ export function itemToObjectId<T extends ObjectId>(
             ? new ObjectId(i)
             : i
             ? (i as WithId<unknown>)._id
-            : toss(new GuruMeditationError('encountered untransformable sub-item'))
+            : toss(new GuruMeditationError(`encountered untransformable sub-item: ${i}`))
         ) as T;
       })
     : typeof item == 'string'
     ? (new ObjectId(item) as T)
     : item
     ? (item._id as T)
-    : toss(
-        new GuruMeditationError(`no transform for item "${item}" (type "${typeof item}")`)
-      );
+    : toss(new GuruMeditationError(`encountered untransformable item: ${item}`));
 }
 
 /**
