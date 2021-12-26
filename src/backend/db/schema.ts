@@ -3,7 +3,20 @@ import type { DbSchema } from 'universe/backend/db';
 export const schema: DbSchema = {
   databases: {
     'global-api--system': {
-      collections: ['keys', 'request-log', 'limited-log-mview']
+      collections: [
+        {
+          name: 'auth',
+          indices: [{ indexSpec: 'token', options: { unique: true } }]
+        },
+        {
+          name: 'request-log',
+          indices: [{ indexSpec: 'token' }, { indexSpec: 'ip' }]
+        },
+        {
+          name: 'limited-log-mview',
+          indices: [{ indexSpec: 'token' }, { indexSpec: 'ip' }]
+        }
+      ]
     },
     'global-api--xunn-at': {
       collections: [
@@ -11,7 +24,7 @@ export const schema: DbSchema = {
           name: 'link-map',
           indices: [
             {
-              indexSpec: { shortLink: 1 },
+              indexSpec: 'shortId',
               options: { unique: true }
             }
           ]
