@@ -51,6 +51,7 @@
     "@babel/preset-react": "^7.16.5",
     "@babel/preset-typescript": "^7.16.5",
     "@next/bundle-analyzer": "^12.0.7",
+    "@octokit/rest": "^18.12.0",
     "@types/bytes": "^3.1.1",
     "@types/cors": "^2.8.12",
     "@types/debug": "^4.1.7",
