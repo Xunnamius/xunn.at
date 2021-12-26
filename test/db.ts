@@ -87,7 +87,7 @@ export async function hydrateDb({
 }
 
 /**
- * Setup a test version of the database using jest lifecycle hooks.
+ * Setup a test version of the databases using jest lifecycle hooks.
  *
  * @param defer If `true`, `beforeEach` and `afterEach` lifecycle hooks are
  * skipped and the database is initialized and hydrated once before all tests
@@ -111,9 +111,13 @@ export function setupTestDb(defer = false) {
   const reinitializeServer = async () => {
     const databases = Object.keys(schema.databases);
     debug(`setting up mongo memory server on port ${port}`);
-    await Promise.all(databases.map((name) => destroyDb({ name })));
-    await Promise.all(databases.map((name) => initializeDb({ name })));
-    await Promise.all(databases.map((name) => hydrateDb({ name })));
+    await Promise.all(
+      databases.map((name) =>
+        destroyDb({ name })
+          .then(() => initializeDb({ name }))
+          .then(() => hydrateDb({ name }))
+      )
+    );
   };
 
   beforeAll(async () => {
