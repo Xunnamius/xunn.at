@@ -14,8 +14,8 @@ export default withMiddleware(
 
     res.status(200);
 
-    if (shortData.type == 'link') {
-      res.redirect(shortData.fullLink);
+    if (shortData.type == 'uri') {
+      res.redirect(shortData.realLink);
     } else if (shortData.type == 'github-pkg') {
       const {
         pseudoFilename,
@@ -34,7 +34,7 @@ export default withMiddleware(
 
       await githubPackageDownloadPipeline({
         res,
-        repo: {
+        repoData: {
           ...repoData,
           potentialCommits: commitish
             ? [commitish, `${tagPrefix}${commitish}`]
@@ -42,7 +42,7 @@ export default withMiddleware(
         }
       });
     } else {
-      throw new AppError('bad short link entry in database');
+      throw new AppError(`"${shortData.type}" short links are not supported`);
     }
   },
   {

@@ -14,17 +14,22 @@ const codeloadUrl = (repo: string, commit: string) =>
 
 export async function githubPackageDownloadPipeline({
   res,
-  repo: { user, repo, potentialCommits, subdir }
+  repoData: { owner, repo, potentialCommits, subdir }
 }: {
   res: NextApiResponse;
-  repo: { user: string; repo: string; potentialCommits: string[]; subdir: string };
+  repoData: {
+    owner: string;
+    repo: string;
+    potentialCommits: string[];
+    subdir: string | null;
+  };
 }) {
   let codeloadRes: Response;
-  const errorReport = codeloadUrl(`${user}/${repo}`, `[${potentialCommits.join(', ')}]`);
+  const errorReport = codeloadUrl(`${owner}/${repo}`, `[${potentialCommits.join(', ')}]`);
 
   do {
     const url = codeloadUrl(
-      `${user}/${repo}`,
+      `${owner}/${repo}`,
       potentialCommits.shift() ||
         toss(new GuruMeditationError('walked off potential commits array'))
     );

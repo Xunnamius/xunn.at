@@ -35,7 +35,7 @@ it('short links redirect to full links', async () => {
   expect.hasAssertions();
 
   mockResolveShortId.mockImplementationOnce(() =>
-    Promise.resolve({ type: 'link', fullLink: 'https://google.com' })
+    Promise.resolve({ type: 'uri', realLink: 'https://google.com' })
   );
 
   await testApiHandler({
@@ -60,7 +60,7 @@ it('package link calls pipeline with expected parameters', async () => {
       type: 'github-pkg',
       defaultCommit: 'main',
       pseudoFilename: (commit: string) => `something-${commit}`,
-      user: 'user',
+      owner: 'user',
       repo: 'repo',
       subdir: 'subdir',
       tagPrefix: 'prefix'
@@ -77,8 +77,8 @@ it('package link calls pipeline with expected parameters', async () => {
       expect(mockResolveShortId).toBeCalledWith({ shortId: 'some-id' });
       expect(mockPkgPipeline).toBeCalledWith({
         res: expect.anything(),
-        repo: {
-          user: 'user',
+        repoData: {
+          owner: 'user',
           repo: 'repo',
           subdir: 'subdir',
           potentialCommits: ['main']
@@ -96,7 +96,7 @@ it('package links support @commitish', async () => {
       type: 'github-pkg',
       defaultCommit: 'master',
       pseudoFilename: (commit: string) => `something-${commit}`,
-      user: 'usr',
+      owner: 'usr',
       repo: 'rpo',
       subdir: 'subdir/pkg',
       tagPrefix: 'prefix-'
@@ -113,8 +113,8 @@ it('package links support @commitish', async () => {
       expect(mockResolveShortId).toBeCalledWith({ shortId: 'some-id' });
       expect(mockPkgPipeline).toBeCalledWith({
         res: expect.anything(),
-        repo: {
-          user: 'usr',
+        repoData: {
+          owner: 'usr',
           repo: 'rpo',
           subdir: 'subdir/pkg',
           potentialCommits: ['10.5.7', 'prefix-10.5.7']
@@ -132,7 +132,7 @@ it('only package link responses have special headers', async () => {
       type: 'github-pkg',
       defaultCommit: 'main',
       pseudoFilename: (commit: string) => `something-${commit}`,
-      user: 'usr',
+      owner: 'usr',
       repo: 'rpo',
       subdir: 'subdir/pkg',
       tagPrefix: 'prefix-'
@@ -174,7 +174,7 @@ it('removes special headers on error', async () => {
       type: 'github-pkg',
       defaultCommit: 'main',
       pseudoFilename: () => 'something',
-      user: 'usr',
+      owner: 'usr',
       repo: 'rpo',
       subdir: 'subdir/pkg',
       tagPrefix: 'prefix-'
@@ -231,7 +231,7 @@ it('throws on illegal short link type', async () => {
           expect(res.status).toBe(500);
           await expect(res.json()).resolves.toStrictEqual({
             success: false,
-            error: 'bad short link entry in database'
+            error: '"bad type" short links are not supported'
           });
         }
       });

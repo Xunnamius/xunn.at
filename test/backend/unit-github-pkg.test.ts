@@ -39,10 +39,10 @@ describe('::githubPackageDownloadPipeline', () => {
         await expect(
           githubPackageDownloadPipeline({
             res,
-            repo: {
+            repoData: {
               potentialCommits: [undefined] as unknown as string[],
               repo: 'repo',
-              user: 'user',
+              owner: 'user',
               subdir: ''
             }
           })
@@ -69,10 +69,10 @@ describe('::githubPackageDownloadPipeline', () => {
         await expect(
           githubPackageDownloadPipeline({
             res,
-            repo: {
+            repoData: {
               potentialCommits: ['dummy-1', 'dummy-2'],
               repo: 'repo',
-              user: 'user',
+              owner: 'user',
               subdir: ''
             }
           })
@@ -104,10 +104,10 @@ describe('::githubPackageDownloadPipeline', () => {
         await expect(
           githubPackageDownloadPipeline({
             res,
-            repo: {
+            repoData: {
               potentialCommits: ['1', '2', '3', '4', '5'],
               repo: 'repo',
-              user: 'user',
+              owner: 'user',
               subdir: ''
             }
           })
@@ -138,10 +138,10 @@ describe('::githubPackageDownloadPipeline', () => {
         await expect(
           githubPackageDownloadPipeline({
             res,
-            repo: {
+            repoData: {
               potentialCommits: ['1'],
               repo: 'repo',
-              user: 'user',
+              owner: 'user',
               subdir: ''
             }
           })
@@ -172,10 +172,10 @@ describe('::githubPackageDownloadPipeline', () => {
         await expect(
           githubPackageDownloadPipeline({
             res,
-            repo: {
+            repoData: {
               potentialCommits: ['1'],
               repo: 'repo',
-              user: 'user',
+              owner: 'user',
               subdir: 'packages/pkg-1'
             }
           })
@@ -204,10 +204,10 @@ describe('::githubPackageDownloadPipeline', () => {
         await expect(
           githubPackageDownloadPipeline({
             res,
-            repo: {
+            repoData: {
               potentialCommits: ['1'],
               repo: 'repo',
-              user: 'user',
+              owner: 'user',
               subdir: 'packages/pkg-2'
             }
           })
@@ -242,10 +242,10 @@ describe('::githubPackageDownloadPipeline', () => {
         await expect(
           githubPackageDownloadPipeline({
             res,
-            repo: {
+            repoData: {
               potentialCommits: ['1'],
               repo: 'repo',
-              user: 'user',
+              owner: 'user',
               subdir: 'packages/pkg-3'
             }
           })
@@ -273,10 +273,10 @@ describe('::githubPackageDownloadPipeline', () => {
         await expect(
           githubPackageDownloadPipeline({
             res,
-            repo: {
+            repoData: {
               potentialCommits: ['1'],
               repo: 'repo',
-              user: 'user',
+              owner: 'user',
               subdir: 'packages/pkg-3'
             }
           })
@@ -308,10 +308,10 @@ describe('::githubPackageDownloadPipeline', () => {
         await expect(
           githubPackageDownloadPipeline({
             res,
-            repo: {
+            repoData: {
               potentialCommits: ['1'],
               repo: 'repo',
-              user: 'user',
+              owner: 'user',
               subdir: 'packages/pkg-3'
             }
           })
