@@ -94,6 +94,7 @@ module.exports = {
         'jest/no-if': 'off',
         'jest/no-disabled-tests': 'warn',
         'jest/no-commented-out-tests': 'warn',
+        'jest/require-hook': 'off',
         'jest/no-alias-methods': 'off'
       }
     }
