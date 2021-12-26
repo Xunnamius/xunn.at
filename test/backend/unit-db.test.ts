@@ -1,5 +1,5 @@
 import { isolatedImportFactory, withMockedEnv } from 'testverse/setup';
-import { Db, MongoClient, ObjectId } from 'mongodb';
+import { Db, MongoClient } from 'mongodb';
 
 import type { DbSchema } from 'universe/backend/db';
 
@@ -34,7 +34,6 @@ jest.mock('mongodb');
 
 let mockDbSchema: DbSchema;
 const mockMongoClient = MongoClient as jest.MockedClass<typeof MongoClient>;
-const mockObjectId = ObjectId as jest.MockedClass<typeof ObjectId>;
 
 const importDbLib = isolatedImportFactory<typeof import('universe/backend/db')>({
   path: 'universe/backend/db'
@@ -279,40 +278,6 @@ describe('::initializeDb', () => {
       { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' },
       { replace: false }
     );
-  });
-});
-
-describe('::itemExists', () => {
-  it('returns true if an item exists in a collection where [key] == id', () => {
-    expect.hasAssertions();
-  });
-
-  it('respects exclude_id option', async () => {
-    expect.hasAssertions();
-  });
-
-  it('respects caseInsensitive option', async () => {
-    expect.hasAssertions();
-  });
-});
-
-describe('::itemToObjectId', () => {
-  it('reduces an item down to its ObjectId instance', async () => {
-    expect.hasAssertions();
-  });
-
-  it('reduces an array of items down to ObjectId instances', async () => {
-    expect.hasAssertions();
-  });
-});
-
-describe('::itemToStringId', () => {
-  it('reduces an item down to its ObjectId string representation', async () => {
-    expect.hasAssertions();
-  });
-
-  it('reduces an array of items down to ObjectId string representations', async () => {
-    expect.hasAssertions();
   });
 });
 
