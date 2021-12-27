@@ -59,7 +59,7 @@
     "@types/node": "^17.0.5",
     "@types/react": "^17.0.38",
     "@types/request-ip": "^0.0.37",
-    "@xunnamius/mongo-types": "^1.0.0",
+    "@xunnamius/mongo-types": "^1.0.1",
     "@xunnamius/next-types": "^1.0.7",
     "babel-plugin-explicit-exports-references": "^1.0.1",
     "babel-plugin-transform-default-named-imports": "^1.2.1",

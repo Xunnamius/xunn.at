@@ -1,14 +1,11 @@
 /* This file contains application-specific types */
-
+import type { UnixEpochMs } from '@xunnamius/types';
 import type { ObjectId } from 'mongodb';
-import type { HttpStatusCode } from '@xunnamius/types';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface UserId extends ObjectId {}
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface LinkId extends ObjectId {}
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface UnixEpochMs extends Number {}
 
 /**
  * The shape of a link mapping headers field entry. Headers are sent to the user
@@ -85,39 +82,3 @@ export type InternalLinkMapEntry =
   | InternalLinkMapEntryFile
   | InternalLinkMapEntryBadge
   | InternalLinkMapEntryGithubPkg;
-
-/**
- * The shape of an API bearer token credential.
- */
-export type InternalApiCredential = {
-  owner: string;
-  scheme: string;
-  token: string;
-};
-
-/**
- * The shape of a request log entry.
- */
-export type InternalRequestLogEntry = {
-  ip: string | null;
-  token: string | null;
-  route: string | null;
-  method: string | null;
-  resStatusCode: HttpStatusCode;
-  time: UnixEpochMs;
-};
-
-/**
- * The shape of a limited log entry.
- */
-export type InternalLimitedLogEntry =
-  | {
-      until: UnixEpochMs;
-      ip: string | null;
-      token?: never;
-    }
-  | {
-      until: UnixEpochMs;
-      ip?: never;
-      token: string | null;
-    };
