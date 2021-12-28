@@ -1,12 +1,11 @@
-import { debugNamespace } from 'universe/constants';
-import { isDueForContrivedError } from 'universe/backend/request';
+import { isDueForContrivedError } from 'multiverse/next-contrived';
 import { sendHttpContrivedError } from 'multiverse/next-api-respond';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { MiddlewareContext } from 'multiverse/next-api-glue';
 
-const debug = debugFactory(`${debugNamespace}:glue:contrive-error`);
+const debug = debugFactory('next-adhesive:contrive-error');
 
 export type Options = {
   /**
@@ -17,6 +16,9 @@ export type Options = {
   enableContrivedErrors?: boolean;
 };
 
+/**
+ * Responds with a dummy error for every Nth request (see .env.example).
+ */
 export default async function (
   _req: NextApiRequest,
   res: NextApiResponse,

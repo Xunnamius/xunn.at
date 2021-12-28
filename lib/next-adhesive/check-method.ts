@@ -1,13 +1,12 @@
-import { debugNamespace } from 'universe/constants';
-import { getEnv } from 'universe/backend/env';
+import { getEnv } from 'multiverse/next-env';
 import { sendHttpBadMethod } from 'multiverse/next-api-respond';
 import { debugFactory } from 'multiverse/debug-extended';
 
-import type { ValidHttpMethod } from 'universe/backend';
+import type { ValidHttpMethod } from '@xunnamius/types';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { MiddlewareContext } from 'multiverse/next-api-glue';
 
-const debug = debugFactory(`${debugNamespace}:glue:check-method`);
+const debug = debugFactory('next-adhesive:check-method');
 
 export type Options = {
   /**
@@ -16,6 +15,9 @@ export type Options = {
   allowedMethods?: ValidHttpMethod[];
 };
 
+/**
+ * Ensures a request is using an allowed method.
+ */
 export default async function (
   req: NextApiRequest,
   res: NextApiResponse,

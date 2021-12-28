@@ -1,51 +1,136 @@
-/**
- * This token is guaranteed never to appear in dummy data generated during
- * tests. In production, this token can be used to represent a `null` or
- * non-existent token. This token cannot be used for authenticated HTTP access
- * to the API.
- */
-export const NULL_TOKEN = '00000000-0000-0000-0000-000000000000';
+import { getDb } from 'multiverse/mongo-schema';
+import { getEnv } from 'multiverse/next-env';
+import { Octokit } from '@octokit/rest';
+import fetch from 'node-fetch';
 
-/**
- * This token is used by database initialization and activity simulation
- * scripts. This token cannot be used for authenticated HTTP access to the API.
- */
-export const MACHINE_TOKEN = '11111111-1111-1111-1111-111111111111';
+import type { NextApiResponse } from 'next';
 
-/**
- * This token allows authenticated API access only when running in a test
- * environment (i.e. `NODE_ENV=test`). This token cannot be used for
- * authenticated HTTP access to the API in production.
- */
-export const DUMMY_TOKEN = '12349b61-83a7-4036-b060-213784b491';
+import type {
+  InternalLinkMapEntryGithubPkg,
+  InternalLinkMapEntryUri,
+  InternalLinkMapEntryFile,
+  InternalLinkMapEntryBadge
+} from 'universe/backend/db';
 
-/**
- * This token is guaranteed to be rate limited when running in a test
- * environment (i.e. `NODE_ENV=test`). This token cannot be used for
- * authenticated HTTP access to the API in production.
- */
-export const BANNED_TOKEN = 'banned-h54e-6rt7-gctfh-hrftdygct0';
+export async function resolveShortId({
+  shortId
+}: {
+  shortId: string | undefined;
+}): Promise<
+  | (Omit<InternalLinkMapEntryGithubPkg, 'shortId' | 'createdAt'> & {
+      pseudoFilename: (commit: string) => string;
+    })
+  | Omit<InternalLinkMapEntryUri, 'shortId' | 'createdAt'>
+  | Omit<InternalLinkMapEntryFile, 'shortId' | 'createdAt'>
+  | Omit<InternalLinkMapEntryBadge, 'shortId' | 'createdAt'>
+> {
+  void shortId;
+  const owner = '';
+  const repo = '';
+  const tagPrefix = '';
+  const defaultCommit = '';
+  const subdir = '';
 
-/**
- * This token can be used to authenticate with local and non-production
- * deployments. This token cannot be used for authenticated HTTP access to the
- * API in production.
- */
-export const DEV_TOKEN = 'dev-xunn-dev-294a-536h-9751-rydmj';
+  return {
+    type: 'github-pkg',
+    pseudoFilename: (commit) =>
+      `${[owner, repo, subdir, commit]
+        .filter(Boolean)
+        .join('-')
+        .replace(/[^a-z0-9-]/gi, '-')}.tgz`,
+    owner,
+    repo,
+    tagPrefix,
+    defaultCommit,
+    subdir
+  };
+}
 
-/**
- * All valid HTTP2 methods.
- */
-export const validHttpMethods = [
-  'GET',
-  'HEAD',
-  'POST',
-  'PUT',
-  'DELETE',
-  'CONNECT',
-  'OPTIONS',
-  'TRACE',
-  'PATCH'
-] as const;
+export async function sendBadgeSvgResponse(
+  res: NextApiResponse<ReadableStream<Uint8Array> | null>,
+  {
+    label,
+    message,
+    color,
+    labelColor
+  }: {
+    label?: string;
+    message?: string;
+    color?: string;
+    labelColor?: string;
+  }
+) {
+  const resp = await fetch(
+    'https://img.shields.io/static/v1?' +
+      (label ? `&label=${label}` : '') +
+      (message ? `&message=${message}` : '') +
+      (color ? `&color=${color}` : '') +
+      (labelColor ? `&labelColor=${labelColor}` : '')
+  );
 
-export type ValidHttpMethod = typeof validHttpMethods[number];
+  res.setHeader('content-type', 'image/svg+xml;charset=utf-8');
+  res.setHeader('cache-control', 's-maxage=60, stale-while-revalidate');
+  res.status(resp.ok ? 200 : 500).send(resp.body);
+}
+
+export async function getCompatVersion() {
+  return (
+    (
+      await (
+        await getDb({
+          name: 'global-api--is-next-compat'
+        })
+      )
+        .collection<{ compat: string }>('flags')
+        .findOne({})
+    )?.compat || null
+  );
+}
+
+export async function getNpmPackageVersion(pkgName: string) {
+  const target = `https://registry.npmjs.com/${encodeURIComponent(pkgName)}/latest`;
+  return (await fetch.get<{ version: string }>(target)).json?.version || null;
+}
+
+export async function getGitHubRepoTagDate({
+  owner,
+  repo,
+  tag
+}: {
+  owner: string;
+  repo: string;
+  tag: string;
+}) {
+  const { repos } = new Octokit({
+    ...(getEnv().GITHUB_PAT ? { auth: getEnv().GITHUB_PAT } : {}),
+    userAgent: 'github.com/ergodark/api.ergodark.com'
+  });
+
+  let page = 1;
+  let tags = null;
+  let commit = null;
+
+  do {
+    // eslint-disable-next-line no-await-in-loop
+    ({ data: tags } = await repos.listTags({
+      owner: owner,
+      repo: repo,
+      page: page++
+    }));
+
+    ({ commit } = tags.find((val) => val.name == tag) || {});
+  } while (!commit && tags.length);
+
+  // if(commit) {
+  //     const { data: { commit: { author: { date: rawDate }}}} = await repos.getCommit({
+  //         owner: owner,
+  //         repo: repo,
+  //         ref: commit.sha
+  //     });
+
+  //     const d = new Date(rawDate);
+  //     return d.toDateString();
+  // }
+
+  return null;
+}

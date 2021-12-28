@@ -1,4 +1,3 @@
-import { debugNamespace } from 'universe/constants';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import {
@@ -8,7 +7,7 @@ import {
   NotFoundError,
   AuthError,
   AppError
-} from 'universe/error';
+} from 'named-app-errors';
 
 import {
   sendHttpError,
@@ -23,7 +22,7 @@ import type { MiddlewareContext } from 'multiverse/next-api-glue';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { Promisable } from 'type-fest';
 
-const debug = debugFactory(`${debugNamespace}:glue:handle-error`);
+const debug = debugFactory('next-adhesive:handle-error');
 
 /**
  * Special middleware used to handle custom errors.

@@ -1,6 +1,6 @@
 import { withMiddleware } from 'universe/backend/middleware';
 import { githubPackageDownloadPipeline } from 'universe/backend/github-pkg';
-import { resolveShortId } from 'universe/backend/request';
+import { resolveShortId } from 'universe/backend';
 import { AppError, NotImplementedError } from 'universe/error';
 
 // ? https://nextjs.org/docs/api-routes/api-middlewares#custom-config

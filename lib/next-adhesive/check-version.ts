@@ -1,12 +1,11 @@
-import { debugNamespace } from 'universe/constants';
-import { getEnv } from 'universe/backend/env';
+import { getEnv } from 'multiverse/next-env';
 import { sendHttpNotFound } from 'multiverse/next-api-respond';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { MiddlewareContext } from 'multiverse/next-api-glue';
 
-const debug = debugFactory(`${debugNamespace}:glue:check-version`);
+const debug = debugFactory('next-adhesive:check-version');
 
 export type Options = {
   /**
@@ -15,6 +14,9 @@ export type Options = {
   apiVersion?: string;
 };
 
+/**
+ * Ensures requests to disabled versions of the API fail.
+ */
 export default async function (
   _req: NextApiRequest,
   res: NextApiResponse,

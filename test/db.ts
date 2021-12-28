@@ -1,148 +1,174 @@
-import { debugNamespace } from 'universe/constants';
-import { MongoClient } from 'mongodb';
-import { getEnv } from 'universe/backend/env';
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import { schema } from 'universe/backend/db/schema';
-import { getDummyData } from 'testverse/db.schema';
-import { InvalidConfigurationError } from 'universe/error';
-import { debugFactory } from 'multiverse/debug-extended';
+import { ObjectId } from 'mongodb';
+import cloneDeep from 'clone-deep';
 
 import {
-  overwriteMemory,
-  getClient,
-  getDb,
-  getNameFromAlias,
-  initializeDb,
-  destroyDb,
-  closeClient
-} from 'universe/backend/db';
+  BANNED_BEARER_TOKEN,
+  DUMMY_BEARER_TOKEN,
+  DEV_BEARER_TOKEN
+} from 'multiverse/next-auth';
 
-import type { Document } from 'mongodb';
+import type { DummyData } from 'multiverse/mongo-test';
+import type { WithId } from 'mongodb';
+import type { InternalLinkMapEntry } from 'universe/backend/db';
+import type { InternalAuthEntry } from 'multiverse/next-auth';
+import type { InternalRequestLogEntry } from 'multiverse/next-log';
+import type { InternalLimitedLogEntry } from 'multiverse/next-limit';
 
-const debug = debugFactory(`${debugNamespace}:test-db`);
+// ! This module MUST export a `getDummyData` fn with return type `DummyData` !
 
-export * from 'testverse/db.schema';
+// ? Ensures consistent results by reusing the same epoch moment across all test
+// ? data.
+const now = Date.now();
 
 /**
- * Generic dummy data used to hydrate databases and their collections.
+ * Returns data used to hydrate databases and their collections.
  */
-export type DummyData = {
-  /**
-   * The data inserted into each collection in the named database.
-   */
-  [databaseName: string]: {
-    /**
-     * Timestamp of when this dummy data was generated (in ms since unix epoch).
-     */
-    generatedAt: number;
+export function getDummyData(): DummyData {
+  return cloneDeep({
+    'global-api--system': dummySystemData,
+    'global-api--xunn-at': dummyLinkData
+  });
+}
 
-    /**
-     * The objects (if array) or object (if non-array) inserted into the
-     * named collection.
-     */
-    [collectionName: string]: unknown;
-  };
+/**
+ * The shape of the primary global database test data.
+ */
+export type DummySystemData = {
+  _generatedAt: number;
+  tokens: WithId<InternalAuthEntry>[];
+  'request-log': WithId<InternalRequestLogEntry>[];
+  'limited-log-mview': WithId<InternalLimitedLogEntry>[];
 };
 
 /**
- * Fill an initialized database with data. You should call `initializeDb` before
- * calling this function.
+ * The shape of the link map database test data.
  */
-export async function hydrateDb({
-  name
-}: {
-  /**
-   * The name or alias of the database to hydrate.
-   */
-  name: string;
-}) {
-  const db = await getDb({ name });
-  const nameActual = getNameFromAlias(name);
-  debug(`hydrating database ${nameActual}`);
-  const dummyData = getDummyData()[nameActual];
-
-  if (!dummyData) {
-    throw new InvalidConfigurationError(
-      `database schema "${nameActual}" is not defined in test/db.schema`
-    );
-  }
-
-  const collectionNames = schema.databases[nameActual].collections.map((col) =>
-    typeof col == 'string' ? col : col.name
-  );
-
-  await Promise.all(
-    Object.entries(dummyData).map(([colName, colSchema]) => {
-      if (colName != 'generatedAt') {
-        if (!collectionNames.includes(colName)) {
-          throw new InvalidConfigurationError(
-            `collection "${nameActual}.${colName}" referenced in test/db.schema is not defined in backend/db.schema`
-          );
-        }
-
-        return db.collection(colName).insertMany([colSchema].flat() as Document[]);
-      }
-    })
-  );
-}
+export type DummyLinkData = {
+  _generatedAt: number;
+  'link-map': WithId<InternalLinkMapEntry>[];
+};
 
 /**
- * Setup a test version of the databases using jest lifecycle hooks.
- *
- * @param defer If `true`, `beforeEach` and `afterEach` lifecycle hooks are
- * skipped and the database is initialized and hydrated once before all tests
- * are run. **In this mode, all tests will share the same database state!**
+ * Test data for the primary global database.
  */
-export function setupTestDb(defer = false) {
-  const port = (getEnv().DEBUG_INSPECTING && getEnv().MONGODB_MS_PORT) || undefined;
-
-  // * The in-memory server is not started until it's needed later on
-  const server = new MongoMemoryServer({
-    instance: {
-      port,
-      // ? Latest mongo versions error without this line
-      args: ['--enableMajorityReadConcern=0']
+export const dummySystemData: DummySystemData = {
+  _generatedAt: now,
+  tokens: [
+    {
+      _id: new ObjectId(),
+      owner: { name: 'local developer' },
+      scheme: 'bearer',
+      token: { bearer: DEV_BEARER_TOKEN }
+    },
+    {
+      _id: new ObjectId(),
+      owner: { name: 'dummy owner' },
+      scheme: 'bearer',
+      token: { bearer: DUMMY_BEARER_TOKEN }
+    },
+    {
+      _id: new ObjectId(),
+      owner: { name: 'banned dummy owner' },
+      scheme: 'bearer',
+      token: { bearer: BANNED_BEARER_TOKEN }
     }
-  });
+  ],
+  'request-log': [...Array(22)].map((_, ndx) => ({
+    _id: new ObjectId(),
+    ip: '1.2.3.4',
+    header: ndx % 2 ? null : `Bearer ${BANNED_BEARER_TOKEN}`,
+    method: ndx % 3 ? 'GET' : 'POST',
+    route: 'fake/route',
+    createdAt: now + 10 ** 6,
+    resStatusCode: 200
+  })),
+  'limited-log-mview': [
+    { _id: new ObjectId(), ip: '1.2.3.4', until: now + 1000 * 60 * 15 },
+    { _id: new ObjectId(), ip: '5.6.7.8', until: now + 1000 * 60 * 15 },
+    {
+      _id: new ObjectId(),
+      header: `Bearer ${BANNED_BEARER_TOKEN}`,
+      until: now + 1000 * 60 * 60
+    }
+  ]
+};
 
-  /**
-   * Reset the dummy MongoDb server databases back to their initial states.
-   */
-  const reinitializeServer = async () => {
-    const databases = Object.keys(schema.databases);
-    debug(`setting up mongo memory server on port ${port}`);
-    await Promise.all(
-      databases.map((name) =>
-        destroyDb({ name })
-          .then(() => initializeDb({ name }))
-          .then(() => hydrateDb({ name }))
-      )
-    );
-  };
-
-  beforeAll(async () => {
-    await server.ensureInstance();
-    const uri = await server.getUri(); // ? Ensure singleton
-    debug(`connecting to mongo memory server at ${uri}`);
-    overwriteMemory({ client: await MongoClient.connect(uri) });
-    if (defer) await reinitializeServer();
-  });
-
-  if (!defer) {
-    beforeEach(reinitializeServer);
-  }
-
-  afterAll(async () => {
-    await closeClient();
-    await server.stop();
-  });
-
-  return {
-    getClient,
-    getDb,
-    initializeDb,
-    destroyDb,
-    hydrateDb,
-    reinitializeServer
-  };
-}
+/**
+ * Test data for the link map database.
+ */
+export const dummyLinkData: DummyLinkData = {
+  _generatedAt: now,
+  'link-map': [
+    {
+      _id: new ObjectId(),
+      type: 'uri',
+      shortId: 'aaa',
+      createdAt: now,
+      realLink: 'https://fake1.fake1',
+      headers: 'header-1'
+    },
+    {
+      _id: new ObjectId(),
+      type: 'file',
+      shortId: 'bbb',
+      createdAt: now,
+      name: 'file-b.xml',
+      resourceLink: 'https://fake2.fake2',
+      headers: ['header-2', { 'header-3': 'header-3-value' }]
+    },
+    {
+      _id: new ObjectId(),
+      type: 'badge',
+      shortId: 'ccc',
+      createdAt: now,
+      color: 'yellow',
+      label: 'label-1',
+      labelColor: 'black',
+      message: 'message-1',
+      headers: { 'header-4': 'header-4-value' }
+    },
+    {
+      _id: new ObjectId(),
+      type: 'badge',
+      shortId: 'zzz',
+      createdAt: now + 12345,
+      color: 'green',
+      label: 'label-2',
+      labelColor: 'white',
+      message: 'message-2'
+    },
+    {
+      _id: new ObjectId(),
+      type: 'github-pkg',
+      shortId: 'ddd',
+      createdAt: now,
+      defaultCommit: 'commit',
+      owner: 'owner',
+      repo: 'repo',
+      subdir: null,
+      tagPrefix: 'prefix-'
+    },
+    {
+      _id: new ObjectId(),
+      type: 'github-pkg',
+      shortId: 'eee',
+      createdAt: now,
+      defaultCommit: 'commit',
+      owner: 'owner',
+      repo: 'repo',
+      subdir: 'subdir',
+      tagPrefix: 'prefix-'
+    },
+    {
+      _id: new ObjectId(),
+      type: 'github-pkg',
+      shortId: 'fff',
+      createdAt: now,
+      defaultCommit: 'commit-2',
+      owner: 'owner-2',
+      repo: 'repo-2',
+      subdir: 'sub/d/i/r',
+      tagPrefix: 'prefix-'
+    }
+  ]
+};

@@ -32,7 +32,7 @@ describe('::addToRequestLog', () => {
     const res1 = { statusCode: 1111 } as NextApiResponse;
     const res2 = { statusCode: 2222 } as NextApiResponse;
 
-    const now = dummySystemData.generatedAt;
+    const now = dummySystemData._generatedAt;
     const _now = Date.now;
     Date.now = () => now;
 
@@ -75,7 +75,7 @@ describe('::isRateLimited', () => {
   it('returns true if ip or key are rate limited', async () => {
     expect.hasAssertions();
     const _now = Date.now;
-    Date.now = () => dummySystemData.generatedAt;
+    Date.now = () => dummySystemData._generatedAt;
 
     const req1 = await isRateLimited({
       headers: { 'x-forwarded-for': '1.2.3.4' },

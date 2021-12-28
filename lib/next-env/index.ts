@@ -1,16 +1,13 @@
-import { debugNamespace } from 'universe/constants';
 import { parse as parseAsBytes } from 'bytes';
 import { isServer } from 'is-server-side';
-import { InvalidEnvironmentError } from 'universe/error';
-import { validHttpMethods } from 'universe/backend';
-import { getEnv as getCustomizedEnv } from 'universe/backend/env/app';
+import { InvalidEnvironmentError } from 'named-app-errors';
+import { validHttpMethods } from '@xunnamius/types';
 import { debugFactory } from 'multiverse/debug-extended';
 
-import type { ValidHttpMethod } from 'universe/backend';
+import type { ValidHttpMethod } from '@xunnamius/types';
+import { Primitive } from 'type-fest';
 
-const debug = debugFactory(`${debugNamespace}:env`);
-
-// TODO: unit test env.ts and other testable abstraction layers
+const debug = debugFactory('next-env:env');
 
 const envToArray = (envVal: string) => {
   return envVal
@@ -19,9 +16,13 @@ const envToArray = (envVal: string) => {
     .filter(Boolean);
 };
 
-/* istanbul ignore next */
-export function getEnv() {
-  const env = getCustomizedEnv({
+export type Environment = Record<string, Primitive | Primitive[]>;
+
+/**
+ * Returns an object representing the current runtime environment.
+ */
+export function getEnv<T extends Environment>(customizedEnv?: T) {
+  const env = {
     NODE_ENV:
       process.env.APP_ENV || process.env.NODE_ENV || process.env.BABEL_ENV || 'unknown',
     MONGODB_URI: process.env.MONGODB_URI || '',
@@ -47,6 +48,11 @@ export function getEnv() {
       process.env.MONGODB_URI ||
       ''
     ).toString(),
+    AUTH_HEADER_MAX_LENGTH: Number(process.env.AUTH_HEADER_MAX_LENGTH) || 500,
+    DEBUG: process.env.DEBUG ?? null,
+    DEBUG_INSPECTING: !!process.env.VSCODE_INSPECTOR_OPTIONS,
+    REQUESTS_PER_CONTRIVED_ERROR: Number(process.env.REQUESTS_PER_CONTRIVED_ERROR) || 0,
+
     BAN_HAMMER_WILL_BE_CALLED_EVERY_SECONDS: !!process.env
       .BAN_HAMMER_WILL_BE_CALLED_EVERY_SECONDS
       ? Number(process.env.BAN_HAMMER_WILL_BE_CALLED_EVERY_SECONDS)
@@ -71,15 +77,16 @@ export function getEnv() {
     PRUNE_DATA_MAX_BANNED: !!process.env.PRUNE_DATA_MAX_BANNED
       ? Number(process.env.PRUNE_DATA_MAX_BANNED)
       : null,
-    DEBUG: process.env.DEBUG ?? null,
-    DEBUG_INSPECTING: !!process.env.VSCODE_INSPECTOR_OPTIONS
-  });
+
+    ...customizedEnv
+  };
 
   debug(env);
 
+  // TODO: retire all of the following logic when expect-env is created
+
   const errors = [];
 
-  // TODO: retire all this logic when expect-env is created
   const envIsGtZero = (name: keyof typeof env) => {
     if (
       typeof env[name] != 'number' ||
@@ -117,5 +124,5 @@ export function getEnv() {
     throw new InvalidEnvironmentError(
       `illegal environment detected:\n - ${errors.join('\n - ')}`
     );
-  } else return env;
+  } else return env as typeof env & T;
 }

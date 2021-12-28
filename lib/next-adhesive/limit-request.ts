@@ -1,6 +1,5 @@
-import { debugNamespace } from 'universe/constants';
-import { getEnv } from 'universe/backend/env';
-import { isRateLimited } from 'universe/backend/request';
+import { getEnv } from 'multiverse/next-env';
+import { clientIsRateLimited } from 'multiverse/next-limit';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import {
@@ -10,7 +9,7 @@ import {
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const debug = debugFactory(`${debugNamespace}:glue:limit-request`);
+const debug = debugFactory('next-adhesive:limit-request');
 
 export type Options = {
   // No options
@@ -19,7 +18,7 @@ export type Options = {
 export default async function (req: NextApiRequest, res: NextApiResponse) {
   debug('entered middleware runtime');
 
-  const { limited, retryAfter } = await isRateLimited(req);
+  const { limited, retryAfter } = await clientIsRateLimited(req);
 
   if (!getEnv().IGNORE_RATE_LIMITS && limited) {
     debug('request was rate-limited');

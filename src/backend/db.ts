@@ -1,6 +1,51 @@
-/* This file contains application-specific types */
-import type { UnixEpochMs } from '@xunnamius/types';
 import type { ObjectId } from 'mongodb';
+import type { UnixEpochMs } from '@xunnamius/types';
+import type { DbSchema } from 'multiverse/mongo-schema';
+
+/**
+ * A JSON representation of the backend Mongo database structure. This is used
+ * for consistent app-wide db access across projects and to generate transient
+ * versions of the db during testing.
+ */
+export function getSchemaConfig(): DbSchema {
+  return {
+    databases: {
+      'global-api--system': {
+        collections: [
+          {
+            name: 'auth',
+            indices: [{ spec: 'token.bearer', options: { unique: true } }]
+          },
+          {
+            name: 'request-log',
+            indices: [{ spec: 'header' }, { spec: 'ip' }]
+          },
+          {
+            name: 'limited-log-mview',
+            indices: [{ spec: 'header' }, { spec: 'ip' }]
+          }
+        ]
+      },
+      'global-api--xunn-at': {
+        collections: [
+          {
+            name: 'link-map',
+            indices: [
+              {
+                spec: 'shortId',
+                options: { unique: true }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    aliases: {
+      system: 'global-api--system',
+      'xunn-at': 'global-api--xunn-at'
+    }
+  };
+}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface UserId extends ObjectId {}

@@ -1,10 +1,9 @@
-import { debugNamespace } from 'universe/constants';
-import { addToRequestLog } from 'universe/backend/request';
+import { addToRequestLog } from 'multiverse/next-log';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const debug = debugFactory(`${debugNamespace}:glue:log-request`);
+const debug = debugFactory('next-adhesive:log-request');
 
 export type Options = {
   // No options

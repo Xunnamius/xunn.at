@@ -2,11 +2,13 @@ import { testApiHandler } from 'next-test-api-route-handler';
 import { withMiddleware } from 'universe/backend/middleware';
 import { asMockedFunction } from '@xunnamius/jest-types';
 import { mockEnvFactory, wrapHandler, noopHandler } from 'testverse/setup';
-import { addToRequestLog, isRateLimited } from 'universe/backend/request';
+import { addToRequestLog } from 'multiverse/next-log';
+import { clientIsRateLimited } from 'multiverse/next-limit';
 
-jest.mock('universe/backend/request');
+jest.mock('multiverse/next-log');
+jest.mock('multiverse/next-limit');
 
-const mockIsRateLimited = asMockedFunction(isRateLimited);
+const mockIsRateLimited = asMockedFunction(clientIsRateLimited);
 const mockAddToRequestLog = asMockedFunction(addToRequestLog);
 
 beforeEach(() => {

@@ -1,15 +1,11 @@
-import { debugNamespace } from 'universe/constants';
 import { MongoClient } from 'mongodb';
-import { InvalidConfigurationError } from 'universe/error';
-import { getEnv } from 'universe/backend/env';
-import { schema } from 'universe/backend/db/schema';
+import { InvalidConfigurationError } from 'named-app-errors';
+import { getEnv } from 'multiverse/next-env';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import type { Db } from 'mongodb';
 
-export * from 'multiverse/mongodb-utils';
-
-const debug = debugFactory(`${debugNamespace}:db`);
+const debug = debugFactory('mongo-schema:db');
 let memory: InternalMemory | null = null;
 
 type createIndexParams = Parameters<Db['createIndex']>;
@@ -39,6 +35,13 @@ export type DbSchema = {
 
   aliases: Record<string, string>;
 };
+
+/**
+ *
+ */
+export function getSchemaConfig(): DbSchema {
+  // TODO: add schema to memory
+}
 
 /**
  * Mutates internal memory. Used for testing purposes.
@@ -98,6 +101,7 @@ export async function closeClient() {
  * is not listed in the schema, an error is thrown.
  */
 export function getNameFromAlias(alias: string) {
+  const schema = getSchemaConfig();
   const nameActual = schema.aliases[alias] || alias;
 
   debug(`alias: ${alias}`);
@@ -200,7 +204,7 @@ export async function initializeDb({
   const nameActual = getNameFromAlias(name);
 
   await Promise.all(
-    schema.databases[nameActual].collections.map((colNameOrSchema) => {
+    getSchemaConfig().databases[nameActual].collections.map((colNameOrSchema) => {
       const colSchema: CollectionSchema =
         typeof colNameOrSchema == 'string'
           ? {

@@ -2,25 +2,25 @@ import { middlewareFactory } from 'multiverse/next-api-glue';
 
 import logRequest, {
   Options as LogRequestOptions
-} from 'universe/backend/middleware/log-request';
+} from 'multiverse/next-adhesive/log-request';
 
 import checkVersion, {
   Options as CheckVersionOptions
-} from 'universe/backend/middleware/check-version';
+} from 'multiverse/next-adhesive/check-version';
 
-import useCors, { Options as UseCorsOptions } from 'universe/backend/middleware/use-cors';
+import useCors, { Options as UseCorsOptions } from 'multiverse/next-adhesive/use-cors';
 
 import limitRequest, {
   Options as LimitRequestOptions
-} from 'universe/backend/middleware/limit-request';
+} from 'multiverse/next-adhesive/limit-request';
 
 import checkMethod, {
   Options as CheckMethodOptions
-} from 'universe/backend/middleware/check-method';
+} from 'multiverse/next-adhesive/check-method';
 
 import handleError, {
   Options as HandleErrorOptions
-} from 'universe/backend/middleware/handle-error';
+} from 'multiverse/next-adhesive/handle-error';
 
 const withMiddleware = middlewareFactory<
   LogRequestOptions &

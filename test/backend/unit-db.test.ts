@@ -1,8 +1,10 @@
+/* eslint-disable jest/no-conditional-expect */
 import { isolatedImportFactory, withMockedEnv } from 'testverse/setup';
 import { Db, MongoClient } from 'mongodb';
-import { asMockedClass } from '@xunnamius/jest-types';
+import { asMockedClass, asMockedFunction } from '@xunnamius/jest-types';
 
 import type { DbSchema } from 'universe/backend/db';
+import { DummyData } from 'testverse/db';
 
 jest.mock('universe/backend/db/schema', () => {
   mockDbSchema = mockDbSchema || {
@@ -31,13 +33,36 @@ jest.mock('universe/backend/db/schema', () => {
   return { schema: mockDbSchema };
 });
 
+jest.mock('testverse/db.schema', () => {
+  const now = Date.now();
+
+  mockDummyDbData = mockDummyDbData || {
+    'fake-db-1': {
+      _generatedAt: now,
+      col: [{ item: 1 }, { item: 2 }, { item: 3 }]
+    },
+    'fake-db-2': {
+      _generatedAt: now,
+      'col-1': [{ item: 'a' }, { item: 'b' }],
+      'col-does-not-exist': [{ fake: true }]
+    }
+  };
+
+  return { getDummyData: () => mockDummyDbData };
+});
+
 jest.mock('mongodb');
 
 let mockDbSchema: DbSchema;
+let mockDummyDbData: DummyData;
 const mockMongoClient = asMockedClass(MongoClient);
 
 const importDbLib = isolatedImportFactory<typeof import('universe/backend/db')>({
   path: 'universe/backend/db'
+});
+
+const importTestDbLib = isolatedImportFactory<typeof import('testverse/db')>({
+  path: 'testverse/db'
 });
 
 beforeEach(() => {
@@ -53,10 +78,13 @@ beforeEach(() => {
             dropDatabase;
             createCollection;
             createIndex;
+            collection;
 
             constructor() {
               this.dropDatabase = jest.fn();
               this.createIndex = jest.fn();
+              // ? Reuse this.createIndex method for easy access to mock
+              this.collection = jest.fn(() => ({ insertMany: this.createIndex }));
               this.createCollection = jest.fn(() =>
                 Promise.resolve({ createIndex: this.createIndex })
               );
@@ -261,15 +289,12 @@ describe('::initializeDb', () => {
 
         mockDbSchema.databases['fake-db-2'].collections.forEach((col) => {
           if (typeof col == 'string') {
-            // eslint-disable-next-line jest/no-conditional-expect
             expect(db2.createCollection).toBeCalledWith(col, undefined);
           } else {
-            // eslint-disable-next-line jest/no-conditional-expect
             expect(db2.createCollection).toBeCalledWith(col.name, col.createOptions);
 
             if (col.indices) {
               col.indices.forEach((spec) =>
-                // eslint-disable-next-line jest/no-conditional-expect
                 expect(db2.createIndex).toBeCalledWith(spec.spec, spec.options || {})
               );
             }
@@ -283,17 +308,81 @@ describe('::initializeDb', () => {
 });
 
 describe('::hydrateDb', () => {
+  let oldMockDummyDbData: typeof mockDummyDbData;
+
+  beforeEach(() => {
+    oldMockDummyDbData = mockDummyDbData;
+  });
+
+  afterEach(() => {
+    mockDummyDbData = oldMockDummyDbData;
+    jest.dontMock('universe/backend/db');
+  });
+
   it('fills a database with dummy data', async () => {
     expect.hasAssertions();
+
+    const lib = importDbLib();
+    jest.doMock('universe/backend/db', () => lib);
+    const testLib = importTestDbLib();
+    const db = await lib.getDb({ name: 'fake-db-1' });
+
+    await expect(testLib.hydrateDb({ name: 'fake-db-1' })).toResolve();
+
+    Object.entries(mockDummyDbData['fake-db-1']).forEach(([colName, colData]) => {
+      if (colName != '_generatedAt') {
+        expect(db.collection).toBeCalledWith(colName);
+        // ? The createIndex method is reused for easy access to the target mock
+        expect(db.createIndex).toBeCalledWith(colData);
+      }
+    });
+
+    // eslint-disable-next-line jest/unbound-method
+    asMockedFunction(db.collection).mockClear();
+    // eslint-disable-next-line jest/unbound-method
+    asMockedFunction(db.createIndex).mockClear();
+
+    mockDummyDbData = {
+      'fake-db-1': {
+        _generatedAt: 0,
+        col: { item: 'single', name: 'just-the-one' }
+      }
+    };
+
+    await expect(testLib.hydrateDb({ name: 'fake-db-1' })).toResolve();
+    expect(db.collection).toBeCalledWith('col');
+    // ? The createIndex method is reused for easy access to the target mock
+    expect(db.createIndex).toBeCalledWith([mockDummyDbData['fake-db-1'].col]);
   });
 
-  it('throws if named database has no corresponding dummy data', async () => {
+  it('throws if database in schema has no corresponding dummy data', async () => {
     expect.hasAssertions();
-  });
-});
 
-describe('::setupTestDb', () => {
-  it('sets up test version of databases via jest lifecycle hooks', async () => {
+    const lib = importDbLib();
+    jest.doMock('universe/backend/db', () => lib);
+    const testLib = importTestDbLib();
+
+    mockDummyDbData = {
+      'fake-db-1': {
+        _generatedAt: 0,
+        col: { item: 'single', name: 'just-the-one' }
+      }
+    };
+
+    await expect(testLib.hydrateDb({ name: 'fake-db-2' })).rejects.toThrow(
+      /dummy data for database "fake-db-2" does not exist/
+    );
+  });
+
+  it('throws if collection referenced in dummy data is not in schema', async () => {
     expect.hasAssertions();
+
+    const lib = importDbLib();
+    jest.doMock('universe/backend/db', () => lib);
+    const testLib = importTestDbLib();
+
+    await expect(testLib.hydrateDb({ name: 'fake-db-2' })).rejects.toThrow(
+      /collection "fake-db-2.col-does-not-exist" referenced in dummy data is not defined in source db schema/
+    );
   });
 });

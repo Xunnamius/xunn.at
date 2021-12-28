@@ -1,10 +1,9 @@
-import { debugNamespace } from 'universe/constants';
 import Cors from 'cors';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const debug = debugFactory(`${debugNamespace}:glue:use-cors`);
+const debug = debugFactory('next-adhesive:use-cors');
 
 let cors: ReturnType<typeof Cors>;
 
