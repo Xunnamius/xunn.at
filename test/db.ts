@@ -14,8 +14,6 @@ import type { InternalAuthEntry } from 'multiverse/next-auth';
 import type { InternalRequestLogEntry } from 'multiverse/next-log';
 import type { InternalLimitedLogEntry } from 'multiverse/next-limit';
 
-// ! This module MUST export a `getDummyData` fn with return type `DummyData` !
-
 // ? Ensures consistent results by reusing the same epoch moment across all test
 // ? data.
 const now = Date.now();

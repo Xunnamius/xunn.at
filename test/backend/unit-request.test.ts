@@ -1,11 +1,10 @@
-import { WithId } from 'mongodb';
 import { BANNED_TOKEN } from 'universe/backend';
 import { setupTestDb, dummySystemData } from 'testverse/db';
 import { asMockedFunction } from '@xunnamius/jest-types';
 import { addToRequestLog, isRateLimited } from 'universe/backend/request';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-
+import type { WithId } from 'mongodb';
 import type { HttpStatusCode } from '@xunnamius/types';
 import type { InternalRequestLogEntry, InternalLimitedLogEntry } from 'types/global';
 

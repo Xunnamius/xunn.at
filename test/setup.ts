@@ -11,6 +11,7 @@ import execa from 'execa';
 import uniqueFilename from 'unique-filename';
 import { debugFactory } from 'multiverse/debug-extended';
 import gitFactory from 'simple-git';
+// ? See: https://github.com/jest-community/jest-extended#setup
 import 'jest-extended/all';
 import 'jest-extended';
 
@@ -38,16 +39,28 @@ try {
 
 verifyEnvironment();
 
+/**
+ * A mock Next.js API handler that sends an empty object Reponse with a 200
+ * status code.
+ */
 export const noopHandler = async (_req: NextApiRequest, res: NextApiResponse) => {
   res.status(200).send({});
 };
 
+/**
+ * This function wraps mock Next.js API handler functions so that they provide
+ * the default API configuration object.
+ */
 export const wrapHandler = (handler: NextApiHandler) => {
   const api = async (req: NextApiRequest, res: NextApiResponse) => handler(req, res);
   api.config = defaultConfig;
   return api;
 };
 
+/**
+ * Contains the expected shapes of the gzipped tar archives under
+ * `test/fixtures`.
+ */
 export const expectedEntries: Record<string, Entry[]> = {
   monorepo: [
     {
