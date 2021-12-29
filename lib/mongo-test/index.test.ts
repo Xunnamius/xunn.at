@@ -1,7 +1,3 @@
-import { getDummyData } from 'multiverse/mongo-test';
+import {} from 'multiverse/mongo-test';
 
-it('works', async () => {
-  expect.hasAssertions();
-  const x = await getDummyData();
-  expect(false).toBeTrue();
-});
+test.todo('this');

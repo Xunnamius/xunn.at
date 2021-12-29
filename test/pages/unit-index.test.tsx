@@ -1,1 +1,3 @@
-test.todo('ensure index page works as expected');
+import {} from 'universe/pages/index';
+
+test.todo('this');
