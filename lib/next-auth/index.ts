@@ -108,7 +108,7 @@ export function getToken({
  * well-known "auth" MongoDB collection. Does not throw on invalid/missing
  * headers.
  */
-export async function isValidAuthHeader<T extends InternalAuthEntry>({
+export async function isValidAuthHeader({
   header,
   allowedSchemes
 }: {
@@ -126,7 +126,7 @@ export async function isValidAuthHeader<T extends InternalAuthEntry>({
 
   return {
     valid: (await getDb({ name: 'system' }))
-      .collection<T>('auth')
+      .collection<InternalAuthEntry>('auth')
       .findOne({ scheme, token })
       .then((r) => !!r)
   };

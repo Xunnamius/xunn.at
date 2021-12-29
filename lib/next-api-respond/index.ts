@@ -1,6 +1,11 @@
 import type { NextApiResponse } from 'next';
 import type { HttpStatusCode, JsonSuccess, JsonError } from '@xunnamius/types';
 
+/**
+ * Sends a generic HTTP response with the given `statusCode` and optional
+ * `responseJson` body (defaults to `{}`). This is the "base" function called by
+ * all other response functions.
+ */
 export function sendGenericHttpResponse(
   res: NextApiResponse,
   statusCode: HttpStatusCode,
@@ -9,6 +14,10 @@ export function sendGenericHttpResponse(
   res.status(statusCode).send(responseJson || {});
 }
 
+/**
+ * Sends a generic "success" response and `responseJson` body, optionally with
+ * additional properties. This function is called by all 2xx response functions.
+ */
 export function sendHttpSuccessResponse(
   res: NextApiResponse,
   statusCode: HttpStatusCode,
@@ -19,6 +28,11 @@ export function sendHttpSuccessResponse(
   return json;
 }
 
+/**
+ * Sends a generic "error" response and `responseJson` body, optionally with
+ * additional properties. This function is called by all non-2xx response
+ * functions.
+ */
 export function sendHttpErrorResponse(
   res: NextApiResponse,
   statusCode: HttpStatusCode,
@@ -29,10 +43,16 @@ export function sendHttpErrorResponse(
   return json;
 }
 
+/**
+ * Sends an HTTP 200 "ok" response with optional `responseJson` data.
+ */
 export function sendHttpOk(res: NextApiResponse, responseJson?: Record<string, unknown>) {
   sendHttpSuccessResponse(res, 200, responseJson);
 }
 
+/**
+ * Sends an HTTP 400 "client error" response with optional `responseJson` data.
+ */
 export function sendHttpBadRequest(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
@@ -43,6 +63,10 @@ export function sendHttpBadRequest(
   });
 }
 
+/**
+ * Sends an HTTP 401 "unauthenticated" response with optional `responseJson`
+ * data.
+ */
 export function sendHttpUnauthenticated(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
@@ -53,6 +77,9 @@ export function sendHttpUnauthenticated(
   });
 }
 
+/**
+ * Sends an HTTP 403 "forbidden" response with optional `responseJson` data.
+ */
 export function sendHttpUnauthorized(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
@@ -63,6 +90,9 @@ export function sendHttpUnauthorized(
   });
 }
 
+/**
+ * Sends an HTTP 404 "not found" response with optional `responseJson` data.
+ */
 export function sendHttpNotFound(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
@@ -73,6 +103,9 @@ export function sendHttpNotFound(
   });
 }
 
+/**
+ * Sends an HTTP 405 "bad method" response with optional `responseJson` data.
+ */
 export function sendHttpBadMethod(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
@@ -83,6 +116,9 @@ export function sendHttpBadMethod(
   });
 }
 
+/**
+ * Sends an HTTP 413 "too big" response with optional `responseJson` data.
+ */
 export function sendHttpTooLarge(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
@@ -93,6 +129,10 @@ export function sendHttpTooLarge(
   });
 }
 
+/**
+ * Sends an HTTP 429 "too many requests" response with optional `responseJson`
+ * data.
+ */
 export function sendHttpRateLimited(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
@@ -103,6 +143,10 @@ export function sendHttpRateLimited(
   });
 }
 
+/**
+ * Sends a generic HTTP 500 "error" response with `error` property and optional
+ * `responseJson` data.
+ */
 export function sendHttpError(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
@@ -113,6 +157,10 @@ export function sendHttpError(
   });
 }
 
+/**
+ * Sends an HTTP 501 "not implemented" response with optional `responseJson`
+ * data.
+ */
 export function sendNotImplementedError(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
@@ -123,6 +171,9 @@ export function sendNotImplementedError(
   });
 }
 
+/**
+ * Sends an HTTP 555 "contrived" response with optional `responseJson` data.
+ */
 export function sendHttpContrivedError(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>

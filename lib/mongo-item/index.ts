@@ -4,20 +4,39 @@ import { GuruMeditationError } from 'named-app-errors';
 
 import type { Collection, WithId } from 'mongodb';
 
-type ItemExistsIdParam = string | ObjectId | { key: string; id: string | ObjectId };
-type ItemExistsOptions = { excludeId?: ItemExistsIdParam; caseInsensitive?: boolean };
 /**
- * Checks if an item identified by some `key` (default identifier is `"_id"`)
- * exists within `collection`.
+ * Represents the value of the `_id` property of a MongoDB collection entry.
+ * Optionally, a key other than `_id` can be specified using the `{ key: ...,
+ * id: ... }` syntax.
+ */
+export type ItemExistsIdParam =
+  | string
+  | ObjectId
+  | { key: string; id: string | ObjectId };
+
+/**
+ * Available options for the `itemExists` function.
+ */
+export type ItemExistsOptions = {
+  excludeId?: ItemExistsIdParam;
+  caseInsensitive?: boolean;
+};
+
+/**
+ * Checks if an item matching `{ _id: id }` exists within `collection`.
  */
 export async function itemExists<T>(
   collection: Collection<T>,
   id: string | ObjectId,
   options?: ItemExistsOptions
 ): Promise<boolean>;
+/**
+ * Checks if an item matching `{ [descriptor.key]: descriptor.id }` exists
+ * within `collection`.
+ */
 export async function itemExists<T>(
   collection: Collection<T>,
-  id: { key: string; id: string | ObjectId },
+  descriptor: { key: string; id: string | ObjectId },
   options?: ItemExistsOptions
 ): Promise<boolean>;
 export async function itemExists<T>(
@@ -60,7 +79,16 @@ export async function itemExists<T>(
   return (await result.count()) != 0;
 }
 
+/**
+ * The shape of an object that can be translated into an `ObjectId` (or `T`)
+ * instance or is `null`/`undefined`.
+ */
 export type IdItem<T extends ObjectId> = WithId<unknown> | string | T | null | undefined;
+
+/**
+ * The shape of an object that can be translated into an array of `ObjectId` (or
+ * `T`) instances or is `null`/`undefined`.
+ */
 export type IdItemArray<T extends ObjectId> =
   | WithId<unknown>[]
   | string[]

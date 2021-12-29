@@ -3,6 +3,7 @@ import { getEnv } from 'multiverse/next-env';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { InvalidConfigurationError } from 'named-app-errors';
 import { debugFactory } from 'multiverse/debug-extended';
+import { findNextJSProjectRoot } from 'multiverse/next-project-root';
 
 import {
   getSchemaConfig,
@@ -16,14 +17,32 @@ import {
 } from 'multiverse/mongo-schema';
 
 import type { Document } from 'mongodb';
+import type { Promisable } from 'type-fest';
+
+// TODO: this package must be published transpiled to cjs by babel but NOT
+// TODO: webpacked!
 
 const debug = debugFactory('mongo-test:test-db');
 
 /**
- *
+ * Finds the file at `${nextProjectRoot}/test/db` or
+ * `${nextProjectRoot}/test/backend/db`, imports it, and calls the
+ * `getDummyData` function defined within.
  */
-export function getDummyData(): DummyData {
-  // TODO
+export async function getDummyData() {
+  const root = findNextJSProjectRoot();
+  const paths = [`${root}/test/db`, `${root}/test/backend/db`];
+  const { getDummyData: importDummyData } = (await import(paths[0])
+    .catch(() => import(paths[1]))
+    .catch(() => ({}))) as { getDummyData?: () => Promisable<DummyData> };
+
+  if (!importDummyData) {
+    throw new InvalidConfigurationError(
+      `could not resolve dummy data; one of the following import paths must resolve to a file with an (optionally) async "getDummyData" function that returns a DummyData object:\n\n  - ${paths[0]}\n\n  - ${paths[1]}`
+    );
+  }
+
+  return importDummyData();
 }
 
 /**
@@ -60,9 +79,9 @@ export async function hydrateDb({
   name: string;
 }) {
   const db = await getDb({ name });
-  const nameActual = getNameFromAlias(name);
+  const nameActual = await getNameFromAlias(name);
   debug(`hydrating database ${nameActual}`);
-  const dummyData = getDummyData()[nameActual];
+  const dummyData = (await getDummyData())[nameActual];
 
   if (!dummyData) {
     throw new InvalidConfigurationError(
@@ -70,8 +89,8 @@ export async function hydrateDb({
     );
   }
 
-  const collectionNames = getSchemaConfig().databases[nameActual].collections.map((col) =>
-    typeof col == 'string' ? col : col.name
+  const collectionNames = (await getSchemaConfig()).databases[nameActual].collections.map(
+    (col) => (typeof col == 'string' ? col : col.name)
   );
 
   await Promise.all(
@@ -112,7 +131,7 @@ export function setupTestDb(defer = false) {
    * Reset the dummy MongoDb server databases back to their initial states.
    */
   const reinitializeServer = async () => {
-    const databases = Object.keys(getSchemaConfig().databases);
+    const databases = Object.keys((await getSchemaConfig()).databases);
     debug(`setting up mongo memory server on port ${port}`);
     await Promise.all(
       databases.map((name) =>

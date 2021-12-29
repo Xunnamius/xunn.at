@@ -11,6 +11,13 @@ export type Options = {
   // No options
 };
 
+/**
+ * Allows _cross-origin_ requests for the most popular request types. **Note
+ * that this can be dangerous (huge security hole) and should only be used for
+ * public APIs**.
+ *
+ * When present, this should be among the very first middleware in the chain.
+ */
 export default async function (req: NextApiRequest, res: NextApiResponse) {
   debug('entered middleware runtime');
 

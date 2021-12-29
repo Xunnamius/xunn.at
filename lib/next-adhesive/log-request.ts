@@ -9,6 +9,9 @@ export type Options = {
   // No options
 };
 
+/**
+ * Logs the response to each request after it is sent (i.e. `res.end()`).
+ */
 export default async function (req: NextApiRequest, res: NextApiResponse) {
   debug('entered middleware runtime');
 

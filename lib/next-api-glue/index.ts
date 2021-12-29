@@ -9,11 +9,9 @@ import type { Promisable } from 'type-fest';
 
 const debug = debugFactory('next-api-glue:runtime');
 
-// TODO: Document that type checking cannot enforce that certain options are
-// TODO: passed in the case that an options argument is not given when calling
-// TODO: withMiddleware. So, all middleware options should be declared as
-// TODO: optional (i.e. { myOpt?: aType } instead of { myOpt: aType })
-
+/**
+ * The shape of a custom middleware function.
+ */
 export type Middleware<
   Options extends Record<string, unknown> = Record<string, unknown>
 > = (
@@ -22,6 +20,15 @@ export type Middleware<
   context: MiddlewareContext<Options>
 ) => Promisable<void>;
 
+/**
+ * The shape of a middleware context object, potentially customized with
+ * additional middleware-specific options.
+ *
+ * Note that type checking cannot enforce that certain options are passed in the
+ * case that an options argument is omitted when calling `withMiddleware`. So,
+ * to be safe, all custom middleware context options should be declared as
+ * optional (i.e. `{ myOpt?: aType }` instead of `{ myOpt: aType })`.
+ */
 export type MiddlewareContext<
   Options extends Record<string, unknown> = Record<string, unknown>
 > = {

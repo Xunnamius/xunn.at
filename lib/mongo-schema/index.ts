@@ -2,20 +2,32 @@ import { MongoClient } from 'mongodb';
 import { InvalidConfigurationError } from 'named-app-errors';
 import { getEnv } from 'multiverse/next-env';
 import { debugFactory } from 'multiverse/debug-extended';
+import { findNextJSProjectRoot } from 'multiverse/next-project-root';
 
 import type { Db } from 'mongodb';
+import type { Promisable } from 'type-fest';
+
+// TODO: this package must be published transpiled to cjs by babel but NOT
+// TODO: webpacked!
 
 const debug = debugFactory('mongo-schema:db');
 let memory: InternalMemory | null = null;
 
 type createIndexParams = Parameters<Db['createIndex']>;
 
+/**
+ * An internal cache of connection, server schema, and database state.
+ */
 export type InternalMemory = {
+  schema: DbSchema;
   clientIsExternal: boolean;
   client: MongoClient;
   databases: Record<string, Db>;
 };
 
+/**
+ * A configuration object representing a MongoDB collection.
+ */
 export type CollectionSchema = {
   name: string;
   createOptions?: Parameters<Db['createCollection']>[1];
@@ -25,6 +37,9 @@ export type CollectionSchema = {
   }[];
 };
 
+/**
+ * A configuration object representing a MongoDB database.
+ */
 export type DbSchema = {
   databases: Record<
     string,
@@ -37,10 +52,30 @@ export type DbSchema = {
 };
 
 /**
- *
+ * Finds the file at `${nextProjectRoot}/src/db` or
+ * `${nextProjectRoot}/src/backend/db`, imports it, calls the `getSchemaConfig`
+ * function defined within, and memoizes the result.
  */
-export function getSchemaConfig(): DbSchema {
-  // TODO: add schema to memory
+export async function getSchemaConfig(): Promise<DbSchema> {
+  !memory && (memory = {} as InternalMemory);
+
+  if (memory.schema) {
+    return memory.schema;
+  } else {
+    const root = findNextJSProjectRoot();
+    const paths = [`${root}/src/db`, `${root}/src/backend/db`];
+    const { getSchemaConfig: importSchemaConfig } = (await import(paths[0])
+      .catch(() => import(paths[1]))
+      .catch(() => ({}))) as { getSchemaConfig?: () => Promisable<DbSchema> };
+
+    if (!importSchemaConfig) {
+      throw new InvalidConfigurationError(
+        `could not resolve mongodb schema; one of the following import paths must resolve to a file with an (optionally) async "getSchemaConfig" function that returns a DbSchema object:\n\n  - ${paths[0]}\n\n  - ${paths[1]}`
+      );
+    }
+
+    return (memory.schema = await importSchemaConfig());
+  }
 }
 
 /**
@@ -100,8 +135,8 @@ export async function closeClient() {
  * Accepts a database alias and returns its real name. If the actual database
  * is not listed in the schema, an error is thrown.
  */
-export function getNameFromAlias(alias: string) {
-  const schema = getSchemaConfig();
+export async function getNameFromAlias(alias: string) {
+  const schema = await getSchemaConfig();
   const nameActual = schema.aliases[alias] || alias;
 
   debug(`alias: ${alias}`);
@@ -146,7 +181,7 @@ export async function getDb({
     }
   }
 
-  const nameActual = getNameFromAlias(name);
+  const nameActual = await getNameFromAlias(name);
 
   if (!memory.databases[nameActual]) {
     debug(`connecting to mongo database "${nameActual}"`);
@@ -201,10 +236,12 @@ export async function initializeDb({
   external?: boolean;
 }) {
   const db = await getDb({ name, external });
-  const nameActual = getNameFromAlias(name);
+  const nameActual = await getNameFromAlias(name);
 
   await Promise.all(
-    getSchemaConfig().databases[nameActual].collections.map((colNameOrSchema) => {
+    (
+      await getSchemaConfig()
+    ).databases[nameActual].collections.map((colNameOrSchema) => {
       const colSchema: CollectionSchema =
         typeof colNameOrSchema == 'string'
           ? {

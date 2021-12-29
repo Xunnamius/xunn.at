@@ -5,7 +5,7 @@ import { validHttpMethods } from '@xunnamius/types';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import type { ValidHttpMethod } from '@xunnamius/types';
-import { Primitive } from 'type-fest';
+import type { Primitive } from 'type-fest';
 
 const debug = debugFactory('next-env:env');
 

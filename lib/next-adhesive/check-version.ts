@@ -15,7 +15,7 @@ export type Options = {
 };
 
 /**
- * Ensures requests to disabled versions of the API fail.
+ * Rejects requests to disabled versions of the API.
  */
 export default async function (
   _req: NextApiRequest,

@@ -15,12 +15,15 @@ export type Options = {
   // No options
 };
 
+/**
+ * Rejects requests from clients that have sent too many previous requests.
+ */
 export default async function (req: NextApiRequest, res: NextApiResponse) {
   debug('entered middleware runtime');
 
-  const { limited, retryAfter } = await clientIsRateLimited(req);
+  const { isLimited, retryAfter } = await clientIsRateLimited(req);
 
-  if (!getEnv().IGNORE_RATE_LIMITS && limited) {
+  if (!getEnv().IGNORE_RATE_LIMITS && isLimited) {
     debug('request was rate-limited');
     sendHttpRateLimited(res, { retryAfter });
   } else if (getEnv().LOCKOUT_ALL_CLIENTS) {

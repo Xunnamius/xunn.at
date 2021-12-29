@@ -1,8 +1,6 @@
 import getDebugger from 'debug';
 import type { Debug, Debugger } from 'debug';
 
-// TODO: this becomes the @xunnamius/debug-extended package
-
 export type { Debug, Debugger };
 
 /**
@@ -34,8 +32,8 @@ Object.assign(debugFactory, getDebugger);
 export { debugFactory };
 
 /**
- * Extends `Debugger` instance with several convenience methods, transforming it
- * into an `ExtendedDebugger` instance.
+ * Extends a `Debugger` instance with several convenience methods, returning
+ * what would more accurately be called an `ExtendedDebugger` instance.
  */
 export function extendDebugger(instance: Debugger) {
   const extend = instance.extend;

@@ -19,8 +19,17 @@ export type InternalRequestLogEntry = {
 };
 
 /**
- * Note that this async function does not have to be awaited. It's fire and
+ * This function adds a request metadata entry to the database.
+ *
+ * Note that this async function **does not have to be awaited**. It's fire and
  * forget!
+ *
+ * @example
+ * ```
+ * doSomeStuff();
+ * void addToRequestLog({ req, res });
+ * doSomeOtherStuff();
+ * ```
  */
 export async function addToRequestLog({
   req,

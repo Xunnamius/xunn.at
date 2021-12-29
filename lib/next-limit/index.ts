@@ -21,6 +21,11 @@ export type InternalLimitedLogEntry =
       header: string | null;
     };
 
+/**
+ * Returns an object with two keys: `limited` and `retryAfter`. If `limited` is
+ * true, then the request should be rejected. The client should be instructed to
+ * retry their request after `retryAfter` milliseconds have passed.
+ */
 export async function clientIsRateLimited(req: NextApiRequest) {
   const ip = getClientIp(req);
   const header = req.headers.authorization?.slice(0, getEnv().AUTH_HEADER_MAX_LENGTH);
@@ -38,7 +43,10 @@ export async function clientIsRateLimited(req: NextApiRequest) {
     .next();
 
   return {
-    limited: !!limited,
-    retryAfter: Math.max(0, ((limited?.until as number) || Date.now()) - Date.now())
+    isLimited: !!limited,
+    retryAfter: Math.max(
+      0,
+      ((limited?.until as number) || Date.now()) - Date.now()
+    ) as UnixEpochMs
   };
 }

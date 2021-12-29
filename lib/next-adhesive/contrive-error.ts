@@ -17,7 +17,7 @@ export type Options = {
 };
 
 /**
- * Responds with a dummy error for every Nth request (see .env.example).
+ * Rejects every Nth request with a dummy error (see .env.example).
  */
 export default async function (
   _req: NextApiRequest,

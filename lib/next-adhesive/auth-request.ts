@@ -15,7 +15,7 @@ export type Options = {
 };
 
 /**
- * Authenticates a request with a backend service via Authorization header.
+ * Rejects unauthenticatable requests (via Authorization header).
  */
 export default async function (
   req: NextApiRequest,

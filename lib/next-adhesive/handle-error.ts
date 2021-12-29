@@ -45,6 +45,10 @@ export type Options = {
   errorHandlers?: ErrorHandlerMap;
 };
 
+/**
+ * Generic error handling middleware. **This should be among the final
+ * middleware to run on the error handling middleware chain.**
+ */
 export default async function (
   req: NextApiRequest,
   res: NextApiResponse,
