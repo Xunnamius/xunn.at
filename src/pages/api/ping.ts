@@ -1,9 +1,12 @@
 import { sendHttpOk } from 'multiverse/next-api-respond';
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 // ? https://nextjs.org/docs/api-routes/api-middlewares#custom-config
 export { defaultConfig as config } from 'universe/backend/api';
 
+/**
+ * An endpoint to test if the API is up and reachable.
+ */
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   const { name = 'Mr. World' } = req.query;
   sendHttpOk(res, {

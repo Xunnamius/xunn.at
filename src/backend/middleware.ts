@@ -22,6 +22,14 @@ import handleError, {
   Options as HandleErrorOptions
 } from 'multiverse/next-adhesive/handle-error';
 
+/**
+ * Primary middleware runner for the REST API. Decorates a request handler.
+ *
+ * Passing `undefined` as `handler` or not calling `res.end()` (and not sending
+ * headers) in your handler or use chain will trigger an `HTTP 501 Not
+ * Implemented` response. This can be used to to stub out endpoints and their
+ * middleware for later implementation.
+ */
 const withMiddleware = middlewareFactory<
   LogRequestOptions &
     CheckVersionOptions &

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { version as pkgVersion } from 'package';
 import { getEnv } from 'universe/backend/env';
 
-import { PromiseValue as Awaited } from 'type-fest';
+import type { PromiseValue as Awaited } from 'type-fest';
 
 export async function getServerSideProps() {
   const env = getEnv();

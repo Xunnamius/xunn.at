@@ -9,9 +9,17 @@ import type { NextApiResponse } from 'next';
 import type { Response } from 'node-fetch';
 import { NotFoundError } from 'named-app-errors';
 
+/**
+ * This is a special GitHub url that makes it easy to grab gzipped source
+ * archives.
+ */
 const codeloadUrl = (repo: string, commit: string) =>
   `https://codeload.github.com/${repo}/tar.gz/${commit}`;
 
+/**
+ * Responds to a client with a GitHub-hosted tar archive, potentially repacked,
+ * containing an NPM package.
+ */
 export async function githubPackageDownloadPipeline({
   res,
   repoData: { owner, repo, potentialCommits, subdir }

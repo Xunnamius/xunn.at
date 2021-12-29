@@ -6,6 +6,9 @@ import { AppError, NotImplementedError } from 'universe/error';
 // ? https://nextjs.org/docs/api-routes/api-middlewares#custom-config
 export { defaultConfig as config } from 'universe/backend/api';
 
+/**
+ * An endpoint that translates short link identifiers into actual resources.
+ */
 export default withMiddleware(
   async (req, res) => {
     const { shortId: rawShortId } = req.query;

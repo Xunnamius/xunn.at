@@ -1,6 +1,8 @@
 import { getDb } from 'multiverse/mongo-schema';
 import { getEnv } from 'multiverse/next-env';
 import { Octokit } from '@octokit/rest';
+import { pipeline } from 'stream/promises';
+import { jsonFetch } from 'multiverse/json-node-fetch';
 import fetch from 'node-fetch';
 
 import type { NextApiResponse } from 'next';
@@ -12,6 +14,9 @@ import type {
   InternalLinkMapEntryBadge
 } from 'universe/backend/db';
 
+/**
+ * Translates a short link identifier into a link map entry.
+ */
 export async function resolveShortId({
   shortId
 }: {
@@ -46,6 +51,11 @@ export async function resolveShortId({
   };
 }
 
+/**
+ * Response to a client with SVG badge data from shields.io.
+ *
+ * @see https://shields.io
+ */
 export async function sendBadgeSvgResponse(
   res: NextApiResponse<ReadableStream<Uint8Array> | null>,
   {
@@ -60,7 +70,7 @@ export async function sendBadgeSvgResponse(
     labelColor?: string;
   }
 ) {
-  const resp = await fetch(
+  const svgRes = await fetch(
     'https://img.shields.io/static/v1?' +
       (label ? `&label=${label}` : '') +
       (message ? `&message=${message}` : '') +
@@ -70,9 +80,14 @@ export async function sendBadgeSvgResponse(
 
   res.setHeader('content-type', 'image/svg+xml;charset=utf-8');
   res.setHeader('cache-control', 's-maxage=60, stale-while-revalidate');
-  res.status(resp.ok ? 200 : 500).send(resp.body);
+  res.status(svgRes.ok ? 200 : 500);
+  await pipeline(svgRes.body, res);
 }
 
+/**
+ * Returns the latest version of NTARH that passed GHA integration testing or
+ * `null` if no such version exists.
+ */
 export async function getCompatVersion() {
   return (
     (
@@ -87,50 +102,10 @@ export async function getCompatVersion() {
   );
 }
 
+/**
+ * Returns the latest version of a package or null if the data is unavailable.
+ */
 export async function getNpmPackageVersion(pkgName: string) {
   const target = `https://registry.npmjs.com/${encodeURIComponent(pkgName)}/latest`;
-  return (await fetch.get<{ version: string }>(target)).json?.version || null;
-}
-
-export async function getGitHubRepoTagDate({
-  owner,
-  repo,
-  tag
-}: {
-  owner: string;
-  repo: string;
-  tag: string;
-}) {
-  const { repos } = new Octokit({
-    ...(getEnv().GITHUB_PAT ? { auth: getEnv().GITHUB_PAT } : {}),
-    userAgent: 'github.com/ergodark/api.ergodark.com'
-  });
-
-  let page = 1;
-  let tags = null;
-  let commit = null;
-
-  do {
-    // eslint-disable-next-line no-await-in-loop
-    ({ data: tags } = await repos.listTags({
-      owner: owner,
-      repo: repo,
-      page: page++
-    }));
-
-    ({ commit } = tags.find((val) => val.name == tag) || {});
-  } while (!commit && tags.length);
-
-  // if(commit) {
-  //     const { data: { commit: { author: { date: rawDate }}}} = await repos.getCommit({
-  //         owner: owner,
-  //         repo: repo,
-  //         ref: commit.sha
-  //     });
-
-  //     const d = new Date(rawDate);
-  //     return d.toDateString();
-  // }
-
-  return null;
+  return (await jsonFetch<{ version: string }>(target)).json?.version || null;
 }

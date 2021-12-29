@@ -5,9 +5,23 @@ import { extract as extractStream, pack as repackStream } from 'tar-stream';
 
 import type { Headers } from 'tar-stream';
 
+/**
+ * The shape of a single entry in an uncompressed tar archive.
+ */
 export type Entry = { headers: Headers; data: string };
 
+/**
+ * Returns a writable stream into which an _uncompressed_ (not gzipped) tar
+ * archive can be written. Writes into the stream are translated into entries,
+ * which are collected into the provided `entries` array.
+ *
+ * @param entries An array into which each entry encountered will be written.
+ */
 export function getEntries(entries: Entry[]): NodeJS.WritableStream;
+/**
+ * Accepts a readable _uncompressed_ (not gzipped) tar archive `stream` and
+ * returns an array of the archive's entries.
+ */
 export function getEntries(stream: NodeJS.ReadableStream): Promise<Entry[]>;
 export function getEntries(
   arg: NodeJS.ReadableStream | Entry[]
@@ -34,6 +48,12 @@ export function getEntries(
   }
 }
 
+/**
+ * Returns a Transform stream into which an _uncompressed_ (not gzipped) tar
+ * archive can be written. The tar archive's entries, excluding those that fall
+ * outside of `{ subdir }`, are repackaged into a new archive which can be read
+ * from the other end of the stream.
+ */
 export function extractSubdirAndRepack({ subdir }: { subdir: string }) {
   subdir = subdir ? (subdir.endsWith('/') ? subdir.slice(0, -1) : subdir) : '';
 
