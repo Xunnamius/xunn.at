@@ -65,7 +65,7 @@
     "babel-plugin-transform-default-named-imports": "^1.2.1",
     "bytes": "^3.1.1",
     "cors": "^2.8.5",
-    "find-up": "^6.2.0",
+    "find-up": "^5.0.0",
     "gunzip-maybe": "^1.4.2",
     "is-plain-object": "^5.0.0",
     "is-server-side": "^1.0.2",
@@ -87,7 +87,7 @@
   "devDependencies": {
     "@babel/cli": "^7.16.0",
     "@babel/eslint-parser": "^7.16.5",
-    "@commitlint/cli": "^16.0.0",
+    "@commitlint/cli": "^16.0.1",
     "@commitlint/config-conventional": "^16.0.0",
     "@next/eslint-plugin-next": "^12.0.7",
     "@semantic-release/changelog": "^6.0.1",
