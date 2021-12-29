@@ -1,6 +1,4 @@
 import { getDb } from 'multiverse/mongo-schema';
-import { getEnv } from 'multiverse/next-env';
-import { Octokit } from '@octokit/rest';
 import { pipeline } from 'stream/promises';
 import { jsonFetch } from 'multiverse/json-node-fetch';
 import fetch from 'node-fetch';
