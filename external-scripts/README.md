@@ -11,10 +11,10 @@ Note that externals must first be compiled before they can be run, i.e.
 
 ```Typescript
 import { debugNamespace as namespace } from 'universe/constants';
-import { getEnv } from 'universe/backend/env';
-import { ExternalError, IllegalExternalEnvironmentError } from 'universe/backend/error';
-import { getDb, closeDb } from 'universe/backend/db';
-import {debugFactory} from 'multiverse/debug-extended';
+import { getEnv } from '@xunnamius/next-env';
+import { ExternalError, IllegalExternalEnvironmentError } from 'universe/error';
+import { getDb, closeDb } from '@xunnamius/mongo-schema';
+import { debugFactory } from 'multiverse/debug-extended';
 
 // TODO:
 const debugNamespace = `${namespace}:EXTERNAL_SCRIPT_NAME_HERE`;
