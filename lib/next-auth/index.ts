@@ -1,4 +1,4 @@
-import { InvalidSecretError } from 'named-app-errors';
+import { GuruMeditationError, InvalidSecretError } from 'named-app-errors';
 import { getEnv } from 'multiverse/next-env';
 import { getDb } from 'multiverse/mongo-schema';
 
@@ -65,7 +65,7 @@ export type AuthScheme = typeof authSchemes[number];
  * Derives a token from the Authorization header using the well-known "auth"
  * MongoDB collection.
  */
-export function getToken({
+export async function getToken({
   header,
   allowedSchemes
 }: {
@@ -78,16 +78,22 @@ export function getToken({
     !/^\S+ \S/.test(header) ||
     header.length > getEnv().AUTH_HEADER_MAX_LENGTH
   ) {
-    throw new InvalidSecretError('missing or invalid authorization header');
+    throw new InvalidSecretError('HTTP Authorization header');
   }
 
   const [rawScheme, ...rawCredentials] = header.split(/\s/gi);
   const scheme = rawScheme.toLowerCase();
 
-  allowedSchemes = [allowedSchemes || 'bearer'].flat();
+  allowedSchemes = [allowedSchemes || 'bearer']
+    .flat()
+    .map((s) => s.toLowerCase() as typeof s);
 
-  if (!allowedSchemes.includes(scheme as AuthScheme)) {
-    throw new InvalidSecretError(`disallowed Authorization scheme "${scheme}"`);
+  const isAllowedScheme = (s: string): s is AuthScheme => {
+    return !!allowedSchemes?.includes(s as AuthScheme);
+  };
+
+  if (!isAllowedScheme(scheme)) {
+    throw new InvalidSecretError('HTTP Authorization scheme (disallowed or unknown)');
   }
 
   const credentials = rawCredentials.flatMap((c) => c.split(',')).filter(Boolean);
@@ -96,11 +102,14 @@ export function getToken({
     if (credentials.length == 1) {
       return { scheme, token: { bearer: credentials[0] } };
     } else {
-      throw new InvalidSecretError('invalid bearer parameters');
+      throw new InvalidSecretError('HTTP Authorization parameter(s)');
     }
-  } else {
-    throw new InvalidSecretError('invalid auth scheme');
   }
+
+  // ? TypeScript isn't yet smart enough to figure out that just reaching the
+  // ? end of the above if-statements implies scheme *must* be handled...
+  /* istanbul ignore next */
+  throw new GuruMeditationError('"unreachable" code encountered');
 }
 
 /**
@@ -115,17 +124,19 @@ export async function isValidAuthHeader({
   header: string | undefined;
   allowedSchemes?: AuthScheme | AuthScheme[];
 }) {
-  let scheme: ReturnType<typeof getToken>['scheme'];
-  let token: ReturnType<typeof getToken>['token'];
+  let scheme: Awaited<ReturnType<typeof getToken>>['scheme'];
+  let token: Awaited<ReturnType<typeof getToken>>['token'];
 
   try {
-    ({ scheme, token } = getToken({ header, allowedSchemes }));
+    ({ scheme, token } = await getToken({ header, allowedSchemes }));
   } catch (e) {
     return { valid: false, error: e };
   }
 
   return {
-    valid: (await getDb({ name: 'root' }))
+    valid: await (
+      await getDb({ name: 'root' })
+    )
       .collection<InternalAuthEntry>('auth')
       .findOne({ scheme, token })
       .then((r) => !!r)

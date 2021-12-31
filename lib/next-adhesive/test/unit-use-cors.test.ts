@@ -1,7 +1,11 @@
 import { testApiHandler } from 'next-test-api-route-handler';
 import { isolatedImport, wrapHandler, noopHandler } from 'testverse/setup';
 import { withMiddleware } from 'multiverse/next-api-glue';
-import useCors from 'universe/backend/middleware/use-cors';
+import useCors from 'multiverse/next-adhesive/use-cors';
+
+afterEach(() => {
+  jest.dontMock('cors');
+});
 
 it('works', async () => {
   expect.hasAssertions();
@@ -28,7 +32,6 @@ it('works', async () => {
 it('handles cors package errors gracefully', async () => {
   expect.hasAssertions();
 
-  // TODO: stop using do/dont mock since they're pretty much useless
   jest.doMock(
     'cors',
     () => () => (_req: unknown, _res: unknown, cb: (e: Error) => void) => {
@@ -41,7 +44,7 @@ it('handles cors package errors gracefully', async () => {
       withMiddleware(noopHandler, {
         use: [
           isolatedImport<typeof useCors>({
-            path: 'universe/backend/middleware/use-cors'
+            path: 'multiverse/next-adhesive/use-cors'
           })
         ],
         useOnError: [

@@ -444,9 +444,6 @@ describe('::setupTestDb', () => {
         },
         {
           NODE_ENV: 'test',
-          MONGODB_URI: 'fake',
-          RESULTS_PER_PAGE: '0',
-          MAX_CONTENT_LENGTH_BYTES: '100kb',
           VSCODE_INSPECTOR_OPTIONS: 'exists',
           MONGODB_MS_PORT: '5678'
         },

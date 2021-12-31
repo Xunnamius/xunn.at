@@ -1,7 +1,7 @@
 import { testApiHandler } from 'next-test-api-route-handler';
 import { mockEnvFactory, noopHandler, wrapHandler } from 'testverse/setup';
 import { withMiddleware } from 'multiverse/next-api-glue';
-import checkVersion, { Options } from 'universe/backend/middleware/check-version';
+import checkVersion, { Options } from 'multiverse/next-adhesive/check-version';
 
 const withMockedEnv = mockEnvFactory({}, { replace: false });
 

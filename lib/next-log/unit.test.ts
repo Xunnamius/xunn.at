@@ -65,4 +65,57 @@ describe('::addToRequestLog', () => {
       resStatusCode: 2222
     });
   });
+
+  it('handles null method and/or url', async () => {
+    expect.hasAssertions();
+
+    const req1 = {
+      headers: { 'x-forwarded-for': '9.9.9.9' },
+      method: null,
+      url: '/api/route/path1'
+    } as unknown as NextApiRequest;
+
+    const req2 = {
+      headers: {
+        'x-forwarded-for': '8.8.8.8',
+        authorization: `Bearer ${BANNED_BEARER_TOKEN}`
+      },
+      method: 'GET',
+      url: null
+    } as unknown as NextApiRequest;
+
+    const res1 = { statusCode: 1111 } as NextApiResponse;
+    const res2 = { statusCode: 2222 } as NextApiResponse;
+
+    await addToRequestLog({ req: req1, res: res1 });
+    await addToRequestLog({ req: req2, res: res2 });
+
+    const reqlog = (await getDb({ name: 'root' })).collection<
+      WithId<InternalRequestLogEntry>
+    >('request-log');
+
+    await expect(
+      reqlog.findOne({ resStatusCode: 1111 as HttpStatusCode })
+    ).resolves.toStrictEqual({
+      _id: expect.anything(),
+      ip: '9.9.9.9',
+      header: null,
+      route: '/api/route/path1',
+      method: null,
+      createdAt: generatedAt,
+      resStatusCode: 1111
+    });
+
+    await expect(
+      reqlog.findOne({ resStatusCode: 2222 as HttpStatusCode })
+    ).resolves.toStrictEqual({
+      _id: expect.anything(),
+      ip: '8.8.8.8',
+      header: `Bearer ${BANNED_BEARER_TOKEN}`,
+      route: null,
+      method: 'GET',
+      createdAt: generatedAt,
+      resStatusCode: 2222
+    });
+  });
 });

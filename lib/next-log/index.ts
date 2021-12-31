@@ -36,8 +36,8 @@ export async function addToRequestLog({
 }: {
   req: NextApiRequest;
   res: NextApiResponse;
-}) {
-  return (await getDb({ name: 'root' }))
+}): Promise<void> {
+  void (await getDb({ name: 'root' }))
     .collection<InternalRequestLogEntry>('request-log')
     .insertOne({
       ip: getClientIp(req),

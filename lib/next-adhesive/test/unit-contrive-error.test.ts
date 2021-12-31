@@ -1,11 +1,11 @@
 import { testApiHandler } from 'next-test-api-route-handler';
 import { asMockedFunction } from '@xunnamius/jest-types';
-import { isDueForContrivedError } from 'universe/backend/request';
+import { isDueForContrivedError } from 'multiverse/next-contrived';
 import { wrapHandler, noopHandler } from 'testverse/setup';
 import { withMiddleware } from 'multiverse/next-api-glue';
-import contriveError, { Options } from 'universe/backend/middleware/contrive-error';
+import contriveError, { Options } from 'multiverse/next-adhesive/contrive-error';
 
-jest.mock('universe/backend/request');
+jest.mock('multiverse/next-contrived');
 
 const mockIsDueForContrivedError = asMockedFunction(isDueForContrivedError);
 

@@ -1,12 +1,12 @@
 import { testApiHandler } from 'next-test-api-route-handler';
 import { asMockedFunction } from '@xunnamius/jest-types';
-import { addToRequestLog } from 'universe/backend/request';
+import { addToRequestLog } from 'multiverse/next-log';
 import { withMiddleware } from 'multiverse/next-api-glue';
 import { wrapHandler, noopHandler } from 'testverse/setup';
 import { toss } from 'toss-expression';
-import logRequest from 'universe/backend/middleware/log-request';
+import logRequest from 'multiverse/next-adhesive/log-request';
 
-jest.mock('universe/backend/request');
+jest.mock('multiverse/next-log');
 
 const mockAddToRequestLog = asMockedFunction(addToRequestLog);
 

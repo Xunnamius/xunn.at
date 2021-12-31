@@ -55,11 +55,20 @@ describe('::clientIsRateLimited', () => {
       url: '/api/route/path1'
     } as unknown as NextApiRequest);
 
+    const req6 = await clientIsRateLimited({
+      headers: {
+        authorization: `Bearer ${BANNED_BEARER_TOKEN}`
+      },
+      method: 'POST',
+      url: '/api/route/path1'
+    } as unknown as NextApiRequest);
+
     expect(req1.isLimited).toBeTrue();
     expect(req2.isLimited).toBeTrue();
     expect(req3.isLimited).toBeTrue();
     expect(req4.isLimited).toBeTrue();
     expect(req5.isLimited).toBeTrue();
+    expect(req6.isLimited).toBeTrue();
 
     const minToMs = (minutes: number) => 1000 * 60 * minutes;
     expect(req1.retryAfter).toBeWithin(minToMs(15) - 1000, minToMs(15) + 1000);
@@ -68,6 +77,7 @@ describe('::clientIsRateLimited', () => {
     expect(req4.retryAfter).toBeWithin(minToMs(15) - 1000, minToMs(15) + 1000);
     // ? Should return greater of the two ban times (key time > ip time)
     expect(req5.retryAfter).toBeWithin(minToMs(60) - 1000, minToMs(60) + 1000);
+    expect(req6.retryAfter).toBeWithin(minToMs(60) - 1000, minToMs(60) + 1000);
   });
 
   it('returns false if both ip and key (if provided) are not rate limited', async () => {

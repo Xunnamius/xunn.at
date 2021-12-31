@@ -83,46 +83,48 @@ export function getEnv<T extends Environment>(customizedEnv?: T) {
 
   debug(env);
 
-  // TODO: retire all of the following logic when expect-env is created
+  // TODO: retire all of the following logic when expect-env is created. Also,
+  // TODO: expect-env should have the ability to skip runs on certain NODE_ENV.
 
   const errors = [];
 
-  const envIsGtZero = (name: keyof typeof env) => {
-    if (
-      typeof env[name] != 'number' ||
-      isNaN(env[name] as number) ||
-      (env[name] as number) < 0
-    ) {
-      errors.push(`bad ${name}, saw "${env[name]}" (expected a non-negative number)`);
-    }
-  };
-
-  if (env.NODE_ENV == 'unknown') errors.push(`bad NODE_ENV, saw "${env.NODE_ENV}"`);
-
-  // TODO: expect-env should cover this use-case (server-only) as well
-  if (isServer()) {
-    if (env.MONGODB_URI === '') errors.push(`bad MONGODB_URI, saw "${env.MONGODB_URI}"`);
-
-    (['RESULTS_PER_PAGE', 'MAX_CONTENT_LENGTH_BYTES'] as (keyof typeof env)[]).forEach(
-      (name) => envIsGtZero(name)
-    );
-
-    env.DISALLOWED_METHODS.forEach((method) => {
-      if (!validHttpMethods.includes(method as ValidHttpMethod)) {
-        errors.push(
-          `unknown method "${method}", must be one of: ${validHttpMethods.join(', ')}`
-        );
+  if (env.NODE_ENV != 'test') {
+    const envIsGtZero = (name: keyof typeof env) => {
+      if (
+        typeof env[name] != 'number' ||
+        isNaN(env[name] as number) ||
+        (env[name] as number) < 0
+      ) {
+        errors.push(`bad ${name}, saw "${env[name]}" (expected a non-negative number)`);
       }
-    });
+    };
 
-    if (env.MONGODB_MS_PORT && env.MONGODB_MS_PORT <= 1024) {
-      errors.push(`optional environment variable MONGODB_MS_PORT must be > 1024`);
+    if (env.NODE_ENV == 'unknown') errors.push(`bad NODE_ENV, saw "${env.NODE_ENV}"`);
+
+    // TODO: expect-env should cover this use-case (server-only) as well.
+    if (isServer()) {
+      if (env.MONGODB_URI === '')
+        errors.push(`bad MONGODB_URI, saw "${env.MONGODB_URI}"`);
+
+      (['RESULTS_PER_PAGE', 'MAX_CONTENT_LENGTH_BYTES'] as (keyof typeof env)[]).forEach(
+        (name) => envIsGtZero(name)
+      );
+
+      env.DISALLOWED_METHODS.forEach((method) => {
+        if (!validHttpMethods.includes(method as ValidHttpMethod)) {
+          errors.push(
+            `unknown method "${method}", must be one of: ${validHttpMethods.join(', ')}`
+          );
+        }
+      });
+
+      if (env.MONGODB_MS_PORT && env.MONGODB_MS_PORT <= 1024) {
+        errors.push(`optional environment variable MONGODB_MS_PORT must be > 1024`);
+      }
     }
   }
 
   if (errors.length) {
-    throw new InvalidEnvironmentError(
-      `illegal environment detected:\n - ${errors.join('\n - ')}`
-    );
+    throw new InvalidEnvironmentError(`bad variables:\n - ${errors.join('\n - ')}`);
   } else return env as typeof env & T;
 }

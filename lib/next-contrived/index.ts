@@ -14,7 +14,7 @@ let requestCounter = 0;
 export function isDueForContrivedError() {
   const { REQUESTS_PER_CONTRIVED_ERROR: reqPerErr } = getEnv();
 
-  if (++requestCounter >= reqPerErr) {
+  if (reqPerErr && ++requestCounter >= reqPerErr) {
     requestCounter = 0;
     return true;
   } else {
