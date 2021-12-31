@@ -1,7 +1,7 @@
 import { debugNamespace as namespace } from 'universe/constants';
 import { getEnv } from 'universe/backend/env';
-import { ExternalError, IllegalExternalEnvironmentError } from 'universe/error';
-import { getDb } from 'universe/backend/db';
+import { AppError, InvalidEnvironmentError } from 'named-app-errors';
+import { getDb } from 'multiverse/mongo-schema';
 import { toss } from 'toss-expression';
 import { debugFactory } from 'multiverse/debug-extended';
 
@@ -22,18 +22,10 @@ const getCollectionLimits = (env: ReturnType<typeof getEnv>) => {
   const limits = {
     'request-log':
       env.PRUNE_DATA_MAX_LOGS ||
-      toss(
-        new IllegalExternalEnvironmentError(
-          'PRUNE_DATA_MAX_LOGS must be greater than zero'
-        )
-      ),
+      toss(new InvalidEnvironmentError('PRUNE_DATA_MAX_LOGS must be greater than zero')),
     'limited-log':
       env.PRUNE_DATA_MAX_BANNED ||
-      toss(
-        new IllegalExternalEnvironmentError(
-          'PRUNE_DATA_MAX_BANNED must be greater than zero'
-        )
-      )
+      toss(new InvalidEnvironmentError('PRUNE_DATA_MAX_BANNED must be greater than zero'))
   };
 
   debug('limits: %O', limits);
@@ -81,7 +73,7 @@ export default async function main() {
 
     log('execution complete');
   } catch (e) {
-    throw new ExternalError(`${e instanceof Error ? e.message : e}`);
+    throw new AppError(`${e}`);
   }
 }
 

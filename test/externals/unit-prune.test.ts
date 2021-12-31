@@ -1,13 +1,15 @@
-import { dummyRootData, setupTestDb } from 'testverse/db';
 import pruneData from 'externals/prune-data';
+import { withMockedEnv } from 'testverse/setup';
+import { setupTestDb } from 'multiverse/mongo-test';
+import { getDb } from 'multiverse/mongo-schema';
+import { dummyRootData } from 'multiverse/mongo-common';
 
-import type { InternalRequestLogEntry } from 'types/global';
+import type { InternalRequestLogEntry } from 'multiverse/next-log';
 import type { WithId } from 'mongodb';
-import { withMockedEnv } from '../setup';
 
 const testCollections = ['request-log', 'limited-log'];
 
-const { getDb } = setupTestDb();
+setupTestDb();
 
 const countCollection = async (collections: string | string[]) => {
   const result = Object.assign(

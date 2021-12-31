@@ -1,41 +1,51 @@
-import { BANNED_TOKEN } from 'universe/backend';
-import { setupTestDb } from 'testverse/db';
+import banHammer from 'externals/ban-hammer';
+import { BANNED_BEARER_TOKEN } from 'multiverse/next-auth';
+import { setupTestDb } from 'multiverse/mongo-test';
 import { GuruMeditationError } from 'universe/error';
 import { withMockedEnv } from 'testverse/setup';
-import banHammer from 'externals/ban-hammer';
+import { getDb } from 'multiverse/mongo-schema';
+import { generatedAt } from 'multiverse/mongo-common';
 
-import type { InternalRequestLogEntry, InternalLimitedLogEntry } from 'types/global';
+import type { InternalLimitedLogEntry } from 'multiverse/next-limit';
+import type { InternalRequestLogEntry } from 'multiverse/next-log';
 import type { WithId } from 'mongodb';
 
 const TEST_MARGIN_MS = 1000;
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 
-const { getDb } = setupTestDb();
+setupTestDb();
 
-const getRequestLogCollection = async () =>
-  (await getDb({ name: 'root' })).collection<WithId<InternalRequestLogEntry>>(
+const getRequestLogCollection = async () => {
+  return (await getDb({ name: 'root' })).collection<WithId<InternalRequestLogEntry>>(
     'request-log'
   );
+};
 
-const getRateLimitsCollection = async () =>
-  (await getDb({ name: 'root' })).collection<WithId<InternalLimitedLogEntry>>(
+const getRateLimitsCollection = async () => {
+  return (await getDb({ name: 'root' })).collection<WithId<InternalLimitedLogEntry>>(
     'limited-log'
   );
+};
 
-const getRateLimits = async () =>
-  (await getRateLimitsCollection()).find().project({ _id: 0, ip: 1, key: 1 }).toArray();
+const getRateLimits = async () => {
+  return (await getRateLimitsCollection())
+    .find()
+    .project({ _id: 0, ip: 1, header: 1 })
+    .toArray();
+};
 
-const getRateLimitUntils = async () =>
-  (await getRateLimitsCollection()).find().project({ _id: 0, until: 1 }).toArray();
+const getRateLimitUntils = async () => {
+  return (await getRateLimitsCollection()).find().project({ _id: 0, until: 1 }).toArray();
+};
 
 describe('external-scripts/ban-hammer', () => {
-  it('rate limits only those ips/keys that exceed limits', async () => {
+  it('rate limits only those ips and auth headers that exceed limits', async () => {
     expect.hasAssertions();
 
-    const now = ((n: number) => n - (n % 5000) - 1000)(Date.now());
+    const now = ((n: number) => n - (n % 5000) - 1000)(generatedAt);
 
     await (await getRateLimitsCollection()).deleteMany({});
-    await (await getRequestLogCollection()).updateMany({}, { $set: { time: now } });
+    await (await getRequestLogCollection()).updateMany({}, { $set: { createdAt: now } });
 
     await withMockedEnv(
       banHammer,
@@ -48,13 +58,16 @@ describe('external-scripts/ban-hammer', () => {
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
-      { key: BANNED_TOKEN }
+      { header: `bearer ${BANNED_BEARER_TOKEN}` }
     ]);
 
     await (await getRateLimitsCollection()).deleteMany({});
     await (
       await getRequestLogCollection()
-    ).updateMany({ key: BANNED_TOKEN }, { $set: { ip: '9.8.7.6' } });
+    ).updateMany(
+      { header: `bearer ${BANNED_BEARER_TOKEN}` },
+      { $set: { ip: '9.8.7.6' } }
+    );
 
     await withMockedEnv(
       banHammer,
@@ -68,7 +81,7 @@ describe('external-scripts/ban-hammer', () => {
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
       { ip: '9.8.7.6' },
-      { key: BANNED_TOKEN }
+      { header: `bearer ${BANNED_BEARER_TOKEN}` }
     ]);
 
     await (await getRateLimitsCollection()).deleteMany({});
@@ -76,11 +89,11 @@ describe('external-scripts/ban-hammer', () => {
       await getRequestLogCollection()
     ).insertOne({
       ip: '1.2.3.4',
-      key: BANNED_TOKEN,
+      header: `bearer ${BANNED_BEARER_TOKEN}`,
       method: 'PUT',
       resStatusCode: 200,
       route: 'jest/test',
-      time: now - 1000
+      createdAt: now - 1000
     });
 
     await withMockedEnv(
@@ -105,7 +118,7 @@ describe('external-scripts/ban-hammer', () => {
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
-      { key: BANNED_TOKEN }
+      { header: `bearer ${BANNED_BEARER_TOKEN}` }
     ]);
 
     await (await getRateLimitsCollection()).deleteMany({});
@@ -132,10 +145,13 @@ describe('external-scripts/ban-hammer', () => {
 
     if (!requestLogEntry) throw new GuruMeditationError('No request-log entry found?!');
 
-    const now = ((_now: number) => _now - (_now % 5000) - 2000)(Date.now());
+    const now = ((_now: number) => _now - (_now % 5000) - 2000)(generatedAt);
 
-    await requestLogDb.updateMany({ key: BANNED_TOKEN }, { $set: { ip: '9.8.7.6' } });
-    await requestLogDb.updateMany({}, { $set: { time: now } });
+    await requestLogDb.updateMany(
+      { header: `bearer ${BANNED_BEARER_TOKEN}` },
+      { $set: { ip: '9.8.7.6' } }
+    );
+    await requestLogDb.updateMany({}, { $set: { createdAt: now } });
 
     await withMockedEnv(
       banHammer,
@@ -160,7 +176,7 @@ describe('external-scripts/ban-hammer', () => {
     );
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
-      { key: BANNED_TOKEN },
+      { header: `bearer ${BANNED_BEARER_TOKEN}` },
       { ip: '9.8.7.6' },
       { ip: '1.2.3.4' }
     ]);
@@ -172,9 +188,12 @@ describe('external-scripts/ban-hammer', () => {
     await (await getRateLimitsCollection()).deleteMany({});
     await (
       await getRequestLogCollection()
-    ).updateMany({ key: BANNED_TOKEN }, { $set: { ip: '9.8.7.6' } });
+    ).updateMany(
+      { header: `bearer ${BANNED_BEARER_TOKEN}` },
+      { $set: { ip: '9.8.7.6' } }
+    );
 
-    const now = Date.now();
+    const now = generatedAt;
     let untils;
 
     await withMockedEnv(
@@ -266,7 +285,7 @@ describe('external-scripts/ban-hammer', () => {
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
-      { key: BANNED_TOKEN }
+      { header: `bearer ${BANNED_BEARER_TOKEN}` }
     ]);
   });
 });

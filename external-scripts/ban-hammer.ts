@@ -1,7 +1,7 @@
 import { debugNamespace as namespace } from 'universe/constants';
 import { getEnv } from 'universe/backend/env';
-import { ExternalError, IllegalExternalEnvironmentError } from 'universe/error';
-import { getDb } from 'universe/backend/db';
+import { AppError, InvalidEnvironmentError } from 'named-app-errors';
+import { getDb } from 'multiverse/mongo-schema';
 import { debugFactory } from 'multiverse/debug-extended';
 
 const debugNamespace = `${namespace}:ban-hammer`;
@@ -29,31 +29,31 @@ export default async function main() {
     } = getEnv();
 
     if (!calledEverySeconds || !(Number(calledEverySeconds) > 0)) {
-      throw new IllegalExternalEnvironmentError(
+      throw new InvalidEnvironmentError(
         'BAN_HAMMER_WILL_BE_CALLED_EVERY_SECONDS must be greater than zero'
       );
     }
 
     if (!maxRequestsPerWindow || !(Number(maxRequestsPerWindow) > 0)) {
-      throw new IllegalExternalEnvironmentError(
+      throw new InvalidEnvironmentError(
         'BAN_HAMMER_MAX_REQUESTS_PER_WINDOW must be greater than zero'
       );
     }
 
     if (!resolutionWindowSeconds || !(Number(resolutionWindowSeconds) > 0)) {
-      throw new IllegalExternalEnvironmentError(
+      throw new InvalidEnvironmentError(
         'BAN_HAMMER_RESOLUTION_WINDOW_SECONDS must be greater than zero'
       );
     }
 
     if (!defaultBanTimeMinutes || !(Number(defaultBanTimeMinutes) > 0)) {
-      throw new IllegalExternalEnvironmentError(
+      throw new InvalidEnvironmentError(
         'BAN_HAMMER_DEFAULT_BAN_TIME_MINUTES must be greater than zero'
       );
     }
 
     if (!punishMultiplier || !(Number(punishMultiplier) > 0)) {
-      throw new IllegalExternalEnvironmentError(
+      throw new InvalidEnvironmentError(
         'BAN_HAMMER_RECIDIVISM_PUNISH_MULTIPLIER must be greater than zero'
       );
     }
@@ -80,7 +80,7 @@ export default async function main() {
           pipeline: [
             {
               $match: {
-                key: { $ne: null },
+                header: { $ne: null },
                 $expr: {
                   $gte: ['$time', { $subtract: [{ $toLong: '$$NOW' }, calledEveryMs] }]
                 }
@@ -89,7 +89,7 @@ export default async function main() {
             {
               $group: {
                 _id: {
-                  key: '$key',
+                  header: '$header',
                   interval: {
                     $subtract: ['$time', { $mod: ['$time', resolutionWindowMs] }]
                   }
@@ -104,7 +104,7 @@ export default async function main() {
             },
             {
               $project: {
-                key: '$_id.key',
+                header: '$_id.key',
                 until: { $add: [{ $toLong: '$$NOW' }, defaultBanTimeMs] }
               }
             },
@@ -190,7 +190,7 @@ export default async function main() {
       },
       {
         $project: {
-          union: { $concatArrays: ['$keyBased', '$ipBased', '$previous'] }
+          union: { $concatArrays: ['$headerBased', '$ipBased', '$previous'] }
         }
       },
       {
@@ -207,7 +207,7 @@ export default async function main() {
         $group: {
           _id: {
             ip: '$ip',
-            key: '$key'
+            header: '$header'
           },
           count: {
             $sum: 1
@@ -232,7 +232,7 @@ export default async function main() {
             }
           },
           ip: '$_id.ip',
-          key: '$_id.key'
+          header: '$_id.key'
         }
       },
       {
@@ -255,7 +255,7 @@ export default async function main() {
 
     log('execution complete');
   } catch (e) {
-    throw new ExternalError(`${e instanceof Error ? e.message : e}`);
+    throw new AppError(`${e}`);
   }
 }
 

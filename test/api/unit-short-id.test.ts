@@ -1,6 +1,7 @@
 import Endpoint, { config as Config } from 'universe/pages/api/[shortId]';
 import { githubPackageDownloadPipeline } from 'universe/backend/github-pkg';
-import { isRateLimited, resolveShortId } from 'universe/backend/request';
+import { clientIsRateLimited } from 'multiverse/next-limit';
+import { resolveShortId } from 'universe/backend';
 import { asMockedFunction } from '@xunnamius/jest-types';
 import { testApiHandler } from 'next-test-api-route-handler';
 import { toss } from 'toss-expression';
@@ -8,19 +9,20 @@ import { TrialError } from 'named-app-errors';
 import { withMockedOutput } from 'testverse/setup';
 
 jest.mock('universe/backend/github-pkg');
-jest.mock('universe/backend/request');
+jest.mock('multiverse/next-limit');
+jest.mock('universe/backend');
 
 const handler = Endpoint as typeof Endpoint & { config?: typeof Config };
 handler.config = Config;
 
 const mockPkgPipeline = asMockedFunction(githubPackageDownloadPipeline);
+const mockedIsRateLimited = asMockedFunction(clientIsRateLimited);
 const mockResolveShortId = asMockedFunction(resolveShortId);
-const mockedIsRateLimited = asMockedFunction(isRateLimited);
 
 beforeEach(() => {
   mockedIsRateLimited.mockImplementation(() =>
     Promise.resolve({
-      limited: false,
+      isLimited: false,
       retryAfter: 0
     })
   );

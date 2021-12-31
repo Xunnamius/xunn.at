@@ -98,6 +98,7 @@ export async function getToken({
 
   const credentials = rawCredentials.flatMap((c) => c.split(',')).filter(Boolean);
 
+  /* istanbul ignore else */
   if (scheme == 'bearer') {
     if (credentials.length == 1) {
       return { scheme, token: { bearer: credentials[0] } };
@@ -107,7 +108,8 @@ export async function getToken({
   }
 
   // ? TypeScript isn't yet smart enough to figure out that just reaching the
-  // ? end of the above if-statements implies scheme *must* be handled...
+  // ? end of the above if-statements implies scheme *must* be handled. At the
+  // ? same time, istanbul isn't smart enough to just ignore the final "else"...
   /* istanbul ignore next */
   throw new GuruMeditationError('"unreachable" code encountered');
 }

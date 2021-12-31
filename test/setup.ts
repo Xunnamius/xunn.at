@@ -15,7 +15,7 @@ import gitFactory from 'simple-git';
 import 'jest-extended/all';
 import 'jest-extended';
 
-import type { Debugger } from 'debug';
+import type { Debugger } from 'multiverse/debug-extended';
 import type { SimpleGit } from 'simple-git';
 import type { Promisable } from 'type-fest';
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
