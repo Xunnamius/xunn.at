@@ -9,7 +9,12 @@ import type { Primitive } from 'type-fest';
 
 const debug = debugFactory('next-env:env');
 
-const envToArray = (envVal: string) => {
+/**
+ * This method takes an environment variable value (string), removes illegal
+ * characters, and then splits the string by its commas, returning the resulting
+ * array with all nullish members filtered out.
+ */
+export const envToArray = (envVal: string) => {
   return envVal
     .replace(/[^A-Za-z0-9=.<>,-^~_*]+/g, '')
     .split(',')
@@ -85,10 +90,9 @@ export function getEnv<T extends Environment>(customizedEnv?: T) {
 
   // TODO: retire all of the following logic when expect-env is created. Also,
   // TODO: expect-env should have the ability to skip runs on certain NODE_ENV.
-
-  const errors = [];
-
+  /* istanbul ignore next */
   if (env.NODE_ENV != 'test') {
+    const errors = [];
     const envIsGtZero = (name: keyof typeof env) => {
       if (
         typeof env[name] != 'number' ||
@@ -122,9 +126,11 @@ export function getEnv<T extends Environment>(customizedEnv?: T) {
         errors.push(`optional environment variable MONGODB_MS_PORT must be > 1024`);
       }
     }
+
+    if (errors.length) {
+      throw new InvalidEnvironmentError(`bad variables:\n - ${errors.join('\n - ')}`);
+    }
   }
 
-  if (errors.length) {
-    throw new InvalidEnvironmentError(`bad variables:\n - ${errors.join('\n - ')}`);
-  } else return env as typeof env & T;
+  return env as typeof env & T;
 }

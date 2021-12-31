@@ -285,7 +285,7 @@ describe('::sendHttpBadMethod', () => {
           expect(res.status).toBe(429);
           await expect(res.json()).resolves.toStrictEqual({
             success: false,
-            error: 'session is rate limited'
+            error: 'client is rate limited'
           });
         }
       });
@@ -299,7 +299,7 @@ describe('::sendHttpBadMethod', () => {
           expect(res.status).toBe(429);
           await expect(res.json()).resolves.toStrictEqual({
             success: false,
-            error: 'session is rate limited',
+            error: 'client is rate limited',
             json: 'data'
           });
         }
@@ -388,7 +388,7 @@ describe('::sendHttpBadMethod', () => {
           expect(res.status).toBe(401);
           await expect(res.json()).resolves.toStrictEqual({
             success: false,
-            error: 'session is not authenticated'
+            error: 'client is not authenticated'
           });
         }
       });
@@ -402,7 +402,7 @@ describe('::sendHttpBadMethod', () => {
           expect(res.status).toBe(401);
           await expect(res.json()).resolves.toStrictEqual({
             success: false,
-            error: 'session is not authenticated',
+            error: 'client is not authenticated',
             json: 'data'
           });
         }
@@ -423,7 +423,7 @@ describe('::sendHttpBadMethod', () => {
           expect(res.status).toBe(403);
           await expect(res.json()).resolves.toStrictEqual({
             success: false,
-            error: 'session is not authorized'
+            error: 'client is not authorized to access this resource'
           });
         }
       });
@@ -437,7 +437,7 @@ describe('::sendHttpBadMethod', () => {
           expect(res.status).toBe(403);
           await expect(res.json()).resolves.toStrictEqual({
             success: false,
-            error: 'session is not authorized',
+            error: 'client is not authorized to access this resource',
             json: 'data'
           });
         }

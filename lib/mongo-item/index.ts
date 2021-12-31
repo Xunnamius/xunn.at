@@ -18,8 +18,26 @@ export type ItemExistsIdParam =
  * Available options for the `itemExists` function.
  */
 export type ItemExistsOptions = {
+  /**
+   * Items matching excludeId will be completely ignored by this function.
+   *
+   * @default undefined
+   */
   excludeId?: ItemExistsIdParam;
+  /**
+   * If `true`, ids will be matched in a case-insensitive manner (via locale).
+   *
+   * @default false
+   */
   caseInsensitive?: boolean;
+  /**
+   * When looking for an item matching `{ _id: id }`, where the property is
+   * `"_id"` is a string, `id` will be optimistically wrapped in a `new
+   * ObjectId(id)` call. Set this to `false` to prevent this.
+   *
+   * @default true
+   */
+  optimisticCoercion?: boolean;
 };
 
 /**
@@ -67,6 +85,14 @@ export async function itemExists<T>(
     );
   }
 
+  if (
+    options?.optimisticCoercion !== false &&
+    typeof id == 'string' &&
+    idProperty == '_id'
+  ) {
+    id = new ObjectId(id);
+  }
+
   const result = collection.find({
     [idProperty]: id,
     ...(excludeIdProperty ? { [excludeIdProperty]: { $ne: excludeId } } : {})
@@ -93,8 +119,8 @@ export type IdItemArray<T extends ObjectId> =
   | WithId<unknown>[]
   | string[]
   | T[]
-  | null
-  | undefined;
+  | null[]
+  | undefined[];
 
 /**
  * Reduces an `item` down to its `ObjectId` instance.
@@ -110,20 +136,20 @@ export function itemToObjectId<T extends ObjectId>(
   return item instanceof ObjectId
     ? item
     : Array.isArray(item)
-    ? item.map((i: unknown) => {
+    ? item.map((i) => {
         return (
           i instanceof ObjectId
             ? i
             : typeof i == 'string'
             ? new ObjectId(i)
-            : i
-            ? (i as WithId<unknown>)._id
+            : i?._id instanceof ObjectId
+            ? i._id
             : toss(new GuruMeditationError(`encountered irreducible sub-item: ${i}`))
         ) as T;
       })
     : typeof item == 'string'
     ? (new ObjectId(item) as T)
-    : item
+    : item?._id instanceof ObjectId
     ? (item._id as T)
     : toss(new GuruMeditationError(`encountered irreducible item: ${item}`));
 }
