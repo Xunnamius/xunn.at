@@ -2,70 +2,52 @@
 import { isolatedImportFactory, withMockedEnv } from 'testverse/setup';
 import { Db, MongoClient } from 'mongodb';
 import { asMockedClass, asMockedFunction } from '@xunnamius/jest-types';
+import { findProjectRoot } from 'multiverse/find-project-root';
 
-import type { DbSchema } from 'universe/backend/db';
-import { DummyData } from 'testverse/db';
-
-jest.mock('universe/backend/db/schema', () => {
-  mockDbSchema = mockDbSchema || {
-    databases: {
-      'fake-db-1': {
-        collections: ['col']
-      },
-
-      'fake-db-2': {
-        collections: [
-          'col-1',
-          { name: 'col-2', createOptions: { capped: true } },
-          { name: 'col-3', indices: [{ spec: 'some-key' }] },
-          {
-            name: 'col-4',
-            indices: [{ spec: ['some-key', -1], options: { comment: '' } }]
-          }
-        ]
-      }
-    },
-    aliases: {
-      'fake-alias-1': 'fake-db-1',
-      'fake-alias-2': 'fake-db-2'
-    }
-  };
-  return { schema: mockDbSchema };
-});
-
-jest.mock('testverse/db.schema', () => {
-  const now = Date.now();
-
-  mockDummyDbData = mockDummyDbData || {
-    'fake-db-1': {
-      _generatedAt: now,
-      col: [{ item: 1 }, { item: 2 }, { item: 3 }]
-    },
-    'fake-db-2': {
-      _generatedAt: now,
-      'col-1': [{ item: 'a' }, { item: 'b' }],
-      'col-does-not-exist': [{ fake: true }]
-    }
-  };
-
-  return { getDummyData: () => mockDummyDbData };
-});
+import type { TestCustomizations } from 'multiverse/mongo-test';
 
 jest.mock('mongodb');
+jest.mock('multiverse/find-project-root');
+jest.mock(`${__dirname}/db`, () => mockedMongoCustomizations, { virtual: true });
 
-let mockDbSchema: DbSchema;
-let mockDummyDbData: DummyData;
 const mockMongoClient = asMockedClass(MongoClient);
+const mockFindProjectRoot = asMockedFunction(findProjectRoot);
+let mockedMongoCustomizations: TestCustomizations;
 
-const importDbLib = isolatedImportFactory<typeof import('universe/backend/db')>({
-  path: 'universe/backend/db'
-});
-
-const importTestDbLib = isolatedImportFactory<typeof import('testverse/db')>({
-  path: 'testverse/db'
+const importDbLib = isolatedImportFactory<typeof import('multiverse/mongo-schema')>({
+  path: 'multiverse/mongo-schema'
 });
 
 beforeEach(() => {
+  mockFindProjectRoot.mockImplementation(() => __dirname);
+  mockedMongoCustomizations = mockedMongoCustomizations || {};
+
+  mockedMongoCustomizations.getSchemaConfig = async () => {
+    return {
+      databases: {
+        'fake-db-1': {
+          collections: ['col']
+        },
+
+        'fake-db-2': {
+          collections: [
+            'col-1',
+            { name: 'col-2', createOptions: { capped: true } },
+            { name: 'col-3', indices: [{ spec: 'some-key' }] },
+            {
+              name: 'col-4',
+              indices: [{ spec: ['some-key', -1], options: { comment: '' } }]
+            }
+          ]
+        }
+      },
+      aliases: {
+        'fake-alias-1': 'fake-db-1',
+        'fake-alias-2': 'fake-db-2'
+      }
+    };
+  };
+
   mockMongoClient.connect = jest.fn((url: string) =>
     Promise.resolve(
       new (class {
@@ -98,6 +80,73 @@ beforeEach(() => {
       })() as unknown as MongoClient
     )
   );
+});
+
+describe('::getSchemaConfig', () => {
+  it('dynamically imports customizations', async () => {
+    expect.hasAssertions();
+
+    await expect(importDbLib().getSchemaConfig()).resolves.toStrictEqual(
+      await mockedMongoCustomizations.getSchemaConfig()
+    );
+  });
+
+  it('falls back to alternative paths when original path fails', async () => {
+    expect.hasAssertions();
+
+    const mockGetSchemaConfig = jest.fn(mockedMongoCustomizations.getSchemaConfig);
+    const schemaConfig = await mockedMongoCustomizations.getSchemaConfig();
+
+    // @ts-expect-error: don't care that we're deleting a non-optional prop
+    delete mockedMongoCustomizations.getSchemaConfig;
+
+    jest.doMock(
+      `${__dirname}/src/backend/db`,
+      () => ({ getSchemaConfig: mockGetSchemaConfig }),
+      { virtual: true }
+    );
+
+    expect(mockGetSchemaConfig).toBeCalledTimes(0);
+
+    await expect(importDbLib().getSchemaConfig()).resolves.toStrictEqual(schemaConfig);
+
+    expect(mockGetSchemaConfig).toBeCalledTimes(1);
+
+    jest.dontMock(`${__dirname}/src/backend/db`);
+    jest.doMock(`${__dirname}/src/db`, () => ({ getSchemaConfig: mockGetSchemaConfig }), {
+      virtual: true
+    });
+
+    await expect(importDbLib().getSchemaConfig()).resolves.toStrictEqual(schemaConfig);
+
+    expect(mockGetSchemaConfig).toBeCalledTimes(2);
+
+    jest.dontMock(`${__dirname}/src/db`);
+  });
+
+  it('uses given path exclusively if provided', async () => {
+    expect.hasAssertions();
+
+    await expect(importDbLib().getSchemaConfig()).resolves.toStrictEqual(
+      await mockedMongoCustomizations.getSchemaConfig()
+    );
+
+    // @ts-expect-error: don't care that we're deleting a non-optional prop
+    delete mockedMongoCustomizations.getSchemaConfig;
+    await expect(importDbLib().getSchemaConfig()).rejects.toThrow(
+      `\n\n  - ${__dirname}/db\n  - ${__dirname}/src/db\n  - ${__dirname}/src/backend/db`
+    );
+  });
+
+  it('rejects if customizations are unavailable', async () => {
+    expect.hasAssertions();
+
+    // @ts-expect-error: don't care that we're deleting a non-optional prop
+    delete mockedMongoCustomizations.getSchemaConfig;
+    await expect(importDbLib().getSchemaConfig()).rejects.toThrow(
+      `\n\n  - ${__dirname}/db\n  - ${__dirname}/src/db\n  - ${__dirname}/src/backend/db`
+    );
+  });
 });
 
 describe('::getClient', () => {
@@ -256,13 +305,15 @@ describe('::destroyDb', () => {
 describe('::getNameFromAlias', () => {
   it('returns an actual database name', async () => {
     expect.hasAssertions();
-    expect(importDbLib().getNameFromAlias('fake-alias-2')).toBe('fake-db-2');
+    await expect(importDbLib().getNameFromAlias('fake-alias-2')).resolves.toBe(
+      'fake-db-2'
+    );
   });
 
   it('throws if database is not in schema', async () => {
     expect.hasAssertions();
-    expect(() => importDbLib().getNameFromAlias('fake-alias-3')).toThrow(
-      'schema "fake-alias-3" is not defined'
+    await expect(importDbLib().getNameFromAlias('fake-alias-3')).rejects.toThrow(
+      'database "fake-alias-3" is not defined'
     );
   });
 });
@@ -275,19 +326,20 @@ describe('::initializeDb', () => {
 
     await withMockedEnv(
       async () => {
+        const schema = await lib.getSchemaConfig();
         const db1 = await lib.getDb({ name: 'fake-db-1' });
         const db2 = await lib.getDb({ name: 'fake-db-2' });
 
         await lib.initializeDb({ name: 'fake-db-1' });
         await lib.initializeDb({ name: 'fake-db-2' });
 
-        mockDbSchema.databases['fake-db-1'].collections.forEach((col) => {
+        schema.databases['fake-db-1'].collections.forEach((col) => {
           expect(db1.createCollection).toBeCalledWith(
             ...(typeof col == 'string' ? [col, undefined] : [col.name, col.createOptions])
           );
         });
 
-        mockDbSchema.databases['fake-db-2'].collections.forEach((col) => {
+        schema.databases['fake-db-2'].collections.forEach((col) => {
           if (typeof col == 'string') {
             expect(db2.createCollection).toBeCalledWith(col, undefined);
           } else {
@@ -303,86 +355,6 @@ describe('::initializeDb', () => {
       },
       { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' },
       { replace: false }
-    );
-  });
-});
-
-describe('::hydrateDb', () => {
-  let oldMockDummyDbData: typeof mockDummyDbData;
-
-  beforeEach(() => {
-    oldMockDummyDbData = mockDummyDbData;
-  });
-
-  afterEach(() => {
-    mockDummyDbData = oldMockDummyDbData;
-    jest.dontMock('universe/backend/db');
-  });
-
-  it('fills a database with dummy data', async () => {
-    expect.hasAssertions();
-
-    const lib = importDbLib();
-    jest.doMock('universe/backend/db', () => lib);
-    const testLib = importTestDbLib();
-    const db = await lib.getDb({ name: 'fake-db-1' });
-
-    await expect(testLib.hydrateDb({ name: 'fake-db-1' })).toResolve();
-
-    Object.entries(mockDummyDbData['fake-db-1']).forEach(([colName, colData]) => {
-      if (colName != '_generatedAt') {
-        expect(db.collection).toBeCalledWith(colName);
-        // ? The createIndex method is reused for easy access to the target mock
-        expect(db.createIndex).toBeCalledWith(colData);
-      }
-    });
-
-    // eslint-disable-next-line jest/unbound-method
-    asMockedFunction(db.collection).mockClear();
-    // eslint-disable-next-line jest/unbound-method
-    asMockedFunction(db.createIndex).mockClear();
-
-    mockDummyDbData = {
-      'fake-db-1': {
-        _generatedAt: 0,
-        col: { item: 'single', name: 'just-the-one' }
-      }
-    };
-
-    await expect(testLib.hydrateDb({ name: 'fake-db-1' })).toResolve();
-    expect(db.collection).toBeCalledWith('col');
-    // ? The createIndex method is reused for easy access to the target mock
-    expect(db.createIndex).toBeCalledWith([mockDummyDbData['fake-db-1'].col]);
-  });
-
-  it('throws if database in schema has no corresponding dummy data', async () => {
-    expect.hasAssertions();
-
-    const lib = importDbLib();
-    jest.doMock('universe/backend/db', () => lib);
-    const testLib = importTestDbLib();
-
-    mockDummyDbData = {
-      'fake-db-1': {
-        _generatedAt: 0,
-        col: { item: 'single', name: 'just-the-one' }
-      }
-    };
-
-    await expect(testLib.hydrateDb({ name: 'fake-db-2' })).rejects.toThrow(
-      /dummy data for database "fake-db-2" does not exist/
-    );
-  });
-
-  it('throws if collection referenced in dummy data is not in schema', async () => {
-    expect.hasAssertions();
-
-    const lib = importDbLib();
-    jest.doMock('universe/backend/db', () => lib);
-    const testLib = importTestDbLib();
-
-    await expect(testLib.hydrateDb({ name: 'fake-db-2' })).rejects.toThrow(
-      /collection "fake-db-2.col-does-not-exist" referenced in dummy data is not defined in source db schema/
     );
   });
 });

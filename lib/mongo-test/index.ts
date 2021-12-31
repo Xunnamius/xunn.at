@@ -3,12 +3,11 @@ import { getEnv } from 'multiverse/next-env';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { InvalidConfigurationError } from 'named-app-errors';
 import { debugFactory } from 'multiverse/debug-extended';
-import { findNextJSProjectRoot } from 'multiverse/next-project-root';
+import { findProjectRoot } from 'multiverse/find-project-root';
 
 import {
   getSchemaConfig,
   overwriteMemory,
-  getClient,
   getDb,
   getNameFromAlias,
   initializeDb,
@@ -17,33 +16,12 @@ import {
 } from 'multiverse/mongo-schema';
 
 import type { Document } from 'mongodb';
-import type { Promisable } from 'type-fest';
+import type { DbSchema } from 'multiverse/mongo-schema';
 
 // TODO: this package must be published transpiled to cjs by babel but NOT
 // TODO: webpacked!
 
 const debug = debugFactory('mongo-test:test-db');
-
-/**
- * Finds the file at `${nextProjectRoot}/test/db` or
- * `${nextProjectRoot}/test/backend/db`, imports it, and calls the
- * `getDummyData` function defined within.
- */
-export async function getDummyData() {
-  const root = findNextJSProjectRoot();
-  const paths = [`${root}/test/db`, `${root}/test/backend/db`];
-  const { getDummyData: importDummyData } = (await import(paths[0])
-    .catch(() => import(paths[1]))
-    .catch(() => ({}))) as { getDummyData?: () => Promisable<DummyData> };
-
-  if (!importDummyData) {
-    throw new InvalidConfigurationError(
-      `could not resolve dummy data; one of the following import paths must resolve to a file with an (optionally) async "getDummyData" function that returns a DummyData object:\n\n  - ${paths[0]}\n\n  - ${paths[1]}`
-    );
-  }
-
-  return importDummyData();
-}
 
 /**
  * Generic dummy data used to hydrate databases and their collections.
@@ -65,6 +43,54 @@ export type DummyData = {
     [collectionName: string]: unknown;
   };
 };
+
+/**
+ * For use when mocking the contents of files containing `getDummyData` and/or
+ * `getSchemaConfig`.
+ */
+export type TestCustomizations = {
+  getDummyData: () => Promise<DummyData>;
+  getSchemaConfig: () => Promise<DbSchema>;
+};
+
+/**
+ * Finds the file at `${nextProjectRoot}/test/db` or
+ * `${nextProjectRoot}/test/backend/db`, imports it, and calls the
+ * `getDummyData` function defined within.
+ */
+export async function getDummyData(): Promise<DummyData> {
+  const root = findProjectRoot();
+  const paths = [`${root}/db`, `${root}/test/db`, `${root}/test/backend/db`];
+  let getCustomDummyData: typeof getDummyData | undefined;
+
+  (
+    await Promise.allSettled<{
+      getDummyData?: typeof getDummyData;
+    }>(paths.map((path) => import(path)))
+  ).some((result, ndx) => {
+    if (result.status == 'fulfilled') {
+      getCustomDummyData = result.value.getDummyData;
+    }
+
+    if (getCustomDummyData) {
+      debug(`using dummy data from path:`, paths[ndx]);
+      return true;
+    } else {
+      debug.warn(`failed to import dummy data from path:`, paths[ndx]);
+      return false;
+    }
+  });
+
+  if (!getCustomDummyData) {
+    throw new InvalidConfigurationError(
+      `could not resolve dummy data; one of the following import paths must resolve to a file with an (optionally) async "getDummyData" function that returns a DummyData object:\n\n  - ${paths.join(
+        '\n  - '
+      )}`
+    );
+  }
+
+  return getCustomDummyData();
+}
 
 /**
  * Fill an initialized database with data. You should call `initializeDb` before
@@ -144,7 +170,7 @@ export function setupTestDb(defer = false) {
 
   beforeAll(async () => {
     await server.ensureInstance();
-    const uri = await server.getUri(); // ? Ensure singleton
+    const uri = server.getUri(); // ? Ensure singleton
     debug(`connecting to mongo memory server at ${uri}`);
     overwriteMemory({ client: await MongoClient.connect(uri) });
     if (defer) await reinitializeServer();
@@ -159,12 +185,5 @@ export function setupTestDb(defer = false) {
     await server.stop();
   });
 
-  return {
-    getClient,
-    getDb,
-    initializeDb,
-    destroyDb,
-    hydrateDb,
-    reinitializeServer
-  };
+  return { reinitializeServer };
 }

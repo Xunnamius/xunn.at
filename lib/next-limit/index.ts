@@ -3,7 +3,6 @@ import { getEnv } from 'multiverse/next-env';
 import { getClientIp } from 'request-ip';
 
 import type { NextApiRequest } from 'next';
-
 import type { UnixEpochMs } from '@xunnamius/types';
 
 /**
@@ -22,18 +21,18 @@ export type InternalLimitedLogEntry =
     };
 
 /**
- * Returns an object with two keys: `limited` and `retryAfter`. If `limited` is
- * true, then the request should be rejected. The client should be instructed to
- * retry their request after `retryAfter` milliseconds have passed.
+ * Returns an object with two keys: `isLimited` and `retryAfter`. If `isLimited`
+ * is true, then the request should be rejected. The client should be instructed
+ * to retry their request after `retryAfter` milliseconds have passed.
  */
 export async function clientIsRateLimited(req: NextApiRequest) {
   const ip = getClientIp(req);
   const header = req.headers.authorization?.slice(0, getEnv().AUTH_HEADER_MAX_LENGTH);
 
   const limited = await (
-    await getDb({ name: 'system' })
+    await getDb({ name: 'root' })
   )
-    .collection<InternalLimitedLogEntry>('limited-log-mview')
+    .collection<InternalLimitedLogEntry>('limited-log')
     .find({
       $or: [...(ip ? [{ ip }] : []), ...(header ? [{ header }] : [])],
       until: { $gt: Date.now() } // ? Skip the recently unbanned

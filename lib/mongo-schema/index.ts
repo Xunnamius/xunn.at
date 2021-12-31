@@ -2,10 +2,9 @@ import { MongoClient } from 'mongodb';
 import { InvalidConfigurationError } from 'named-app-errors';
 import { getEnv } from 'multiverse/next-env';
 import { debugFactory } from 'multiverse/debug-extended';
-import { findNextJSProjectRoot } from 'multiverse/next-project-root';
+import { findProjectRoot } from 'multiverse/find-project-root';
 
 import type { Db } from 'mongodb';
-import type { Promisable } from 'type-fest';
 
 // TODO: this package must be published transpiled to cjs by babel but NOT
 // TODO: webpacked!
@@ -62,19 +61,37 @@ export async function getSchemaConfig(): Promise<DbSchema> {
   if (memory.schema) {
     return memory.schema;
   } else {
-    const root = findNextJSProjectRoot();
-    const paths = [`${root}/src/db`, `${root}/src/backend/db`];
-    const { getSchemaConfig: importSchemaConfig } = (await import(paths[0])
-      .catch(() => import(paths[1]))
-      .catch(() => ({}))) as { getSchemaConfig?: () => Promisable<DbSchema> };
+    const root = findProjectRoot();
+    const paths = [`${root}/db`, `${root}/src/db`, `${root}/src/backend/db`];
+    let getCustomSchemaConfig: typeof getSchemaConfig | undefined;
 
-    if (!importSchemaConfig) {
+    (
+      await Promise.allSettled<{
+        getSchemaConfig?: typeof getSchemaConfig;
+      }>(paths.map((path) => import(path)))
+    ).some((result, ndx) => {
+      if (result.status == 'fulfilled') {
+        getCustomSchemaConfig = result.value.getSchemaConfig;
+      }
+
+      if (getCustomSchemaConfig) {
+        debug(`using schema config from path:`, paths[ndx]);
+        return true;
+      } else {
+        debug.warn(`failed to import schema config from path:`, paths[ndx]);
+        return false;
+      }
+    });
+
+    if (!getCustomSchemaConfig) {
       throw new InvalidConfigurationError(
-        `could not resolve mongodb schema; one of the following import paths must resolve to a file with an (optionally) async "getSchemaConfig" function that returns a DbSchema object:\n\n  - ${paths[0]}\n\n  - ${paths[1]}`
+        `could not resolve mongodb schema; one of the following import paths must resolve to a file with an (optionally) async "getSchemaConfig" function that returns a DbSchema object:\n\n  - ${paths.join(
+          '\n  - '
+        )}`
       );
     }
 
-    return (memory.schema = await importSchemaConfig());
+    return (memory.schema = await getCustomSchemaConfig());
   }
 }
 
@@ -144,7 +161,7 @@ export async function getNameFromAlias(alias: string) {
 
   if (!schema.databases[nameActual]?.collections) {
     throw new InvalidConfigurationError(
-      `database schema "${nameActual}" is not defined in backend/db.schema`
+      `database "${nameActual}" is not defined in schema`
     );
   }
 

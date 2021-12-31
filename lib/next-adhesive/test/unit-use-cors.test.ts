@@ -28,6 +28,7 @@ it('works', async () => {
 it('handles cors package errors gracefully', async () => {
   expect.hasAssertions();
 
+  // TODO: stop using do/dont mock since they're pretty much useless
   jest.doMock(
     'cors',
     () => () => (_req: unknown, _res: unknown, cb: (e: Error) => void) => {

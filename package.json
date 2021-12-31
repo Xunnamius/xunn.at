@@ -35,7 +35,7 @@
     "test-integration-webpack": "BABEL_ENV=test jest $JEST_CLI test/integration-webpack*.test.ts* --testPathIgnorePatterns dist",
     "test-repeat-all": "npm run __test-repeat-all --silent",
     "test-repeat-unit": "npm run __test-repeat-unit --silent",
-    "test-unit": "BABEL_ENV=test jest $JEST_CLI --coverage --collectCoverageFrom 'src/**/*.ts*' --collectCoverageFrom 'lib/**/*.ts*' --collectCoverageFrom 'external-scripts/**/*.ts*' --testPathIgnorePatterns test/integration-*.test.ts* dist"
+    "test-unit": "BABEL_ENV=test jest $JEST_CLI --coverage --testPathIgnorePatterns test/integration-*.test.ts* dist"
   },
   "config": {
     "mongodbMemoryServer": {

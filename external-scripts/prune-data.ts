@@ -27,7 +27,7 @@ const getCollectionLimits = (env: ReturnType<typeof getEnv>) => {
           'PRUNE_DATA_MAX_LOGS must be greater than zero'
         )
       ),
-    'limited-log-mview':
+    'limited-log':
       env.PRUNE_DATA_MAX_BANNED ||
       toss(
         new IllegalExternalEnvironmentError(
@@ -43,7 +43,7 @@ const getCollectionLimits = (env: ReturnType<typeof getEnv>) => {
 export default async function main() {
   try {
     const limits = getCollectionLimits(getEnv());
-    const db = await getDb({ name: 'system', external: true });
+    const db = await getDb({ name: 'root', external: true });
 
     await Promise.all(
       Object.entries(limits).map(async ([collectionName, limitObj]) => {

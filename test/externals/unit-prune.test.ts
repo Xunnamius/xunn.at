@@ -1,11 +1,11 @@
-import { dummySystemData, setupTestDb } from 'testverse/db';
+import { dummyRootData, setupTestDb } from 'testverse/db';
 import pruneData from 'externals/prune-data';
 
 import type { InternalRequestLogEntry } from 'types/global';
 import type { WithId } from 'mongodb';
 import { withMockedEnv } from '../setup';
 
-const testCollections = ['request-log', 'limited-log-mview'];
+const testCollections = ['request-log', 'limited-log'];
 
 const { getDb } = setupTestDb();
 
@@ -14,7 +14,7 @@ const countCollection = async (collections: string | string[]) => {
     {},
     ...(await Promise.all(
       [collections].flat().map((collection) =>
-        getDb({ name: 'system' }).then((db) =>
+        getDb({ name: 'root' }).then((db) =>
           db
             .collection<WithId<InternalRequestLogEntry>>(collection)
             .countDocuments()
@@ -34,8 +34,8 @@ describe('external-scripts/prune-data', () => {
     expect.hasAssertions();
 
     await expect(countCollection(testCollections)).resolves.toStrictEqual({
-      'request-log': dummySystemData['request-log'].length,
-      'limited-log-mview': dummySystemData['limited-log-mview'].length
+      'request-log': dummyRootData['request-log'].length,
+      'limited-log': dummyRootData['limited-log'].length
     });
 
     await withMockedEnv(
@@ -43,7 +43,7 @@ describe('external-scripts/prune-data', () => {
         await pruneData();
         await expect(countCollection(testCollections)).resolves.toStrictEqual({
           'request-log': 10,
-          'limited-log-mview': 2
+          'limited-log': 2
         });
       },
       {
@@ -58,7 +58,7 @@ describe('external-scripts/prune-data', () => {
         await pruneData();
         await expect(countCollection(testCollections)).resolves.toStrictEqual({
           'request-log': 1,
-          'limited-log-mview': 1
+          'limited-log': 1
         });
       },
       {
@@ -73,16 +73,16 @@ describe('external-scripts/prune-data', () => {
     expect.hasAssertions();
 
     await expect(countCollection(testCollections)).resolves.toStrictEqual({
-      'request-log': dummySystemData['request-log'].length,
-      'limited-log-mview': dummySystemData['limited-log-mview'].length
+      'request-log': dummyRootData['request-log'].length,
+      'limited-log': dummyRootData['limited-log'].length
     });
 
     await withMockedEnv(
       async () => {
         await pruneData();
         await expect(countCollection(testCollections)).resolves.toStrictEqual({
-          'request-log': dummySystemData['request-log'].length,
-          'limited-log-mview': dummySystemData['limited-log-mview'].length
+          'request-log': dummyRootData['request-log'].length,
+          'limited-log': dummyRootData['limited-log'].length
         });
       },
       {

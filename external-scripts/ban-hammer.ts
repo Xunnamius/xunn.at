@@ -61,7 +61,7 @@ export default async function main() {
     const calledEveryMs = oneSecondInMs * calledEverySeconds;
     const defaultBanTimeMs = oneSecondInMs * 60 * defaultBanTimeMinutes;
     const resolutionWindowMs = oneSecondInMs * resolutionWindowSeconds;
-    const db = await getDb({ name: 'system', external: true });
+    const db = await getDb({ name: 'root', external: true });
 
     const pipeline = [
       {
@@ -162,7 +162,7 @@ export default async function main() {
       },
       {
         $lookup: {
-          from: 'limited-log-mview',
+          from: 'limited-log',
           as: 'previous',
           pipeline: [
             {
@@ -242,7 +242,7 @@ export default async function main() {
         }
       },
       {
-        $out: 'limited-log-mview'
+        $out: 'limited-log'
       }
     ];
 

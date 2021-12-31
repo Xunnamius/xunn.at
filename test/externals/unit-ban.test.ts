@@ -13,13 +13,13 @@ const TEN_MINUTES_MS = 10 * 60 * 1000;
 const { getDb } = setupTestDb();
 
 const getRequestLogCollection = async () =>
-  (await getDb({ name: 'system' })).collection<WithId<InternalRequestLogEntry>>(
+  (await getDb({ name: 'root' })).collection<WithId<InternalRequestLogEntry>>(
     'request-log'
   );
 
 const getRateLimitsCollection = async () =>
-  (await getDb({ name: 'system' })).collection<WithId<InternalLimitedLogEntry>>(
-    'limited-log-mview'
+  (await getDb({ name: 'root' })).collection<WithId<InternalLimitedLogEntry>>(
+    'limited-log'
   );
 
 const getRateLimits = async () =>

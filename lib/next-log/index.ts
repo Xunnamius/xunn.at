@@ -3,7 +3,6 @@ import { getDb } from 'multiverse/mongo-schema';
 import { getClientIp } from 'request-ip';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-
 import type { HttpStatusCode, UnixEpochMs } from '@xunnamius/types';
 
 /**
@@ -38,7 +37,7 @@ export async function addToRequestLog({
   req: NextApiRequest;
   res: NextApiResponse;
 }) {
-  return (await getDb({ name: 'system' }))
+  return (await getDb({ name: 'root' }))
     .collection<InternalRequestLogEntry>('request-log')
     .insertOne({
       ip: getClientIp(req),

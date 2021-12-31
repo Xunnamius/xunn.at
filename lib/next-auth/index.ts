@@ -125,7 +125,7 @@ export async function isValidAuthHeader({
   }
 
   return {
-    valid: (await getDb({ name: 'system' }))
+    valid: (await getDb({ name: 'root' }))
       .collection<InternalAuthEntry>('auth')
       .findOne({ scheme, token })
       .then((r) => !!r)

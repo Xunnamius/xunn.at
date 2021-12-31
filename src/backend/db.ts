@@ -1,3 +1,5 @@
+import { getCommonSchemaConfig } from 'multiverse/mongo-common';
+
 import type { ObjectId } from 'mongodb';
 import type { UnixEpochMs } from '@xunnamius/types';
 import type { DbSchema } from 'multiverse/mongo-schema';
@@ -8,25 +10,9 @@ import type { DbSchema } from 'multiverse/mongo-schema';
  * versions of the db during testing.
  */
 export function getSchemaConfig(): DbSchema {
-  return {
+  return getCommonSchemaConfig({
     databases: {
-      'global-api--system': {
-        collections: [
-          {
-            name: 'auth',
-            indices: [{ spec: 'token.bearer', options: { unique: true } }]
-          },
-          {
-            name: 'request-log',
-            indices: [{ spec: 'header' }, { spec: 'ip' }]
-          },
-          {
-            name: 'limited-log-mview',
-            indices: [{ spec: 'header' }, { spec: 'ip' }]
-          }
-        ]
-      },
-      'global-api--xunn-at': {
+      'xunn-at': {
         collections: [
           {
             name: 'link-map',
@@ -40,11 +26,8 @@ export function getSchemaConfig(): DbSchema {
         ]
       }
     },
-    aliases: {
-      system: 'global-api--system',
-      'xunn-at': 'global-api--xunn-at'
-    }
-  };
+    aliases: {}
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

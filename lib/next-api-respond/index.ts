@@ -72,20 +72,21 @@ export function sendHttpUnauthenticated(
   responseJson?: Record<string, unknown>
 ) {
   sendHttpErrorResponse(res, 401, {
-    error: 'session is not authenticated',
+    error: 'client is not authenticated',
     ...responseJson
   });
 }
 
 /**
- * Sends an HTTP 403 "forbidden" response with optional `responseJson` data.
+ * Sends an HTTP 403 "forbidden" ("unauthorized") response with optional
+ * `responseJson` data.
  */
 export function sendHttpUnauthorized(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
 ) {
   sendHttpErrorResponse(res, 403, {
-    error: 'session is not authorized',
+    error: 'client is not authorized to access this resource',
     ...responseJson
   });
 }
@@ -138,7 +139,7 @@ export function sendHttpRateLimited(
   responseJson?: Record<string, unknown>
 ) {
   sendHttpErrorResponse(res, 429, {
-    error: 'session is rate limited',
+    error: 'client is rate limited',
     ...responseJson
   });
 }
