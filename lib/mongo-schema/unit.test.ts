@@ -1,5 +1,5 @@
 /* eslint-disable jest/no-conditional-expect */
-import { isolatedImportFactory, withMockedEnv } from 'testverse/setup';
+import { isolatedImportFactory, mockEnvFactory } from 'testverse/setup';
 import { Db, MongoClient } from 'mongodb';
 import { asMockedClass, asMockedFunction } from '@xunnamius/jest-types';
 import { findProjectRoot } from 'multiverse/find-project-root';
@@ -9,6 +9,8 @@ import type { TestCustomizations } from 'multiverse/mongo-test';
 jest.mock('mongodb');
 jest.mock('multiverse/find-project-root');
 jest.mock(`${__dirname}/db`, () => mockedMongoCustomizations, { virtual: true });
+
+const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });
 
 const mockMongoClient = asMockedClass(MongoClient);
 const mockFindProjectRoot = asMockedFunction(findProjectRoot);
@@ -162,8 +164,7 @@ describe('::getClient', () => {
         expect(mockMongoClient.connect).toHaveBeenCalledTimes(1);
         expect(client.close()).toBe('abc');
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' },
-      { replace: false }
+      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
     );
   });
 
@@ -180,8 +181,7 @@ describe('::getClient', () => {
         expect(mockMongoClient.connect).toHaveBeenCalledTimes(2);
         expect(client.close()).toBe('123');
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' },
-      { replace: false }
+      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
     );
   });
 });
@@ -202,8 +202,7 @@ describe('::getDb', () => {
         expect(mockMongoClient.connect).toHaveBeenCalledTimes(1);
         expect(db.databaseName).toBe('fake-db-1');
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' },
-      { replace: false }
+      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
     );
   });
 
@@ -222,8 +221,7 @@ describe('::getDb', () => {
         expect(mockMongoClient.connect).toHaveBeenCalledTimes(2);
         expect(db.databaseName).toBe('fake-db-1');
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' },
-      { replace: false }
+      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
     );
   });
 
@@ -242,8 +240,7 @@ describe('::getDb', () => {
         const db2 = await lib.getDb({ name: 'fake-alias-2' });
         await expect(lib.getDb({ name: 'fake-db-2' })).resolves.toBe(db2);
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' },
-      { replace: false }
+      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
     );
   });
 });
@@ -275,8 +272,7 @@ describe('::closeClient', () => {
         await lib.closeClient();
         await expect(lib.getClient()).resolves.not.toBe(client);
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' },
-      { replace: false }
+      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
     );
   });
 });
@@ -296,8 +292,7 @@ describe('::destroyDb', () => {
         await lib.destroyDb({ name: 'fake-db-1' });
         expect(db.dropDatabase).toHaveBeenCalledTimes(1);
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' },
-      { replace: false }
+      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
     );
   });
 });
@@ -353,8 +348,7 @@ describe('::initializeDb', () => {
           }
         });
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' },
-      { replace: false }
+      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
     );
   });
 });

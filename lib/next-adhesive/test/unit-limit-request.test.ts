@@ -7,7 +7,7 @@ import limitRequest from 'multiverse/next-adhesive/limit-request';
 
 jest.mock('multiverse/next-limit');
 
-const withMockedEnv = mockEnvFactory({}, { replace: false });
+const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });
 const mockClientIsRateLimited = asMockedFunction(clientIsRateLimited);
 
 beforeEach(() => {

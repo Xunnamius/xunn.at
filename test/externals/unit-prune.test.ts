@@ -1,5 +1,5 @@
 import pruneData from 'externals/prune-data';
-import { withMockedEnv } from 'testverse/setup';
+import { mockEnvFactory } from 'testverse/setup';
 import { setupTestDb } from 'multiverse/mongo-test';
 import { getDb } from 'multiverse/mongo-schema';
 import { dummyRootData } from 'multiverse/mongo-common';
@@ -8,6 +8,7 @@ import type { InternalRequestLogEntry } from 'multiverse/next-log';
 import type { WithId } from 'mongodb';
 
 const testCollections = ['request-log', 'limited-log'];
+const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });
 
 setupTestDb();
 
@@ -51,8 +52,7 @@ describe('external-scripts/prune-data', () => {
       {
         PRUNE_DATA_MAX_LOGS: '10',
         PRUNE_DATA_MAX_BANNED: '2'
-      },
-      { replace: false }
+      }
     );
 
     await withMockedEnv(
@@ -66,8 +66,7 @@ describe('external-scripts/prune-data', () => {
       {
         PRUNE_DATA_MAX_LOGS: '1',
         PRUNE_DATA_MAX_BANNED: '1'
-      },
-      { replace: false }
+      }
     );
   });
 
@@ -90,8 +89,7 @@ describe('external-scripts/prune-data', () => {
       {
         PRUNE_DATA_MAX_LOGS: '100',
         PRUNE_DATA_MAX_BANNED: '100'
-      },
-      { replace: false }
+      }
     );
   });
 });

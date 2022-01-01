@@ -1,7 +1,7 @@
 /* eslint-disable jest/no-conditional-expect */
 import { asMockedFunction, asMockedClass } from '@xunnamius/jest-types';
 import { findProjectRoot } from 'multiverse/find-project-root';
-import { isolatedImportFactory, withMockedEnv } from 'testverse/setup';
+import { isolatedImportFactory, mockEnvFactory } from 'testverse/setup';
 import { MongoClient } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
@@ -22,6 +22,7 @@ jest.mock('multiverse/mongo-schema', () => {
 jest.mock(`${__dirname}/db`, () => mockedMongoCustomizations, { virtual: true });
 
 const now = Date.now();
+const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });
 
 type MongoSchemaPackage = typeof import('multiverse/mongo-schema');
 
@@ -443,11 +444,9 @@ describe('::setupTestDb', () => {
           });
         },
         {
-          NODE_ENV: 'test',
           VSCODE_INSPECTOR_OPTIONS: 'exists',
           MONGODB_MS_PORT: '5678'
-        },
-        { replace: true }
+        }
       );
     } finally {
       // eslint-disable-next-line no-global-assign

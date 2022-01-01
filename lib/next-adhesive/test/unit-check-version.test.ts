@@ -3,7 +3,7 @@ import { mockEnvFactory, noopHandler, wrapHandler } from 'testverse/setup';
 import { withMiddleware } from 'multiverse/next-api-glue';
 import checkVersion, { Options } from 'multiverse/next-adhesive/check-version';
 
-const withMockedEnv = mockEnvFactory({}, { replace: false });
+const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });
 
 it('is a noop by default', async () => {
   expect.hasAssertions();

@@ -2,7 +2,7 @@ import banHammer from 'externals/ban-hammer';
 import { BANNED_BEARER_TOKEN } from 'multiverse/next-auth';
 import { setupTestDb } from 'multiverse/mongo-test';
 import { GuruMeditationError } from 'universe/error';
-import { withMockedEnv } from 'testverse/setup';
+import { mockEnvFactory } from 'testverse/setup';
 import { getDb } from 'multiverse/mongo-schema';
 import { generatedAt } from 'multiverse/mongo-common';
 
@@ -12,6 +12,8 @@ import type { WithId } from 'mongodb';
 
 const TEST_MARGIN_MS = 1000;
 const TEN_MINUTES_MS = 10 * 60 * 1000;
+
+const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });
 
 setupTestDb();
 
@@ -47,14 +49,10 @@ describe('external-scripts/ban-hammer', () => {
     await (await getRateLimitsCollection()).deleteMany({});
     await (await getRequestLogCollection()).updateMany({}, { $set: { createdAt: now } });
 
-    await withMockedEnv(
-      banHammer,
-      {
-        BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
-        BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '1'
-      },
-      { replace: false }
-    );
+    await withMockedEnv(banHammer, {
+      BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
+      BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '1'
+    });
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
@@ -69,14 +67,10 @@ describe('external-scripts/ban-hammer', () => {
       { $set: { ip: '9.8.7.6' } }
     );
 
-    await withMockedEnv(
-      banHammer,
-      {
-        BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
-        BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '1'
-      },
-      { replace: false }
-    );
+    await withMockedEnv(banHammer, {
+      BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
+      BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '1'
+    });
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
@@ -96,25 +90,17 @@ describe('external-scripts/ban-hammer', () => {
       createdAt: now - 1000
     });
 
-    await withMockedEnv(
-      banHammer,
-      {
-        BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '11',
-        BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '1'
-      },
-      { replace: false }
-    );
+    await withMockedEnv(banHammer, {
+      BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '11',
+      BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '1'
+    });
 
     await expect(getRateLimits()).resolves.toBeArrayOfSize(0);
 
-    await withMockedEnv(
-      banHammer,
-      {
-        BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '11',
-        BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '5'
-      },
-      { replace: false }
-    );
+    await withMockedEnv(banHammer, {
+      BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '11',
+      BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '5'
+    });
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { ip: '1.2.3.4' },
@@ -123,14 +109,10 @@ describe('external-scripts/ban-hammer', () => {
 
     await (await getRateLimitsCollection()).deleteMany({});
 
-    await withMockedEnv(
-      banHammer,
-      {
-        BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '11',
-        BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '1'
-      },
-      { replace: false }
-    );
+    await withMockedEnv(banHammer, {
+      BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '11',
+      BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '1'
+    });
 
     await expect(getRateLimits()).resolves.toBeArrayOfSize(0);
   });
@@ -153,27 +135,19 @@ describe('external-scripts/ban-hammer', () => {
     );
     await requestLogDb.updateMany({}, { $set: { createdAt: now } });
 
-    await withMockedEnv(
-      banHammer,
-      {
-        BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
-        BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '5',
-        BAN_HAMMER_WILL_BE_CALLED_EVERY_SECONDS: '1'
-      },
-      { replace: false }
-    );
+    await withMockedEnv(banHammer, {
+      BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
+      BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '5',
+      BAN_HAMMER_WILL_BE_CALLED_EVERY_SECONDS: '1'
+    });
 
     await expect(getRateLimits()).resolves.toBeArrayOfSize(0);
 
-    await withMockedEnv(
-      banHammer,
-      {
-        BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
-        BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '5',
-        BAN_HAMMER_WILL_BE_CALLED_EVERY_SECONDS: '8'
-      },
-      { replace: false }
-    );
+    await withMockedEnv(banHammer, {
+      BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
+      BAN_HAMMER_RESOLUTION_WINDOW_SECONDS: '5',
+      BAN_HAMMER_WILL_BE_CALLED_EVERY_SECONDS: '8'
+    });
 
     await expect(getRateLimits()).resolves.toIncludeSameMembers([
       { header: `bearer ${BANNED_BEARER_TOKEN}` },
@@ -196,14 +170,10 @@ describe('external-scripts/ban-hammer', () => {
     const now = generatedAt;
     let untils;
 
-    await withMockedEnv(
-      banHammer,
-      {
-        BAN_HAMMER_DEFAULT_BAN_TIME_MINUTES: '10',
-        BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10'
-      },
-      { replace: false }
-    );
+    await withMockedEnv(banHammer, {
+      BAN_HAMMER_DEFAULT_BAN_TIME_MINUTES: '10',
+      BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10'
+    });
 
     untils = await getRateLimitUntils();
     expect(untils).toBeArrayOfSize(3);
@@ -217,14 +187,10 @@ describe('external-scripts/ban-hammer', () => {
 
     await (await getRateLimitsCollection()).deleteMany({});
 
-    await withMockedEnv(
-      banHammer,
-      {
-        BAN_HAMMER_DEFAULT_BAN_TIME_MINUTES: '20',
-        BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10'
-      },
-      { replace: false }
-    );
+    await withMockedEnv(banHammer, {
+      BAN_HAMMER_DEFAULT_BAN_TIME_MINUTES: '20',
+      BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10'
+    });
 
     untils = await getRateLimitUntils();
     expect(untils).toBeArrayOfSize(3);
@@ -236,15 +202,11 @@ describe('external-scripts/ban-hammer', () => {
       );
     });
 
-    await withMockedEnv(
-      banHammer,
-      {
-        BAN_HAMMER_DEFAULT_BAN_TIME_MINUTES: '20',
-        BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
-        BAN_HAMMER_RECIDIVISM_PUNISH_MULTIPLIER: '5'
-      },
-      { replace: false }
-    );
+    await withMockedEnv(banHammer, {
+      BAN_HAMMER_DEFAULT_BAN_TIME_MINUTES: '20',
+      BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
+      BAN_HAMMER_RECIDIVISM_PUNISH_MULTIPLIER: '5'
+    });
 
     untils = await getRateLimitUntils();
     expect(untils).toBeArrayOfSize(3);
