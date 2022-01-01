@@ -36,15 +36,6 @@ export interface UserId extends ObjectId {}
 export interface LinkId extends ObjectId {}
 
 /**
- * The shape of a link mapping headers field entry. Headers are sent to the user
- * as part of the HTTP response. A string will cause the header to be forwarded
- * as-is if it exists. Otherwise, the header will be set/overwritten to the
- * given value.
- */
-export type InternalLinkMapHeader = string | { [header: string]: string };
-export type InternalLinkMapHeaders = InternalLinkMapHeader | InternalLinkMapHeader[];
-
-/**
  * The shape of a bare URI type link mapping.
  */
 export type InternalLinkMapEntryUri = {
@@ -52,7 +43,7 @@ export type InternalLinkMapEntryUri = {
   shortId: string;
   createdAt: UnixEpochMs;
   realLink: string;
-  headers?: InternalLinkMapHeaders;
+  headers?: Record<string, string | string[]>;
 };
 
 /**
@@ -64,7 +55,7 @@ export type InternalLinkMapEntryFile = {
   createdAt: UnixEpochMs;
   resourceLink: string;
   name: string;
-  headers?: InternalLinkMapHeaders;
+  headers?: Record<string, string>;
 };
 
 /**
@@ -78,7 +69,7 @@ export type InternalLinkMapEntryBadge = {
   message: string;
   color: string;
   labelColor: string;
-  headers?: InternalLinkMapHeaders;
+  headers?: Record<string, string>;
 };
 
 /**
@@ -93,6 +84,7 @@ export type InternalLinkMapEntryGithubPkg = {
   defaultCommit: string;
   subdir: string | null;
   tagPrefix: string;
+  headers?: Record<string, string>;
 };
 
 /* All valid link map entry types. */

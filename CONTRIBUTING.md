@@ -84,9 +84,9 @@ PR passes review:
 
 At this point, you're ready to create your PR and ✨ contribute ✨!
 
-## NPM Scripts
+## npm Scripts
 
-This repo ships with several [NPM scripts][49]. Use `npm run list-tasks` to see
+This repo ships with several [npm scripts][49]. Use `npm run list-tasks` to see
 which of the following scripts are available for this project.
 
 > Using these scripts requires a linux-like development environment. None of the
@@ -117,7 +117,7 @@ which of the following scripts are available for this project.
 - `npm run generate` to transpile config files (under `config/`) from scratch
 - `npm run regenerate` to quickly re-transpile config files (under `config/`)
 - `npm run postinstall` to (re-)install [Husky Git hooks][53] if not in a CI
-  environment (handled by NPM)
+  environment (handled by npm)
 
 ### Building and Deploying
 

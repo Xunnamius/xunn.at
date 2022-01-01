@@ -32,7 +32,7 @@ export const dummyAppData: DummyAppData = {
       shortId: 'aaa',
       createdAt: generatedAt,
       realLink: 'https://fake1.fake1',
-      headers: 'header-1'
+      headers: { 'header-1': 'header-1-value' }
     },
     {
       _id: new ObjectId(),
@@ -41,7 +41,7 @@ export const dummyAppData: DummyAppData = {
       createdAt: generatedAt,
       name: 'file-b.xml',
       resourceLink: 'https://fake2.fake2',
-      headers: ['header-2', { 'header-3': 'header-3-value' }]
+      headers: { 'header-2': 'header-2-value', 'header-3': 'header-3-value' }
     },
     {
       _id: new ObjectId(),

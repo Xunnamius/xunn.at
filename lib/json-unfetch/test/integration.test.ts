@@ -22,7 +22,7 @@ describe('::jsonFetch', () => {
     const server = createServer((_req: IncomingMessage, res: ServerResponse) => {
       res.statusCode = status;
 
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('access-control-allow-origin', '*');
       const headers = Object.entries(header);
       headers.length && res.setHeader(...headers[0]);
 

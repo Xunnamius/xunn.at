@@ -18,7 +18,7 @@ const codeloadUrl = (repo: string, commit: string) =>
 
 /**
  * Responds to a client with a GitHub-hosted tar archive, potentially repacked,
- * containing an NPM package.
+ * containing an npm package.
  */
 export async function githubPackageDownloadPipeline({
   res,

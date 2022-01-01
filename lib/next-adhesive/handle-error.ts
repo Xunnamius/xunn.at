@@ -91,7 +91,7 @@ export default async function (
   );
 
   if (error instanceof GuruMeditationError) {
-    console.error(`sanity check failed on request: ${req.url}\n`, error);
+    console.error(`error - sanity check failed on request: ${req.url}\n`, error);
     sendHttpError(res, {
       error: 'sanity check failed: please report exactly what you did just now!'
     });
@@ -104,7 +104,7 @@ export default async function (
   } else if (error instanceof NotImplementedError) {
     sendNotImplementedError(res);
   } else if (error instanceof AppError) {
-    console.error(`exception on request: ${req.url}\n`, error);
+    console.error(`error - exception on request: ${req.url}\n`, error);
     sendHttpError(res, errorJson);
   } else {
     sendHttpError(res);

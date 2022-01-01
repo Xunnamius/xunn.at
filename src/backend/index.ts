@@ -4,7 +4,6 @@ import { jsonFetch } from 'multiverse/json-node-fetch';
 import fetch from 'node-fetch';
 
 import type { NextApiResponse } from 'next';
-
 import type {
   InternalLinkMapEntryGithubPkg,
   InternalLinkMapEntryUri,
@@ -34,6 +33,8 @@ export async function resolveShortId({
   const defaultCommit = '';
   const subdir = '';
 
+  // TODO: 404 not found
+
   return {
     type: 'github-pkg',
     pseudoFilename: (commit) =>
@@ -45,7 +46,8 @@ export async function resolveShortId({
     repo,
     tagPrefix,
     defaultCommit,
-    subdir
+    subdir,
+    headers: {}
   };
 }
 
@@ -55,7 +57,7 @@ export async function resolveShortId({
  * @see https://shields.io
  */
 export async function sendBadgeSvgResponse(
-  res: NextApiResponse<ReadableStream<Uint8Array> | null>,
+  res: NextApiResponse,
   {
     label,
     message,
@@ -77,8 +79,7 @@ export async function sendBadgeSvgResponse(
   );
 
   res.setHeader('content-type', 'image/svg+xml;charset=utf-8');
-  res.setHeader('cache-control', 's-maxage=60, stale-while-revalidate');
-  res.status(svgRes.ok ? 200 : 500);
+  res.status(svgRes.ok ? 200 : 500); // TODO: just throw if svgRes not ok
   await pipeline(svgRes.body, res);
 }
 
