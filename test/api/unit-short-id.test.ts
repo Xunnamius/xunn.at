@@ -155,7 +155,7 @@ it('only package link responses have github-pkg-specific headers', async () => {
     test: async ({ fetch }) => {
       const res = await fetch();
       expect(res.status).toBe(200);
-      expect(res.headers.get('Content-Type')).toBe('application/gzip');
+      expect(res.headers.get('content-type')).toBe('application/gzip');
       expect(res.headers.get('Content-Disposition')).toBe(
         'attachment; filename="something-10.5.7"'
       );
@@ -168,7 +168,7 @@ it('only package link responses have github-pkg-specific headers', async () => {
     test: async ({ fetch }) => {
       const res = await fetch();
       expect(res.status).toBe(200);
-      expect(res.headers.get('Content-Type')).toBe('application/gzip');
+      expect(res.headers.get('content-type')).toBe('application/gzip');
       expect(res.headers.get('Content-Disposition')).toBe(
         'attachment; filename="something-main"'
       );
@@ -205,7 +205,7 @@ it('removes github-pkg-specific headers on error', async () => {
         test: async ({ fetch }) => {
           const res = await fetch();
           expect(res.status).toBe(500);
-          expect(res.headers.get('Content-Type')).not.toBe('application/gzip');
+          expect(res.headers.get('content-type')).not.toBe('application/gzip');
           expect(res.headers.has('Content-Disposition')).toBeFalse();
         }
       });
@@ -216,7 +216,7 @@ it('removes github-pkg-specific headers on error', async () => {
         test: async ({ fetch }) => {
           const res = await fetch();
           expect(res.status).toBe(500);
-          expect(res.headers.get('Content-Type')).not.toBe('application/gzip');
+          expect(res.headers.get('content-type')).not.toBe('application/gzip');
           expect(res.headers.has('Content-Disposition')).toBeFalse();
         }
       });

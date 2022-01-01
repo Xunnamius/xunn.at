@@ -12,6 +12,7 @@ import type { Response } from 'node-fetch';
 
 jest.mock('node-fetch', () => {
   const fetch = jest.fn();
+  // ? We also need to mock FetchError (earlier than when beforeEach runs)
   // @ts-expect-error: overriding FetchError with a custom class
   fetch.FetchError = class FakeFetchError extends Error {
     constructor(message: string) {
@@ -26,7 +27,6 @@ const fetchActual = jest.requireActual('node-fetch');
 
 beforeEach(() => {
   mockFetch.mockImplementation(fetchActual);
-  FetchError;
 });
 
 describe('::githubPackageDownloadPipeline', () => {

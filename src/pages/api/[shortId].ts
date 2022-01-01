@@ -31,7 +31,7 @@ export default withMiddleware(
           'Content-Disposition',
           `attachment; filename="${pseudoFilename(commitish || defaultCommit)}"`
         )
-        .setHeader('Content-Type', 'application/gzip');
+        .setHeader('content-type', 'application/gzip');
 
       await githubPackageDownloadPipeline({
         res,
@@ -66,7 +66,7 @@ export default withMiddleware(
     prependUseOnError: [
       (_, res) => {
         res.removeHeader('Content-Disposition');
-        res.removeHeader('Content-Type');
+        res.removeHeader('content-type');
       }
     ]
   }

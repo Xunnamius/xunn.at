@@ -14,11 +14,10 @@
     "inlineSourceMap": true,
     "isolatedModules": true,
     "lib": [
-      "ESNext",
-      "DOM",
-      "WebWorker.ImportScripts",
-      "ScriptHost",
-      "DOM.Iterable"
+      "ESNext"
+      //"DOM",
+      //"WebWorker.ImportScripts",
+      //"DOM.Iterable"
     ],
     "module": "esnext",
     "moduleResolution": "node",
