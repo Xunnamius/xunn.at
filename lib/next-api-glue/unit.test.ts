@@ -1,31 +1,19 @@
 import { testApiHandler } from 'next-test-api-route-handler';
 import { middlewareFactory, withMiddleware } from 'multiverse/next-api-glue';
-import { withMockedOutput } from 'testverse/setup';
+import { withDebugEnabled, mockOutputFactory } from 'testverse/setup';
 import { toss } from 'toss-expression';
-import { debugFactory } from 'multiverse/debug-extended';
 import { DummyError } from 'universe/error';
 
 import type { NextApiRequest, NextApiResponse, NextConfig } from 'next';
-import type { Promisable } from 'type-fest';
 import type { Middleware, MiddlewareContext } from 'multiverse/next-api-glue';
 
 const MAX_CONTENT_LENGTH_BYTES = 100000;
 const MAX_CONTENT_LENGTH_BYTES_PLUS_1 = 100001;
 
+const withMockedOutput = mockOutputFactory({ passthrough: { stdErrSpy: false } });
+
 const noopHandler = async (_req: NextApiRequest, res: NextApiResponse) => {
   res.status(200).send({});
-};
-
-const withDebugEnabled = async (fn: () => Promisable<void>) => {
-  const namespaces = debugFactory.disable();
-  debugFactory.enable('*');
-
-  try {
-    await fn();
-  } finally {
-    debugFactory.disable();
-    debugFactory.enable(namespaces);
-  }
 };
 
 describe('::withMiddleware', () => {
@@ -208,22 +196,19 @@ describe('::withMiddleware', () => {
       }
     });
 
-    await withMockedOutput(
-      async () => {
-        await expect(
-          testApiHandler({
-            rejectOnHandlerError: true,
-            handler: withMiddleware(handler, { use: [() => toss(new Error('bad'))] }),
-            test: async ({ fetch }) => {
-              await fetch();
-            }
-          })
-        ).rejects.toMatchObject({ message: 'bad' });
+    await withMockedOutput(async () => {
+      await expect(
+        testApiHandler({
+          rejectOnHandlerError: true,
+          handler: withMiddleware(handler, { use: [() => toss(new Error('bad'))] }),
+          test: async ({ fetch }) => {
+            await fetch();
+          }
+        })
+      ).rejects.toMatchObject({ message: 'bad' });
 
-        expect(handler).toBeCalledTimes(0);
-      },
-      { passthrough: { stdErrSpy: true } }
-    );
+      expect(handler).toBeCalledTimes(0);
+    });
   });
 
   it('sends 501 if handler is undefined', async () => {
@@ -251,28 +236,25 @@ describe('::withMiddleware', () => {
 
     const error = new Error('bad stuff happened');
 
-    await withMockedOutput(
-      async () => {
-        await expect(
-          testApiHandler({
-            rejectOnHandlerError: true,
-            handler: withMiddleware(noopHandler, {
-              use: [
-                (_, __, ctx) => expect(ctx.runtime.error).toBeUndefined(),
-                (_, __, ctx) => expect(ctx.runtime.error).toBeUndefined(),
-                () => toss(error)
-              ],
-              useOnError: [
-                (_, __, ctx) => expect(ctx.runtime.error).toBe(error),
-                (_, __, ctx) => expect(ctx.runtime.error).toBe(error)
-              ]
-            }),
-            test: async ({ fetch }) => void (await fetch())
-          })
-        ).toReject();
-      },
-      { passthrough: { stdErrSpy: true } }
-    );
+    await withMockedOutput(async () => {
+      await expect(
+        testApiHandler({
+          rejectOnHandlerError: true,
+          handler: withMiddleware(noopHandler, {
+            use: [
+              (_, __, ctx) => expect(ctx.runtime.error).toBeUndefined(),
+              (_, __, ctx) => expect(ctx.runtime.error).toBeUndefined(),
+              () => toss(error)
+            ],
+            useOnError: [
+              (_, __, ctx) => expect(ctx.runtime.error).toBe(error),
+              (_, __, ctx) => expect(ctx.runtime.error).toBe(error)
+            ]
+          }),
+          test: async ({ fetch }) => void (await fetch())
+        })
+      ).toReject();
+    });
   });
 
   it('runs one middleware in error handling chain on error in primary chain', async () => {
@@ -280,22 +262,19 @@ describe('::withMiddleware', () => {
 
     const middleware = jest.fn();
 
-    await withMockedOutput(
-      async () => {
-        await testApiHandler({
-          rejectOnHandlerError: true,
-          handler: withMiddleware(noopHandler, {
-            use: [() => toss(new Error('error'))],
-            useOnError: [middleware, ((_, res) => res.end()) as Middleware]
-          }),
-          test: async ({ fetch }) => {
-            await fetch();
-            expect(middleware).toBeCalledTimes(1);
-          }
-        });
-      },
-      { passthrough: { stdErrSpy: true } }
-    );
+    await withMockedOutput(async () => {
+      await testApiHandler({
+        rejectOnHandlerError: true,
+        handler: withMiddleware(noopHandler, {
+          use: [() => toss(new Error('error'))],
+          useOnError: [middleware, ((_, res) => res.end()) as Middleware]
+        }),
+        test: async ({ fetch }) => {
+          await fetch();
+          expect(middleware).toBeCalledTimes(1);
+        }
+      });
+    });
   });
 
   it('runs multiple middleware in error handling chain on error in primary chain', async () => {
@@ -303,22 +282,19 @@ describe('::withMiddleware', () => {
 
     const middleware = [jest.fn(), jest.fn(), ((_, res) => res.end()) as Middleware];
 
-    await withMockedOutput(
-      async () => {
-        await testApiHandler({
-          rejectOnHandlerError: true,
-          handler: withMiddleware(noopHandler, {
-            use: [() => toss(new Error('error'))],
-            useOnError: middleware
-          }),
-          test: async ({ fetch }) => {
-            await fetch();
-            middleware.slice(0, -1).forEach((m) => expect(m).toBeCalledTimes(1));
-          }
-        });
-      },
-      { passthrough: { stdErrSpy: true } }
-    );
+    await withMockedOutput(async () => {
+      await testApiHandler({
+        rejectOnHandlerError: true,
+        handler: withMiddleware(noopHandler, {
+          use: [() => toss(new Error('error'))],
+          useOnError: middleware
+        }),
+        test: async ({ fetch }) => {
+          await fetch();
+          middleware.slice(0, -1).forEach((m) => expect(m).toBeCalledTimes(1));
+        }
+      });
+    });
   });
 
   it('runs one middleware in error handling chain on error in handler', async () => {
@@ -326,22 +302,19 @@ describe('::withMiddleware', () => {
 
     const middleware = jest.fn();
 
-    await withMockedOutput(
-      async () => {
-        await testApiHandler({
-          rejectOnHandlerError: true,
-          handler: withMiddleware(() => toss(new Error('error')), {
-            use: [],
-            useOnError: [middleware, ((_, res) => res.end()) as Middleware]
-          }),
-          test: async ({ fetch }) => {
-            await fetch();
-            expect(middleware).toBeCalledTimes(1);
-          }
-        });
-      },
-      { passthrough: { stdErrSpy: true } }
-    );
+    await withMockedOutput(async () => {
+      await testApiHandler({
+        rejectOnHandlerError: true,
+        handler: withMiddleware(() => toss(new Error('error')), {
+          use: [],
+          useOnError: [middleware, ((_, res) => res.end()) as Middleware]
+        }),
+        test: async ({ fetch }) => {
+          await fetch();
+          expect(middleware).toBeCalledTimes(1);
+        }
+      });
+    });
   });
 
   it('runs multiple middleware in error handling chain on error in handler', async () => {
@@ -349,22 +322,19 @@ describe('::withMiddleware', () => {
 
     const middleware = [jest.fn(), jest.fn(), ((_, res) => res.end()) as Middleware];
 
-    await withMockedOutput(
-      async () => {
-        await testApiHandler({
-          rejectOnHandlerError: true,
-          handler: withMiddleware(() => toss(new Error('error')), {
-            use: [],
-            useOnError: middleware
-          }),
-          test: async ({ fetch }) => {
-            await fetch();
-            middleware.slice(0, -1).forEach((m) => expect(m).toBeCalledTimes(1));
-          }
-        });
-      },
-      { passthrough: { stdErrSpy: true } }
-    );
+    await withMockedOutput(async () => {
+      await testApiHandler({
+        rejectOnHandlerError: true,
+        handler: withMiddleware(() => toss(new Error('error')), {
+          use: [],
+          useOnError: middleware
+        }),
+        test: async ({ fetch }) => {
+          await fetch();
+          middleware.slice(0, -1).forEach((m) => expect(m).toBeCalledTimes(1));
+        }
+      });
+    });
   });
 
   it('skips remaining middleware if chain is aborted and aborts chain if runtime.done called', async () => {
@@ -372,107 +342,95 @@ describe('::withMiddleware', () => {
 
     const middleware = jest.fn();
 
-    await withMockedOutput(
-      async () => {
-        await testApiHandler({
+    await withMockedOutput(async () => {
+      await testApiHandler({
+        rejectOnHandlerError: true,
+        handler: withMiddleware(noopHandler, {
+          use: [(_, __, ctx) => ctx.runtime.done(), middleware, middleware],
+          useOnError: [(_, __, ctx) => ctx.runtime.done(), middleware, middleware]
+        }),
+        test: async ({ fetch }) => {
+          await fetch();
+          expect(middleware).toBeCalledTimes(0);
+        }
+      });
+
+      await expect(
+        testApiHandler({
           rejectOnHandlerError: true,
           handler: withMiddleware(noopHandler, {
-            use: [(_, __, ctx) => ctx.runtime.done(), middleware, middleware],
-            useOnError: [(_, __, ctx) => ctx.runtime.done(), middleware, middleware]
+            use: [() => toss(new Error('bad')), middleware, middleware],
+            useOnError: [() => toss(new Error('bad')), middleware, middleware]
           }),
           test: async ({ fetch }) => {
             await fetch();
-            expect(middleware).toBeCalledTimes(0);
           }
-        });
+        })
+      ).toReject();
 
-        await expect(
-          testApiHandler({
-            rejectOnHandlerError: true,
-            handler: withMiddleware(noopHandler, {
-              use: [() => toss(new Error('bad')), middleware, middleware],
-              useOnError: [() => toss(new Error('bad')), middleware, middleware]
-            }),
-            test: async ({ fetch }) => {
-              await fetch();
-            }
-          })
-        ).toReject();
-
-        expect(middleware).toBeCalledTimes(0);
-      },
-      { passthrough: { stdErrSpy: true } }
-    );
+      expect(middleware).toBeCalledTimes(0);
+    });
   });
 
   it('throws on error in error handling chain', async () => {
     expect.hasAssertions();
 
-    await withMockedOutput(
-      async () => {
-        await expect(
-          testApiHandler({
-            rejectOnHandlerError: true,
-            handler: withMiddleware(undefined, {
-              use: [() => toss(new Error('bad'))],
-              useOnError: [() => toss(new Error('worse'))]
-            }),
-            test: async ({ fetch }) => {
-              await fetch();
-            }
-          })
-        ).rejects.toMatchObject({ message: 'worse' });
-      },
-      { passthrough: { stdErrSpy: true } }
-    );
+    await withMockedOutput(async () => {
+      await expect(
+        testApiHandler({
+          rejectOnHandlerError: true,
+          handler: withMiddleware(undefined, {
+            use: [() => toss(new Error('bad'))],
+            useOnError: [() => toss(new Error('worse'))]
+          }),
+          test: async ({ fetch }) => {
+            await fetch();
+          }
+        })
+      ).rejects.toMatchObject({ message: 'worse' });
+    });
   });
 
   it('throws on error in primary chain if no error handling middleware available', async () => {
     expect.hasAssertions();
 
-    await withMockedOutput(
-      async () => {
-        await expect(
-          testApiHandler({
-            rejectOnHandlerError: true,
-            handler: withMiddleware(undefined, {
-              use: [() => toss(new Error('bad'))],
-              useOnError: []
-            }),
-            test: async ({ fetch }) => {
-              await fetch();
-            }
-          })
-        ).rejects.toMatchObject({ message: 'bad' });
-      },
-      { passthrough: { stdErrSpy: true } }
-    );
+    await withMockedOutput(async () => {
+      await expect(
+        testApiHandler({
+          rejectOnHandlerError: true,
+          handler: withMiddleware(undefined, {
+            use: [() => toss(new Error('bad'))],
+            useOnError: []
+          }),
+          test: async ({ fetch }) => {
+            await fetch();
+          }
+        })
+      ).rejects.toMatchObject({ message: 'bad' });
+    });
   });
 
   it('throws if res.end not called by the time error handling chain completes', async () => {
     expect.hasAssertions();
 
-    await withMockedOutput(
-      async () => {
-        await expect(
-          testApiHandler({
-            rejectOnHandlerError: true,
-            handler: withMiddleware(undefined, {
-              use: [() => toss(new Error('bad'))],
-              useOnError: [
-                () => {
-                  /* noop */
-                }
-              ]
-            }),
-            test: async ({ fetch }) => {
-              await fetch();
-            }
-          })
-        ).rejects.toMatchObject({ message: 'bad' });
-      },
-      { passthrough: { stdErrSpy: true } }
-    );
+    await withMockedOutput(async () => {
+      await expect(
+        testApiHandler({
+          rejectOnHandlerError: true,
+          handler: withMiddleware(undefined, {
+            use: [() => toss(new Error('bad'))],
+            useOnError: [
+              () => {
+                /* noop */
+              }
+            ]
+          }),
+          test: async ({ fetch }) => {
+            await fetch();
+          }
+        })
+      ).rejects.toMatchObject({ message: 'bad' });
+    });
   });
 
   it('makes runtime control functions noops if chain completes', async () => {

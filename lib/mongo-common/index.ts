@@ -50,7 +50,7 @@ export function getCommonSchemaConfig(additionalSchemaConfig?: DbSchema): DbSche
           },
           {
             name: 'limited-log',
-            indices: [{ spec: 'header' }, { spec: 'ip' }]
+            indices: [{ spec: 'header' }, { spec: 'ip' }, { spec: { until: -1 } }]
           }
         ]
       },

@@ -52,21 +52,18 @@ it('sends correct HTTP error codes when certain errors occur', async () => {
     factory.items.map(async (item) => {
       const [expectedError, expectedStatus] = item;
 
-      await withMockedOutput(
-        async () => {
-          await testApiHandler({
-            handler: wrapHandler(
-              withMiddleware(async () => toss(expectedError), {
-                use: [],
-                useOnError: [handleError]
-              })
-            ),
-            test: async ({ fetch }) =>
-              fetch().then((res) => expect(res.status).toStrictEqual(expectedStatus))
-          });
-        },
-        { passthrough: { stdErrSpy: true } }
-      );
+      await withMockedOutput(async () => {
+        await testApiHandler({
+          handler: wrapHandler(
+            withMiddleware(async () => toss(expectedError), {
+              use: [],
+              useOnError: [handleError]
+            })
+          ),
+          test: async ({ fetch }) =>
+            fetch().then((res) => expect(res.status).toStrictEqual(expectedStatus))
+        });
+      });
     })
   );
 });

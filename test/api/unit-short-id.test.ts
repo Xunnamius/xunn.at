@@ -174,19 +174,16 @@ it('file links return a not-implemented error', async () => {
     })
   );
 
-  await withMockedOutput(
-    async () => {
-      await testApiHandler({
-        handler,
-        params: { shortId: 'some-id' },
-        test: async ({ fetch }) => {
-          const res = await fetch();
-          expect(res.status).toBe(501);
-        }
-      });
-    },
-    { passthrough: { stdErrSpy: true } }
-  );
+  await withMockedOutput(async () => {
+    await testApiHandler({
+      handler,
+      params: { shortId: 'some-id' },
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(501);
+      }
+    });
+  });
 });
 
 it('only package link responses have github-pkg-specific headers', async () => {
@@ -272,32 +269,29 @@ it('removes github-pkg-specific headers on error', async () => {
 
   mockPkgPipeline.mockImplementation(() => toss(new DummyError()));
 
-  await withMockedOutput(
-    async () => {
-      await testApiHandler({
-        handler,
-        params: { shortId: 'some-id' },
-        test: async ({ fetch }) => {
-          const res = await fetch();
-          expect(res.status).toBe(500);
-          expect(res.headers.get('content-type')).not.toBe('application/gzip');
-          expect(res.headers.has('content-disposition')).toBeFalse();
-        }
-      });
+  await withMockedOutput(async () => {
+    await testApiHandler({
+      handler,
+      params: { shortId: 'some-id' },
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(500);
+        expect(res.headers.get('content-type')).not.toBe('application/gzip');
+        expect(res.headers.has('content-disposition')).toBeFalse();
+      }
+    });
 
-      await testApiHandler({
-        handler,
-        params: { shortId: 'some-id@10.5.7' },
-        test: async ({ fetch }) => {
-          const res = await fetch();
-          expect(res.status).toBe(500);
-          expect(res.headers.get('content-type')).not.toBe('application/gzip');
-          expect(res.headers.has('content-disposition')).toBeFalse();
-        }
-      });
-    },
-    { passthrough: { stdErrSpy: true } }
-  );
+    await testApiHandler({
+      handler,
+      params: { shortId: 'some-id@10.5.7' },
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(500);
+        expect(res.headers.get('content-type')).not.toBe('application/gzip');
+        expect(res.headers.has('content-disposition')).toBeFalse();
+      }
+    });
+  });
 });
 
 it('removes custom headers on error', async () => {
@@ -311,21 +305,18 @@ it('removes custom headers on error', async () => {
       }) as unknown as ReturnType<typeof resolveShortId>
   );
 
-  await withMockedOutput(
-    async () => {
-      await testApiHandler({
-        handler,
-        params: { shortId: 'some-id' },
-        test: async ({ fetch }) => {
-          const res = await fetch();
-          expect(res.status).toBe(500);
-          expect(res.headers.has('h1')).toBeFalse();
-          expect(res.headers.has('h2')).toBeFalse();
-        }
-      });
-    },
-    { passthrough: { stdErrSpy: true } }
-  );
+  await withMockedOutput(async () => {
+    await testApiHandler({
+      handler,
+      params: { shortId: 'some-id' },
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(500);
+        expect(res.headers.has('h1')).toBeFalse();
+        expect(res.headers.has('h2')).toBeFalse();
+      }
+    });
+  });
 });
 
 it('does not remove cache-control on NotFound error', async () => {
@@ -347,20 +338,17 @@ it('does not remove cache-control on NotFound error', async () => {
 
   mockResolveShortId.mockImplementationOnce(() => Promise.reject(new DummyError()));
 
-  await withMockedOutput(
-    async () => {
-      await testApiHandler({
-        handler,
-        params: { shortId: 'some-id' },
-        test: async ({ fetch }) => {
-          const res = await fetch();
-          expect(res.status).toBe(500);
-          expect(res.headers.has('cache-control')).toBeFalse();
-        }
-      });
-    },
-    { passthrough: { stdErrSpy: true } }
-  );
+  await withMockedOutput(async () => {
+    await testApiHandler({
+      handler,
+      params: { shortId: 'some-id' },
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(500);
+        expect(res.headers.has('cache-control')).toBeFalse();
+      }
+    });
+  });
 });
 
 it('throws on illegal short link type', async () => {
@@ -373,21 +361,18 @@ it('throws on illegal short link type', async () => {
       >
   );
 
-  await withMockedOutput(
-    async () => {
-      await testApiHandler({
-        handler,
-        params: { shortId: 'some-id' },
-        test: async ({ fetch }) => {
-          const res = await fetch();
-          expect(res.status).toBe(500);
-          await expect(res.json()).resolves.toStrictEqual({
-            success: false,
-            error: '"bad type" short links are not currently supported'
-          });
-        }
-      });
-    },
-    { passthrough: { stdErrSpy: true } }
-  );
+  await withMockedOutput(async () => {
+    await testApiHandler({
+      handler,
+      params: { shortId: 'some-id' },
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(500);
+        await expect(res.json()).resolves.toStrictEqual({
+          success: false,
+          error: '"bad type" short links are not currently supported'
+        });
+      }
+    });
+  });
 });

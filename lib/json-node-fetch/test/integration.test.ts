@@ -98,5 +98,14 @@ describe('::jsonFetch', () => {
         body: { hi: 'world' }
       })
     ).resolves.toBeDefined();
+
+    header = {};
+    status = 500;
+    data = 'some sort of deep error happened resulting in an unparseable body';
+    ({ res, json, error } = await jsonFetch(localUrl, { allowAnyContentType: true }));
+
+    expect(res.status).toBe(status);
+    expect(json).toBeUndefined();
+    expect(error).toBeUndefined();
   });
 });

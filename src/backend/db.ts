@@ -24,6 +24,9 @@ export function getSchemaConfig(): DbSchema {
             ]
           }
         ]
+      },
+      'pkg-compat': {
+        collections: [{ name: 'flags', indices: [{ spec: 'name' }] }]
       }
     },
     aliases: {}
@@ -102,3 +105,8 @@ export type InternalLinkMapEntry =
   | InternalLinkMapEntryFile
   | InternalLinkMapEntryBadge
   | InternalLinkMapEntryGithubPkg;
+
+/**
+ * The shape of a compatibility flag entry.
+ */
+export type InternalPkgCompatFlagEntry = { name: string; value: string | number };

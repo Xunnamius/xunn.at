@@ -136,6 +136,15 @@ describe('::jsonFetch', () => {
       await expect(jsonFetch('some-url')).rejects.toThrow(
         'response status code 567 was not in the range 200-299'
       );
+
+      // ? Should also reject with an HttpError even if JSON is not parsable
+
+      // eslint-disable-next-line jest/unbound-method
+      asMockedFunction(mockedFetchResult.json).mockImplementation(() => toss('string'));
+
+      await expect(jsonFetch('some-url')).rejects.toThrow(
+        'response status code 567 was not in the range 200-299'
+      );
     } finally {
       delete globalJsonRequestOptions.rejectIfNotOk;
     }

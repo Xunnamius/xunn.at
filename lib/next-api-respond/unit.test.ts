@@ -42,6 +42,21 @@ describe('::sendGenericHttpResponse', () => {
       }
     });
   });
+
+  it('sends application/json header', async () => {
+    expect.hasAssertions();
+
+    await testApiHandler({
+      handler: (_, res) => {
+        sendGenericHttpResponse(res, 200);
+      },
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(200);
+        expect(res.headers.get('content-type')).toStartWith('application/json');
+      }
+    });
+  });
 });
 
 describe('::sendHttpBadMethod', () => {

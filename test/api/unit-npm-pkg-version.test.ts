@@ -3,6 +3,7 @@ import { asMockedFunction } from '@xunnamius/jest-types';
 import { testApiHandler } from 'next-test-api-route-handler';
 import { toss } from 'toss-expression';
 import { DummyError } from 'named-app-errors';
+import { withMockedOutput } from 'testverse/setup';
 
 import Endpoint, {
   config as Config
@@ -75,6 +76,24 @@ it('sends error badge if getCompatVersion fails', async () => {
   expect.hasAssertions();
 
   mockGetNpmPackageVersion.mockImplementationOnce(() => toss(new DummyError()));
+  mockGetNpmPackageVersion.mockImplementationOnce(() => Promise.resolve(null));
+
+  await withMockedOutput(async () => {
+    await testApiHandler({
+      handler,
+      params: { pkgName: ['super-cool-pkg'] },
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(200);
+        expect(mockSendBadgeSvgResponse).toBeCalledWith({
+          res: expect.anything(),
+          label: 'npm install',
+          message: 'error',
+          color: 'red'
+        });
+      }
+    });
+  });
 
   await testApiHandler({
     handler,

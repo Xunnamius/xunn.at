@@ -19,6 +19,7 @@ import type { Debugger } from 'multiverse/debug-extended';
 import type { SimpleGit } from 'simple-git';
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 import type { Entry } from 'universe/backend/tar';
+import { Promisable } from 'type-fest';
 
 const { writeFile, access: accessFile } = fs;
 const debug = debugFactory(`${debugNamespace}:jest-setup`);
@@ -306,6 +307,19 @@ export function mockEnvFactory(
 }
 
 // TODO: XXX: make this into a separate (jest-isolated-import) package
+export async function withDebugEnabled(fn: () => Promisable<void>) {
+  const namespaces = debugFactory.disable();
+  debugFactory.enable('*');
+
+  try {
+    await fn();
+  } finally {
+    debugFactory.disable();
+    debugFactory.enable(namespaces);
+  }
+}
+
+// TODO: XXX: make this into a separate (jest-isolated-import) package
 
 /**
  * Performs a module import as if it were being imported for the first time.
@@ -464,6 +478,13 @@ export async function withMockedExit(
 }
 
 // TODO: XXX: make this into a separate (mock-output) package
+/**
+ * Any output generated within `fn` will be captured by an output spy instead of
+ * emitting to the console (stdout/stderr).
+ *
+ * However, not that `stdErrSpy` is set to passthrough mode by default. If
+ * desired, use the `passthrough` option to prevent this.
+ */
 export async function withMockedOutput(
   fn: (spies: {
     logSpy: jest.SpyInstance;
@@ -479,8 +500,8 @@ export async function withMockedOutput(
      * thus preventing any output to the terminal, or if spies should
      * passthrough output as normal.
      *
-     * Passthrough is disabled for all spies by default. Pass `true` to enable
-     * passthrough for a specific spy.
+     * Passthrough is disabled for all spies by default (except `stdErrSpy`).
+     * Pass `true` to enable passthrough for a specific spy.
      */
     passthrough?: {
       /**
@@ -504,7 +525,7 @@ export async function withMockedOutput(
        */
       stdoutSpy?: boolean;
       /**
-       * @default false
+       * @default true
        */
       stdErrSpy?: boolean;
     };
@@ -522,7 +543,7 @@ export async function withMockedOutput(
   !options?.passthrough?.errorSpy && errorSpy.mockImplementation(() => undefined);
   !options?.passthrough?.infoSpy && infoSpy.mockImplementation(() => undefined);
   !options?.passthrough?.stdoutSpy && stdoutSpy.mockImplementation(() => true);
-  !options?.passthrough?.stdErrSpy && stdErrSpy.mockImplementation(() => true);
+  options?.passthrough?.stdErrSpy === false && stdErrSpy.mockImplementation(() => true);
 
   try {
     await fn({
@@ -541,6 +562,94 @@ export async function withMockedOutput(
     stdoutSpy.mockRestore();
     stdErrSpy.mockRestore();
   }
+}
+
+export function mockOutputFactory(options: {
+  /**
+   * Determine if spies provide mock implementations for output functions,
+   * thus preventing any output to the terminal, or if spies should
+   * passthrough output as normal.
+   *
+   * Passthrough is disabled for all spies by default (except `stdErrSpy`).
+   * Pass `true` to enable passthrough for a specific spy.
+   */
+  passthrough?: {
+    /**
+     * @default false
+     */
+    logSpy?: boolean;
+    /**
+     * @default false
+     */
+    warnSpy?: boolean;
+    /**
+     * @default false
+     */
+    errorSpy?: boolean;
+    /**
+     * @default false
+     */
+    infoSpy?: boolean;
+    /**
+     * @default false
+     */
+    stdoutSpy?: boolean;
+    /**
+     * @default true
+     */
+    stdErrSpy?: boolean;
+  };
+}) {
+  const factoryOptions = options;
+
+  return async (
+    fn: (spies: {
+      logSpy: jest.SpyInstance;
+      warnSpy: jest.SpyInstance;
+      errorSpy: jest.SpyInstance;
+      infoSpy: jest.SpyInstance;
+      stdoutSpy: jest.SpyInstance;
+      stdErrSpy: jest.SpyInstance;
+    }) => unknown,
+    options?: {
+      /**
+       * Determine if spies provide mock implementations for output functions,
+       * thus preventing any output to the terminal, or if spies should
+       * passthrough output as normal.
+       *
+       * Passthrough is disabled for all spies by default (except `stdErrSpy`).
+       * Pass `true` to enable passthrough for a specific spy.
+       */
+      passthrough?: {
+        /**
+         * @default false
+         */
+        logSpy?: boolean;
+        /**
+         * @default false
+         */
+        warnSpy?: boolean;
+        /**
+         * @default false
+         */
+        errorSpy?: boolean;
+        /**
+         * @default false
+         */
+        infoSpy?: boolean;
+        /**
+         * @default false
+         */
+        stdoutSpy?: boolean;
+        /**
+         * @default true
+         */
+        stdErrSpy?: boolean;
+      };
+    }
+  ) => {
+    return withMockedOutput(fn, { ...factoryOptions, ...(options || {}) });
+  };
 }
 
 // TODO: XXX: make this into a separate (run) package (along w/ below)

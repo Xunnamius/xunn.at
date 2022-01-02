@@ -11,7 +11,10 @@ export function sendGenericHttpResponse(
   statusCode: HttpStatusCode,
   responseJson?: Record<string, unknown>
 ) {
-  res.status(statusCode).send(responseJson || {});
+  res
+    .setHeader('content-type', 'application/json')
+    .status(statusCode)
+    .send(responseJson || {});
 }
 
 /**

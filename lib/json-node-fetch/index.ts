@@ -182,6 +182,14 @@ export async function jsonFetch<
   let json: JsonType | undefined = undefined;
   let error: ErrorType | undefined = undefined;
 
+  if (!res.ok && parsedOptions.rejectIfNotOk) {
+    throw new JsonFetchError(
+      res.status,
+      json,
+      `response status code ${res.status} was not in the range 200-299`
+    );
+  }
+
   if (responseContentType == JsonContentType) {
     try {
       json = await res.json();
@@ -207,14 +215,6 @@ export async function jsonFetch<
   if (!res.ok) {
     error = json as unknown as ErrorType;
     json = undefined;
-
-    if (parsedOptions.rejectIfNotOk) {
-      throw new JsonFetchError(
-        res.status,
-        json,
-        `response status code ${res.status} was not in the range 200-299`
-      );
-    }
   }
 
   return { res, json, error };

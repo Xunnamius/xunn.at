@@ -26,6 +26,8 @@ const mockFetch = asMockedFunction(fetch);
 const fetchActual = jest.requireActual('node-fetch');
 
 beforeEach(() => {
+  // ? We need to leave node-fetch alone since NTARH uses it too
+  // ! MOCK FETCH CALLS IN EACH TEST HANDLER SO IT'S NOT MAKING REAL REQUESTS !
   mockFetch.mockImplementation(fetchActual);
 });
 

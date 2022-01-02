@@ -1,24 +1,23 @@
 import { getDb } from 'multiverse/mongo-schema';
 import { pipeline } from 'stream/promises';
 import { jsonFetch } from 'multiverse/json-node-fetch';
+import { HttpError, ItemNotFoundError } from 'named-app-errors';
 import fetch from 'node-fetch';
 
 import type { NextApiResponse } from 'next';
 import type {
+  InternalLinkMapEntry,
   InternalLinkMapEntryGithubPkg,
   InternalLinkMapEntryUri,
   InternalLinkMapEntryFile,
-  InternalLinkMapEntryBadge
+  InternalLinkMapEntryBadge,
+  InternalPkgCompatFlagEntry
 } from 'universe/backend/db';
 
 /**
  * Translates a short link identifier into a link map entry.
  */
-export async function resolveShortId({
-  shortId
-}: {
-  shortId: string | undefined;
-}): Promise<
+export async function resolveShortId({ shortId }: { shortId: string }): Promise<
   | (Omit<InternalLinkMapEntryGithubPkg, 'shortId' | 'createdAt'> & {
       pseudoFilename: (commit: string) => string;
     })
@@ -26,33 +25,58 @@ export async function resolveShortId({
   | Omit<InternalLinkMapEntryFile, 'shortId' | 'createdAt'>
   | Omit<InternalLinkMapEntryBadge, 'shortId' | 'createdAt'>
 > {
-  void shortId;
-  const owner = '';
-  const repo = '';
-  const tagPrefix = '';
-  const defaultCommit = '';
-  const subdir = '';
+  const db = (await getDb({ name: 'xunn-at' })).collection<InternalLinkMapEntry>(
+    'link-map'
+  );
+  const entry = await db.findOne({ shortId });
 
-  // TODO: 404 not found
+  if (!entry) {
+    throw new ItemNotFoundError(shortId, 'short-id');
+  }
 
-  return {
-    type: 'github-pkg',
-    pseudoFilename: (commit) =>
-      `${[owner, repo, subdir, commit]
-        .filter(Boolean)
-        .join('-')
-        .replace(/[^a-z0-9-]/gi, '-')}.tgz`,
-    owner,
-    repo,
-    tagPrefix,
-    defaultCommit,
-    subdir,
-    headers: {}
-  };
+  const {
+    _id: _,
+    createdAt: __,
+    shortId: ___,
+    ...shortData
+  } = entry.type == 'github-pkg'
+    ? {
+        ...entry,
+        pseudoFilename: (commit: string) =>
+          `${[entry.owner, entry.repo, entry.subdir, commit]
+            .filter(Boolean)
+            .join('-')
+            .replace(/[^a-z0-9-]/gi, '-')}.tgz`
+      }
+    : entry;
+
+  return shortData;
 }
 
 /**
- * Response to a client with SVG badge data from shields.io.
+ * Returns the latest version of NTARH that passed GHA integration testing or
+ * `null` if no such version exists.
+ */
+export async function getCompatVersion() {
+  return (
+    (
+      await (await getDb({ name: 'pkg-compat' }))
+        .collection<InternalPkgCompatFlagEntry>('flags')
+        .findOne({ name: 'ntarh-next' })
+    )?.value || null
+  );
+}
+
+/**
+ * Returns the latest version of a package or null if the data is unavailable.
+ */
+export async function getNpmPackageVersion(pkgName: string) {
+  const target = `https://registry.npmjs.com/${encodeURIComponent(pkgName)}/latest`;
+  return (await jsonFetch<{ version: string }>(target)).json?.version || null;
+}
+
+/**
+ * Pipes SVG badge data from https://shields.io through a response.
  *
  * @see https://shields.io
  */
@@ -77,33 +101,10 @@ export async function sendBadgeSvgResponse({
       (labelColor ? `&labelColor=${labelColor}` : '')
   );
 
+  if (!svgRes.ok) {
+    throw new HttpError(svgRes);
+  }
+
   res.setHeader('content-type', 'image/svg+xml;charset=utf-8');
-  res.status(svgRes.ok ? 200 : 500); // TODO: just throw if svgRes not ok
   await pipeline(svgRes.body, res);
-}
-
-/**
- * Returns the latest version of NTARH that passed GHA integration testing or
- * `null` if no such version exists.
- */
-export async function getCompatVersion() {
-  return (
-    (
-      await (
-        await getDb({
-          name: 'global-api--is-next-compat'
-        })
-      )
-        .collection<{ compat: string }>('flags')
-        .findOne({})
-    )?.compat || null
-  );
-}
-
-/**
- * Returns the latest version of a package or null if the data is unavailable.
- */
-export async function getNpmPackageVersion(pkgName: string) {
-  const target = `https://registry.npmjs.com/${encodeURIComponent(pkgName)}/latest`;
-  return (await jsonFetch<{ version: string }>(target)).json?.version || null;
 }

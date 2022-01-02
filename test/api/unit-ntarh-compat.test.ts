@@ -4,6 +4,7 @@ import { asMockedFunction } from '@xunnamius/jest-types';
 import { testApiHandler } from 'next-test-api-route-handler';
 import { toss } from 'toss-expression';
 import { DummyError } from 'named-app-errors';
+import { withMockedOutput } from 'testverse/setup';
 
 jest.mock('universe/backend/github-pkg');
 jest.mock('universe/backend');
@@ -57,17 +58,19 @@ it('sends error badge if getCompatVersion fails', async () => {
 
   mockGetCompatVersion.mockImplementationOnce(() => toss(new DummyError()));
 
-  await testApiHandler({
-    handler,
-    test: async ({ fetch }) => {
-      const res = await fetch();
-      expect(res.status).toBe(200);
-      expect(mockSendBadgeSvgResponse).toBeCalledWith({
-        res: expect.anything(),
-        label: 'compatible with',
-        message: 'error',
-        color: 'red'
-      });
-    }
+  await withMockedOutput(async () => {
+    await testApiHandler({
+      handler,
+      test: async ({ fetch }) => {
+        const res = await fetch();
+        expect(res.status).toBe(200);
+        expect(mockSendBadgeSvgResponse).toBeCalledWith({
+          res: expect.anything(),
+          label: 'compatible with',
+          message: 'error',
+          color: 'red'
+        });
+      }
+    });
   });
 });
