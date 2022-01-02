@@ -1,33 +1,38 @@
 import Endpoint, { config as Config } from 'universe/pages/api/[shortId]';
 import { githubPackageDownloadPipeline } from 'universe/backend/github-pkg';
-import { clientIsRateLimited } from 'multiverse/next-limit';
-import { resolveShortId } from 'universe/backend';
+import { resolveShortId, sendBadgeSvgResponse } from 'universe/backend';
+import { withMiddleware } from 'universe/backend/middleware';
 import { asMockedFunction } from '@xunnamius/jest-types';
 import { testApiHandler } from 'next-test-api-route-handler';
 import { toss } from 'toss-expression';
-import { TrialError } from 'named-app-errors';
+import { ItemNotFoundError, TrialError } from 'named-app-errors';
 import { withMockedOutput } from 'testverse/setup';
+import { middlewareFactory } from 'multiverse/next-api-glue';
+import handleError from 'multiverse/next-adhesive/handle-error';
 
 jest.mock('universe/backend/github-pkg');
-jest.mock('multiverse/next-limit');
+jest.mock('universe/backend/middleware');
 jest.mock('universe/backend');
 
 const handler = Endpoint as typeof Endpoint & { config?: typeof Config };
 handler.config = Config;
 
+const mockWithMiddleware = asMockedFunction(withMiddleware);
 const mockPkgPipeline = asMockedFunction(githubPackageDownloadPipeline);
-const mockedIsRateLimited = asMockedFunction(clientIsRateLimited);
 const mockResolveShortId = asMockedFunction(resolveShortId);
+const mockSendBadgeSvgResponse = asMockedFunction(sendBadgeSvgResponse);
 
 beforeEach(() => {
-  mockedIsRateLimited.mockImplementation(() =>
-    Promise.resolve({
-      isLimited: false,
-      retryAfter: 0
-    })
+  mockWithMiddleware.mockImplementation(
+    middlewareFactory({ use: [], useOnError: [handleError] })
   );
 
   mockPkgPipeline.mockImplementation(({ res }) => {
+    res.end();
+    return Promise.resolve();
+  });
+
+  mockSendBadgeSvgResponse.mockImplementation(({ res }) => {
     res.end();
     return Promise.resolve();
   });
@@ -128,10 +133,60 @@ it('package links support @commitish', async () => {
 
 it('badge links call pipeline with expected parameters', async () => {
   expect.hasAssertions();
+
+  mockResolveShortId.mockImplementationOnce(() =>
+    Promise.resolve({
+      type: 'badge',
+      color: 'color',
+      message: 'message',
+      label: 'label',
+      labelColor: 'labelColor'
+    })
+  );
+
+  await testApiHandler({
+    handler,
+    params: { shortId: 'some-id' },
+    test: async ({ fetch }) => {
+      const res = await fetch();
+      expect(res.status).toBe(200);
+      expect(mockSendBadgeSvgResponse).toBeCalledWith({
+        res: expect.anything(),
+        color: 'color',
+        message: 'message',
+        label: 'label',
+        labelColor: 'labelColor'
+      });
+    }
+  });
+
+  mockSendBadgeSvgResponse;
 });
 
-it('file links call pipeline with expected parameters', async () => {
+it('file links return a not-implemented error', async () => {
   expect.hasAssertions();
+
+  mockResolveShortId.mockImplementationOnce(() =>
+    Promise.resolve({
+      type: 'file',
+      name: 'name',
+      resourceLink: 'here'
+    })
+  );
+
+  await withMockedOutput(
+    async () => {
+      await testApiHandler({
+        handler,
+        params: { shortId: 'some-id' },
+        test: async ({ fetch }) => {
+          const res = await fetch();
+          expect(res.status).toBe(501);
+        }
+      });
+    },
+    { passthrough: { stdErrSpy: true } }
+  );
 });
 
 it('only package link responses have github-pkg-specific headers', async () => {
@@ -156,7 +211,7 @@ it('only package link responses have github-pkg-specific headers', async () => {
       const res = await fetch();
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toBe('application/gzip');
-      expect(res.headers.get('Content-Disposition')).toBe(
+      expect(res.headers.get('content-disposition')).toBe(
         'attachment; filename="something-10.5.7"'
       );
     }
@@ -169,15 +224,35 @@ it('only package link responses have github-pkg-specific headers', async () => {
       const res = await fetch();
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toBe('application/gzip');
-      expect(res.headers.get('Content-Disposition')).toBe(
+      expect(res.headers.get('content-disposition')).toBe(
         'attachment; filename="something-main"'
       );
     }
   });
 });
 
-it('custom headers are applied to uri, badge, and file links', async () => {
+it('custom headers (and cache-control) are applied when available', async () => {
   expect.hasAssertions();
+
+  mockResolveShortId.mockImplementationOnce(() =>
+    Promise.resolve({
+      type: 'uri',
+      realLink: 'http://fake.url',
+      headers: { h1: 'v1', h2: ['v2', 'v3'] }
+    })
+  );
+
+  await testApiHandler({
+    handler,
+    params: { shortId: 'some-id' },
+    test: async ({ fetch }) => {
+      const res = await fetch({ redirect: 'manual' });
+      expect(res.status).toBe(308);
+      expect(res.headers.has('cache-control')).toBeTrue();
+      expect(res.headers.has('h1')).toBeTrue();
+      expect(res.headers.get('h2')).toBe('v2, v3');
+    }
+  });
 });
 
 it('removes github-pkg-specific headers on error', async () => {
@@ -206,7 +281,7 @@ it('removes github-pkg-specific headers on error', async () => {
           const res = await fetch();
           expect(res.status).toBe(500);
           expect(res.headers.get('content-type')).not.toBe('application/gzip');
-          expect(res.headers.has('Content-Disposition')).toBeFalse();
+          expect(res.headers.has('content-disposition')).toBeFalse();
         }
       });
 
@@ -217,7 +292,7 @@ it('removes github-pkg-specific headers on error', async () => {
           const res = await fetch();
           expect(res.status).toBe(500);
           expect(res.headers.get('content-type')).not.toBe('application/gzip');
-          expect(res.headers.has('Content-Disposition')).toBeFalse();
+          expect(res.headers.has('content-disposition')).toBeFalse();
         }
       });
     },
@@ -227,6 +302,65 @@ it('removes github-pkg-specific headers on error', async () => {
 
 it('removes custom headers on error', async () => {
   expect.hasAssertions();
+
+  mockResolveShortId.mockImplementationOnce(
+    () =>
+      Promise.resolve({
+        type: 'does-not-exist',
+        headers: { h1: 'v1', h2: ['v2', 'v3'] }
+      }) as unknown as ReturnType<typeof resolveShortId>
+  );
+
+  await withMockedOutput(
+    async () => {
+      await testApiHandler({
+        handler,
+        params: { shortId: 'some-id' },
+        test: async ({ fetch }) => {
+          const res = await fetch();
+          expect(res.status).toBe(500);
+          expect(res.headers.has('h1')).toBeFalse();
+          expect(res.headers.has('h2')).toBeFalse();
+        }
+      });
+    },
+    { passthrough: { stdErrSpy: true } }
+  );
+});
+
+it('does not remove cache-control on NotFound error', async () => {
+  expect.hasAssertions();
+
+  mockResolveShortId.mockImplementationOnce((id) =>
+    Promise.reject(new ItemNotFoundError(id, 'short-id'))
+  );
+
+  await testApiHandler({
+    handler,
+    params: { shortId: 'some-id' },
+    test: async ({ fetch }) => {
+      const res = await fetch();
+      expect(res.status).toBe(404);
+      expect(res.headers.has('cache-control')).toBeTrue();
+    }
+  });
+
+  mockResolveShortId.mockImplementationOnce(() => Promise.reject(new TrialError()));
+
+  await withMockedOutput(
+    async () => {
+      await testApiHandler({
+        handler,
+        params: { shortId: 'some-id' },
+        test: async ({ fetch }) => {
+          const res = await fetch();
+          expect(res.status).toBe(500);
+          expect(res.headers.has('cache-control')).toBeFalse();
+        }
+      });
+    },
+    { passthrough: { stdErrSpy: true } }
+  );
 });
 
 it('throws on illegal short link type', async () => {
@@ -256,8 +390,4 @@ it('throws on illegal short link type', async () => {
     },
     { passthrough: { stdErrSpy: true } }
   );
-});
-
-it('throws on illegal short link type', async () => {
-  expect.hasAssertions();
 });

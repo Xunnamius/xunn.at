@@ -5,6 +5,7 @@ import { asMockedClass, asMockedFunction } from '@xunnamius/jest-types';
 import { findProjectRoot } from 'multiverse/find-project-root';
 
 import type { TestCustomizations } from 'multiverse/mongo-test';
+import { getInitialInternalMemoryState } from 'multiverse/mongo-schema';
 
 jest.mock('mongodb');
 jest.mock('multiverse/find-project-root');
@@ -164,24 +165,7 @@ describe('::getClient', () => {
         expect(mockMongoClient.connect).toHaveBeenCalledTimes(1);
         expect(client.close()).toBe('abc');
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
-    );
-  });
-
-  it('respects the external parameter', async () => {
-    expect.hasAssertions();
-
-    const lib = importDbLib();
-
-    await withMockedEnv(
-      async () => {
-        const client = await lib.getClient({ external: true });
-        await expect(lib.getClient({ external: true })).resolves.toBe(client);
-        await expect(lib.getClient()).resolves.not.toBe(client);
-        expect(mockMongoClient.connect).toHaveBeenCalledTimes(2);
-        expect(client.close()).toBe('123');
-      },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
+      { MONGODB_URI: 'abc' }
     );
   });
 });
@@ -202,26 +186,7 @@ describe('::getDb', () => {
         expect(mockMongoClient.connect).toHaveBeenCalledTimes(1);
         expect(db.databaseName).toBe('fake-db-1');
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
-    );
-  });
-
-  it('respects the external parameter', async () => {
-    expect.hasAssertions();
-
-    const lib = importDbLib();
-
-    await withMockedEnv(
-      async () => {
-        expect(mockMongoClient.connect).toHaveBeenCalledTimes(0);
-        const db = await lib.getDb({ name: 'fake-db-1', external: true });
-        await expect(lib.getDb({ name: 'fake-db-1', external: true })).resolves.toBe(db);
-        expect(mockMongoClient.connect).toHaveBeenCalledTimes(1);
-        await expect(lib.getDb({ name: 'fake-db-1' })).resolves.not.toBe(db);
-        expect(mockMongoClient.connect).toHaveBeenCalledTimes(2);
-        expect(db.databaseName).toBe('fake-db-1');
-      },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
+      { MONGODB_URI: 'abc' }
     );
   });
 
@@ -232,15 +197,13 @@ describe('::getDb', () => {
 
     await withMockedEnv(
       async () => {
-        const db1 = await lib.getDb({ name: 'fake-db-1', external: true });
-        await expect(lib.getDb({ name: 'fake-alias-1', external: true })).resolves.toBe(
-          db1
-        );
+        const db1 = await lib.getDb({ name: 'fake-db-1' });
+        await expect(lib.getDb({ name: 'fake-alias-1' })).resolves.toBe(db1);
 
         const db2 = await lib.getDb({ name: 'fake-alias-2' });
         await expect(lib.getDb({ name: 'fake-db-2' })).resolves.toBe(db2);
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
+      { MONGODB_URI: 'abc' }
     );
   });
 });
@@ -253,7 +216,8 @@ describe('::overwriteMemory', () => {
     const databases = { 'fake-db-1': new (class {})() as Db };
     const lib = importDbLib();
 
-    lib.overwriteMemory({ client, databases });
+    lib.overwriteMemory({ ...getInitialInternalMemoryState(), client, databases });
+
     await expect(lib.getClient()).resolves.toBe(client);
     await expect(lib.getDb({ name: 'fake-db-1' })).resolves.toBe(databases['fake-db-1']);
   });
@@ -272,7 +236,7 @@ describe('::closeClient', () => {
         await lib.closeClient();
         await expect(lib.getClient()).resolves.not.toBe(client);
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
+      { MONGODB_URI: 'abc' }
     );
   });
 });
@@ -292,7 +256,7 @@ describe('::destroyDb', () => {
         await lib.destroyDb({ name: 'fake-db-1' });
         expect(db.dropDatabase).toHaveBeenCalledTimes(1);
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
+      { MONGODB_URI: 'abc' }
     );
   });
 });
@@ -348,7 +312,7 @@ describe('::initializeDb', () => {
           }
         });
       },
-      { MONGODB_URI: 'abc', EXTERNAL_SCRIPTS_MONGODB_URI: '123' }
+      { MONGODB_URI: 'abc' }
     );
   });
 });

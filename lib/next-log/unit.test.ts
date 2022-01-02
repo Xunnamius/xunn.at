@@ -2,14 +2,14 @@ import { useMockDateNow, generatedAt } from 'multiverse/mongo-common';
 import { getDb } from 'multiverse/mongo-schema';
 import { BANNED_BEARER_TOKEN } from 'multiverse/next-auth';
 import { addToRequestLog } from 'multiverse/next-log';
-import { setupTestDb } from 'multiverse/mongo-test';
+import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 
 import type { InternalRequestLogEntry } from 'multiverse/next-log';
 import type { HttpStatusCode } from '@xunnamius/types';
 import type { WithId } from 'mongodb';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-setupTestDb();
+setupMemoryServerOverride();
 useMockDateNow();
 
 describe('::addToRequestLog', () => {

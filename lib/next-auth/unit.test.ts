@@ -1,5 +1,5 @@
 import { useMockDateNow } from 'multiverse/mongo-common';
-import { setupTestDb } from 'multiverse/mongo-test';
+import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 
 import {
   BANNED_BEARER_TOKEN,
@@ -12,7 +12,7 @@ import {
 
 import type { AuthScheme } from 'multiverse/next-auth';
 
-setupTestDb();
+setupMemoryServerOverride();
 useMockDateNow();
 
 describe('::getToken', () => {

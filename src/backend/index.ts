@@ -56,20 +56,19 @@ export async function resolveShortId({
  *
  * @see https://shields.io
  */
-export async function sendBadgeSvgResponse(
-  res: NextApiResponse,
-  {
-    label,
-    message,
-    color,
-    labelColor
-  }: {
-    label?: string;
-    message?: string;
-    color?: string;
-    labelColor?: string;
-  }
-) {
+export async function sendBadgeSvgResponse({
+  res,
+  label,
+  message,
+  color,
+  labelColor
+}: {
+  res: NextApiResponse;
+  label?: string;
+  message?: string;
+  color?: string;
+  labelColor?: string;
+}) {
   const svgRes = await fetch(
     'https://img.shields.io/static/v1?' +
       (label ? `&label=${label}` : '') +

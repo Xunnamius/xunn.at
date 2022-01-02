@@ -4,6 +4,7 @@ import { resolveShortId, sendBadgeSvgResponse } from 'universe/backend';
 import { AppError, NotImplementedError } from 'universe/error';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { NotFoundError } from 'named-app-errors';
 
 // ? https://nextjs.org/docs/api-routes/api-middlewares#custom-config
 export { defaultConfig as config } from 'universe/backend/api';
@@ -61,7 +62,7 @@ export default async function (request: NextApiRequest, response: NextApiRespons
         res.redirect(308, shortData.realLink);
       } else if (shortData.type == 'badge') {
         const { color, label, labelColor, message } = shortData;
-        await sendBadgeSvgResponse(res, { color, label, labelColor, message });
+        await sendBadgeSvgResponse({ res, color, label, labelColor, message });
       } else if (shortData.type == 'file') {
         // TODO: should redirect to a frontend UI at https://xunn.at/view/XXXX
         throw new NotImplementedError();
@@ -76,10 +77,15 @@ export default async function (request: NextApiRequest, response: NextApiRespons
     {
       options: { allowedMethods: ['GET'] },
       prependUseOnError: [
-        (_, res) => {
+        (_, res, ctx) => {
           removeHeaders();
+
           res.removeHeader('content-disposition');
           res.removeHeader('content-type');
+
+          if (!(ctx.runtime.error instanceof NotFoundError)) {
+            res.removeHeader('cache-control');
+          }
         }
       ]
     }

@@ -48,11 +48,6 @@ export function getEnv<T extends Environment>(customizedEnv?: T) {
     MAX_CONTENT_LENGTH_BYTES: parseAsBytes(
       process.env.MAX_CONTENT_LENGTH_BYTES ?? '-Infinity'
     ),
-    EXTERNAL_SCRIPTS_MONGODB_URI: (
-      process.env.EXTERNAL_SCRIPTS_MONGODB_URI ||
-      process.env.MONGODB_URI ||
-      ''
-    ).toString(),
     AUTH_HEADER_MAX_LENGTH: Number(process.env.AUTH_HEADER_MAX_LENGTH) || 500,
     DEBUG: process.env.DEBUG ?? null,
     DEBUG_INSPECTING: !!process.env.VSCODE_INSPECTOR_OPTIONS,

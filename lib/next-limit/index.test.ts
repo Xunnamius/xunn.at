@@ -2,12 +2,12 @@ import { useMockDateNow } from 'multiverse/mongo-common';
 import { getDb } from 'multiverse/mongo-schema';
 import { BANNED_BEARER_TOKEN } from 'multiverse/next-auth';
 import { clientIsRateLimited } from 'multiverse/next-limit';
-import { setupTestDb } from 'multiverse/mongo-test';
+import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 
 import type { InternalLimitedLogEntry } from 'multiverse/next-limit';
 import type { NextApiRequest } from 'next';
 
-setupTestDb();
+setupMemoryServerOverride();
 useMockDateNow();
 
 describe('::clientIsRateLimited', () => {

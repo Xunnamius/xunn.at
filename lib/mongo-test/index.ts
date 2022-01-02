@@ -12,7 +12,8 @@ import {
   getNameFromAlias,
   initializeDb,
   destroyDb,
-  closeClient
+  closeClient,
+  getInitialInternalMemoryState
 } from 'multiverse/mongo-schema';
 
 import type { Document } from 'mongodb';
@@ -22,6 +23,7 @@ import type { DbSchema } from 'multiverse/mongo-schema';
 // TODO: webpacked!
 
 const debug = debugFactory('mongo-test:test-db');
+const memory = { dataPath: null } as { dataPath: string | null };
 
 /**
  * Generic dummy data used to hydrate databases and their collections.
@@ -54,36 +56,42 @@ export type TestCustomizations = {
 };
 
 /**
- * Finds the file at `${nextProjectRoot}/test/db` or
- * `${nextProjectRoot}/test/backend/db`, imports it, and calls the
- * `getDummyData` function defined within.
+ * Finds the file at `${projectRoot}/db`, `${projectRoot}/test/db`, or
+ * `${projectRoot}/test/backend/db`, imports it, and calls the `getDummyData`
+ * function defined within.
  */
 export async function getDummyData(): Promise<DummyData> {
   const root = findProjectRoot();
   const paths = [`${root}/db`, `${root}/test/db`, `${root}/test/backend/db`];
   let getCustomDummyData: typeof getDummyData | undefined;
 
-  (
-    await Promise.allSettled<{
-      getDummyData?: typeof getDummyData;
-    }>(paths.map((path) => import(path)))
-  ).some((result, ndx) => {
-    if (result.status == 'fulfilled') {
-      getCustomDummyData = result.value.getDummyData;
-    }
+  if (memory.dataPath) {
+    debug(`using dummy data from memoized path: ${memory.dataPath}`);
+    ({ getDummyData: getCustomDummyData } = await import(memory.dataPath));
+  } else {
+    (
+      await Promise.allSettled<{
+        getDummyData?: typeof getDummyData;
+      }>(paths.map((path) => import(path)))
+    ).some((result, ndx) => {
+      if (result.status == 'fulfilled') {
+        getCustomDummyData = result.value.getDummyData;
+      }
 
-    if (getCustomDummyData) {
-      debug(`using dummy data from path:`, paths[ndx]);
-      return true;
-    } else {
-      debug.warn(`failed to import dummy data from path:`, paths[ndx]);
-      return false;
-    }
-  });
+      if (getCustomDummyData) {
+        memory.dataPath = paths[ndx];
+        debug(`using dummy data from path:`, memory.dataPath);
+        return true;
+      } else {
+        debug.warn(`failed to import dummy data from path: ${paths[ndx]}`);
+        return false;
+      }
+    });
+  }
 
   if (!getCustomDummyData) {
     throw new InvalidConfigurationError(
-      `could not resolve dummy data; one of the following import paths must resolve to a file with an (optionally) async "getDummyData" function that returns a DummyData object:\n\n  - ${paths.join(
+      `could not resolve dummy data. One of the following import paths must resolve to a file with an (optionally) async "getDummyData" function that returns a DummyData object:\n\n  - ${paths.join(
         '\n  - '
       )}`
     );
@@ -135,14 +143,21 @@ export async function hydrateDb({
 }
 
 /**
- * Setup a test version of the databases using jest lifecycle hooks.
- *
- * @param defer If `true`, `beforeEach` and `afterEach` lifecycle hooks are
- * skipped and the database is initialized and hydrated once before all tests
- * are run. **In this mode, all tests will share the same database state!**
+ * Setup per-test versions of the mongodb client and database connections using
+ * jest lifecycle hooks.
  */
-export function setupTestDb(defer = false) {
+export function setupMemoryServerOverride(params?: {
+  /**
+   * If `true`, `beforeEach` and `afterEach` lifecycle hooks are skipped and the
+   * database is initialized and hydrated once before all tests are run. **In
+   * this mode, all tests will share the same database state!**
+   *
+   * @default false
+   */
+  defer?: boolean;
+}) {
   const port = (getEnv().DEBUG_INSPECTING && getEnv().MONGODB_MS_PORT) || undefined;
+  debug(`using ${port ? `port ${port}` : 'random port'} for mongo memory server`);
 
   // * The in-memory server is not started until it's needed later on
   const server = new MongoMemoryServer({
@@ -158,7 +173,7 @@ export function setupTestDb(defer = false) {
    */
   const reinitializeServer = async () => {
     const databases = Object.keys((await getSchemaConfig()).databases);
-    debug(`setting up mongo memory server on port ${port}`);
+    debug('reinitializing mongo databases');
     await Promise.all(
       databases.map((name) =>
         destroyDb({ name })
@@ -170,13 +185,18 @@ export function setupTestDb(defer = false) {
 
   beforeAll(async () => {
     await server.ensureInstance();
-    const uri = server.getUri(); // ? Ensure singleton
-    debug(`connecting to mongo memory server at ${uri}`);
-    overwriteMemory({ client: await MongoClient.connect(uri) });
-    if (defer) await reinitializeServer();
+    const uri = server.getUri();
+    debug(`connecting to in-memory dummy mongo server at ${uri}`);
+
+    overwriteMemory({
+      ...getInitialInternalMemoryState(),
+      client: await MongoClient.connect(uri)
+    });
+
+    if (params?.defer) await reinitializeServer();
   });
 
-  if (!defer) {
+  if (!params?.defer) {
     beforeEach(reinitializeServer);
   }
 

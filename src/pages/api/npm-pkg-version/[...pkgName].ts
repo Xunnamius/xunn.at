@@ -23,7 +23,8 @@ export default withMiddleware(
       console.warn('warn  -', ignored);
     }
 
-    await sendBadgeSvgResponse(res, {
+    await sendBadgeSvgResponse({
+      res,
       label: 'npm install',
       message: !version ? 'error' : `${pkg}@${version}`,
       color: !version ? 'red' : 'blue'

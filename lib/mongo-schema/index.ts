@@ -10,7 +10,7 @@ import type { Db } from 'mongodb';
 // TODO: webpacked!
 
 const debug = debugFactory('mongo-schema:db');
-let memory: InternalMemory | null = null;
+let memory: InternalMemory = getInitialInternalMemoryState();
 
 type createIndexParams = Parameters<Db['createIndex']>;
 
@@ -18,9 +18,8 @@ type createIndexParams = Parameters<Db['createIndex']>;
  * An internal cache of connection, server schema, and database state.
  */
 export type InternalMemory = {
-  schema: DbSchema;
-  clientIsExternal: boolean;
-  client: MongoClient;
+  schema: DbSchema | null;
+  client: MongoClient | null;
   databases: Record<string, Db>;
 };
 
@@ -51,13 +50,23 @@ export type DbSchema = {
 };
 
 /**
- * Finds the file at `${nextProjectRoot}/src/db` or
- * `${nextProjectRoot}/src/backend/db`, imports it, calls the `getSchemaConfig`
+ * Returns a copy of the initial state of internal memory. Useful when
+ * overwriting internal memory.
+ */
+export function getInitialInternalMemoryState(): InternalMemory {
+  return {
+    schema: null,
+    client: null,
+    databases: {}
+  };
+}
+
+/**
+ * Finds the file at `${projectRoot}/db`, `${projectRoot}/src/db`, or
+ * `${projectRoot}/src/backend/db`, imports it, calls the `getSchemaConfig`
  * function defined within, and memoizes the result.
  */
 export async function getSchemaConfig(): Promise<DbSchema> {
-  !memory && (memory = {} as InternalMemory);
-
   if (memory.schema) {
     return memory.schema;
   } else {
@@ -85,7 +94,7 @@ export async function getSchemaConfig(): Promise<DbSchema> {
 
     if (!getCustomSchemaConfig) {
       throw new InvalidConfigurationError(
-        `could not resolve mongodb schema; one of the following import paths must resolve to a file with an (optionally) async "getSchemaConfig" function that returns a DbSchema object:\n\n  - ${paths.join(
+        `could not resolve mongodb schema. One of the following import paths must resolve to a file with an (optionally) async "getSchemaConfig" function that returns a DbSchema object:\n\n  - ${paths.join(
           '\n  - '
         )}`
       );
@@ -98,39 +107,18 @@ export async function getSchemaConfig(): Promise<DbSchema> {
 /**
  * Mutates internal memory. Used for testing purposes.
  */
-export function overwriteMemory(newMemory: Partial<InternalMemory>) {
-  memory = { clientIsExternal: false, ...memory, ...newMemory } as InternalMemory;
-  debug('internal db memory overwritten');
+export function overwriteMemory(newMemory: InternalMemory) {
+  memory = newMemory;
+  debug('internal memory overwritten');
 }
 
 /**
  * Lazily connects to the server on-demand, memoizing the result.
  */
-export async function getClient(params?: {
-  /**
-   * If `true`, `EXTERNAL_SCRIPTS_MONGODB_URI` is checked first to determine
-   * server uri. If `false`, `MONGODB_URI` is used; this is the default (and
-   * fallback).
-   *
-   * Note that this function does not close any client or database connections
-   * when switching between external and non-external URIs. If doing this, be
-   * sure to close old client connections manually or risk memory leaks!
-   */
-  external?: boolean;
-}) {
-  !memory && (memory = {} as InternalMemory);
-
-  if (!memory.client || !!memory.clientIsExternal != !!params?.external) {
-    let uri = getEnv().MONGODB_URI;
-
-    if (params?.external) {
-      uri = getEnv().EXTERNAL_SCRIPTS_MONGODB_URI;
-      memory.clientIsExternal = true;
-    } else {
-      memory.clientIsExternal = false;
-    }
-
-    debug(`connecting to ${params?.external ? 'external ' : ''}mongo server at ${uri}`);
+export async function getClient() {
+  if (!memory.client) {
+    const uri = getEnv().MONGODB_URI;
+    debug(`connecting to mongo server at ${uri}`);
     memory.client = await MongoClient.connect(uri);
   } else {
     debug('connected (from memory) to mongo server');
@@ -140,12 +128,16 @@ export async function getClient(params?: {
 }
 
 /**
- * Kills the MongoClient and closes any lingering database connections.
+ * Kills the MongoClient instance and any related database connections.
  */
 export async function closeClient() {
-  debug('closing client');
-  await memory?.client.close(true);
-  memory = null;
+  /* istanbul ignore else */
+  if (memory?.client) {
+    debug('closing server connection');
+    await memory.client.close(true);
+  }
+
+  memory = getInitialInternalMemoryState();
 }
 
 /**
@@ -156,8 +148,9 @@ export async function getNameFromAlias(alias: string) {
   const schema = await getSchemaConfig();
   const nameActual = schema.aliases[alias] || alias;
 
-  debug(`alias: ${alias}`);
-  debug(`actual name: ${nameActual}`);
+  if (alias != nameActual) {
+    debug(`mapped alias "${alias}" to database name "${nameActual}"`);
+  }
 
   if (!schema.databases[nameActual]?.collections) {
     throw new InvalidConfigurationError(
@@ -174,37 +167,20 @@ export async function getNameFromAlias(alias: string) {
  * function.
  */
 export async function getDb({
-  name,
-  external
+  name
 }: {
   /**
    * The name or alias of the database to retrieve.
    */
   name: string;
-  /**
-   * If `true`, `EXTERNAL_SCRIPTS_MONGODB_URI` is checked first to determine
-   * server uri. If `false`, `MONGODB_URI` is used; this is the default (and
-   * fallback).
-   */
-  external?: boolean;
 }) {
-  !memory && (memory = {} as InternalMemory);
-
-  if (!memory.databases) {
-    memory.databases = {};
-  } else if (!!memory.clientIsExternal != !!external) {
-    for (const k in memory.databases) {
-      delete memory.databases[k];
-    }
-  }
-
   const nameActual = await getNameFromAlias(name);
 
   if (!memory.databases[nameActual]) {
-    debug(`connecting to mongo database "${nameActual}"`);
-    memory.databases[nameActual] = (await getClient({ external })).db(nameActual);
+    debug(`acquiring mongo database "${nameActual}"`);
+    memory.databases[nameActual] = (await getClient()).db(nameActual);
   } else {
-    debug(`connected (from memory) to mongo database "${nameActual}"`);
+    debug(`acquired (from memory) mongo database "${nameActual}"`);
   }
 
   return memory.databases[nameActual];
@@ -215,21 +191,14 @@ export async function getDb({
  * before calling this function, it will be created first then dropped.
  */
 export async function destroyDb({
-  name,
-  external
+  name
 }: {
   /**
    * The name or alias of the database to destroy.
    */
   name: string;
-  /**
-   * If `true`, `EXTERNAL_SCRIPTS_MONGODB_URI` is checked first to determine
-   * server uri. If `false`, `MONGODB_URI` is used; this is the default (and
-   * fallback).
-   */
-  external?: boolean;
 }) {
-  return (await getDb({ name, external })).dropDatabase();
+  return (await getDb({ name })).dropDatabase();
 }
 
 /**
@@ -238,21 +207,14 @@ export async function destroyDb({
  * function is idempotent.
  */
 export async function initializeDb({
-  name,
-  external
+  name
 }: {
   /**
    * The name or alias of the database to initialize.
    */
   name: string;
-  /**
-   * If `true`, `EXTERNAL_SCRIPTS_MONGODB_URI` is checked first to determine
-   * server uri. If `false`, `MONGODB_URI` is used; this is the default (and
-   * fallback).
-   */
-  external?: boolean;
 }) {
-  const db = await getDb({ name, external });
+  const db = await getDb({ name });
   const nameActual = await getNameFromAlias(name);
 
   await Promise.all(

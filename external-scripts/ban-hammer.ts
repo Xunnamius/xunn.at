@@ -61,7 +61,7 @@ export default async function main() {
     const calledEveryMs = oneSecondInMs * calledEverySeconds;
     const defaultBanTimeMs = oneSecondInMs * 60 * defaultBanTimeMinutes;
     const resolutionWindowMs = oneSecondInMs * resolutionWindowSeconds;
-    const db = await getDb({ name: 'root', external: true });
+    const db = await getDb({ name: 'root' });
 
     const pipeline = [
       {

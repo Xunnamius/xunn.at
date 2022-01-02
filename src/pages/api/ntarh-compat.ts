@@ -5,8 +5,8 @@ import { getCompatVersion, sendBadgeSvgResponse } from 'universe/backend';
 export { defaultConfig as config } from 'universe/backend/api';
 
 /**
- * An endpoint that returns a badge showing latest NTARH's compatibility with
- * the latest Next.js version.
+ * An endpoint that returns a badge showing NTARH's compatibility with the
+ * latest Next.js version.
  */
 export default withMiddleware(
   async (_req, res) => {
@@ -19,7 +19,8 @@ export default withMiddleware(
       console.warn('warn  -', ignored);
     }
 
-    await sendBadgeSvgResponse(res, {
+    await sendBadgeSvgResponse({
+      res,
       label: 'compatible with',
       message: !version ? 'error' : `next@%E2%89%A4${version}`,
       color: !version ? 'red' : 'blue'

@@ -35,7 +35,7 @@ const getCollectionLimits = (env: ReturnType<typeof getEnv>) => {
 export default async function main() {
   try {
     const limits = getCollectionLimits(getEnv());
-    const db = await getDb({ name: 'root', external: true });
+    const db = await getDb({ name: 'root' });
 
     await Promise.all(
       Object.entries(limits).map(async ([collectionName, limitObj]) => {

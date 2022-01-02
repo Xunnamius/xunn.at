@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { setupTestDb } from 'multiverse/mongo-test';
+import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 import { itemExists, itemToObjectId, itemToStringId } from 'multiverse/mongo-item';
 import { getDb } from 'multiverse/mongo-schema';
 import { toss } from 'toss-expression';
@@ -9,7 +9,7 @@ import { DUMMY_BEARER_TOKEN, NULL_BEARER_TOKEN } from 'multiverse/next-auth';
 import type { InternalAuthBearerEntry } from 'multiverse/next-auth';
 import type { WithId } from 'mongodb';
 
-setupTestDb();
+setupMemoryServerOverride();
 
 describe('::itemExists', () => {
   it('returns true if an item exists in a collection where [key] == id', async () => {

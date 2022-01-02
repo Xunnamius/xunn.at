@@ -1,4 +1,4 @@
-import { setupTestDb } from 'multiverse/mongo-test';
+import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 import { getClient } from 'multiverse/mongo-schema';
 import { setProjectRoot } from 'multiverse/find-project-root';
 
@@ -58,10 +58,10 @@ beforeEach(() => {
   };
 });
 
-describe('[run using non-deferred setupTestDb]', () => {
-  setupTestDb();
+describe('[run using non-deferred setupMemoryServerOverride]', () => {
+  setupMemoryServerOverride();
 
-  it('setupTestDb works as expected', async () => {
+  it('setupMemoryServerOverride works as expected', async () => {
     expect.hasAssertions();
 
     const client = await getClient();

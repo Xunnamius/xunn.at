@@ -283,7 +283,7 @@ describe('::hydrateDb', () => {
   });
 });
 
-describe('::setupTestDb', () => {
+describe('::setupMemoryServerOverride', () => {
   it('registers jest hooks with respect to defer', async () => {
     expect.hasAssertions();
 
@@ -301,13 +301,13 @@ describe('::setupTestDb', () => {
       // eslint-disable-next-line no-global-assign
       afterAll = jest.fn();
 
-      testLib.setupTestDb();
+      testLib.setupMemoryServerOverride();
 
       expect(beforeAll).toBeCalledTimes(1);
       expect(beforeEach).toBeCalledTimes(1);
       expect(afterAll).toBeCalledTimes(1);
 
-      testLib.setupTestDb(true);
+      testLib.setupMemoryServerOverride({ defer: true });
 
       expect(beforeAll).toBeCalledTimes(2);
       expect(beforeEach).toBeCalledTimes(1);
@@ -359,7 +359,7 @@ describe('::setupTestDb', () => {
       // eslint-disable-next-line no-global-assign
       afterAll = jest.fn();
 
-      testLib.setupTestDb();
+      testLib.setupMemoryServerOverride();
 
       expect(beforeAll).toBeCalledTimes(1);
       expect(beforeEach).toBeCalledTimes(1);
@@ -384,7 +384,7 @@ describe('::setupTestDb', () => {
       // eslint-disable-next-line jest/unbound-method
       expect(asMockedFunction(mockedMongoMemoryServer.stop)).toBeCalled();
 
-      testLib.setupTestDb(true);
+      testLib.setupMemoryServerOverride({ defer: true });
 
       expect(beforeAll).toBeCalledTimes(2);
       expect(beforeEach).toBeCalledTimes(1);
@@ -438,7 +438,7 @@ describe('::setupTestDb', () => {
 
       await withMockedEnv(
         async () => {
-          testLib.setupTestDb();
+          testLib.setupMemoryServerOverride();
           expect(mockMongoMemoryServer).toBeCalledWith({
             instance: expect.objectContaining({ port: 5678 })
           });

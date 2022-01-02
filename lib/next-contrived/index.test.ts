@@ -1,9 +1,9 @@
 import { useMockDateNow } from 'multiverse/mongo-common';
-import { setupTestDb } from 'multiverse/mongo-test';
+import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 import { isDueForContrivedError } from 'multiverse/next-contrived';
 import { mockEnvFactory } from 'testverse/setup';
 
-setupTestDb();
+setupMemoryServerOverride();
 useMockDateNow();
 
 const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });
