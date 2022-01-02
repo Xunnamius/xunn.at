@@ -10,6 +10,8 @@ const debugNamespace = `${namespace}:prune-data`;
 const log = debugFactory(debugNamespace);
 const debug = debugFactory(debugNamespace);
 
+type DataLimit = number | { limit: number; orderBy: string };
+
 // eslint-disable-next-line no-console
 log.log = console.info.bind(console);
 
@@ -19,20 +21,29 @@ if (!getEnv().DEBUG && getEnv().NODE_ENV != 'test') {
 }
 
 const getCollectionLimits = (env: ReturnType<typeof getEnv>) => {
-  const limits = {
+  const limits: Record<string, DataLimit> = {
     'request-log':
-      env.PRUNE_DATA_MAX_LOGS ||
-      toss(new InvalidEnvironmentError('PRUNE_DATA_MAX_LOGS must be greater than zero')),
+      env.PRUNE_DATA_MAX_LOGS && env.PRUNE_DATA_MAX_LOGS > 0
+        ? env.PRUNE_DATA_MAX_LOGS
+        : toss(
+            new InvalidEnvironmentError('PRUNE_DATA_MAX_LOGS must be greater than zero')
+          ),
     'limited-log':
-      env.PRUNE_DATA_MAX_BANNED ||
-      toss(new InvalidEnvironmentError('PRUNE_DATA_MAX_BANNED must be greater than zero'))
+      env.PRUNE_DATA_MAX_BANNED && env.PRUNE_DATA_MAX_BANNED > 0
+        ? env.PRUNE_DATA_MAX_BANNED
+        : toss(
+            new InvalidEnvironmentError('PRUNE_DATA_MAX_BANNED must be greater than zero')
+          )
   };
 
   debug('limits: %O', limits);
   return limits;
 };
 
-export default async function main() {
+/**
+ * Runs maintenance on the database, ensuring collections do not grow too large.
+ */
+const invoked = async () => {
   try {
     const limits = getCollectionLimits(getEnv());
     const db = await getDb({ name: 'root' });
@@ -40,7 +51,9 @@ export default async function main() {
     await Promise.all(
       Object.entries(limits).map(async ([collectionName, limitObj]) => {
         const { limit: limitThreshold, orderBy } =
-          typeof limitObj == 'number' ? { limit: limitObj, orderBy: '_id' } : limitObj;
+          typeof limitObj == 'number'
+            ? { limit: limitObj, orderBy: '_id' }
+            : /* istanbul ignore next */ limitObj;
 
         const subLog = log.extend(collectionName);
         const collection = db.collection(collectionName);
@@ -75,7 +88,9 @@ export default async function main() {
   } catch (e) {
     throw new AppError(`${e}`);
   }
-}
+};
 
-!module.parent &&
-  main().catch((e) => log.extend('<exception>')(e.message || e.toString()));
+export default invoked().catch((e: Error) => {
+  debug.error(e.message);
+  process.exit(2);
+});

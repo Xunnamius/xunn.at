@@ -5,7 +5,7 @@ import { withMiddleware } from 'universe/backend/middleware';
 import { asMockedFunction } from '@xunnamius/jest-types';
 import { testApiHandler } from 'next-test-api-route-handler';
 import { toss } from 'toss-expression';
-import { ItemNotFoundError, TrialError } from 'named-app-errors';
+import { DummyError, ItemNotFoundError } from 'named-app-errors';
 import { withMockedOutput } from 'testverse/setup';
 import { middlewareFactory } from 'multiverse/next-api-glue';
 import handleError from 'multiverse/next-adhesive/handle-error';
@@ -270,7 +270,7 @@ it('removes github-pkg-specific headers on error', async () => {
     })
   );
 
-  mockPkgPipeline.mockImplementation(() => toss(new TrialError()));
+  mockPkgPipeline.mockImplementation(() => toss(new DummyError()));
 
   await withMockedOutput(
     async () => {
@@ -345,7 +345,7 @@ it('does not remove cache-control on NotFound error', async () => {
     }
   });
 
-  mockResolveShortId.mockImplementationOnce(() => Promise.reject(new TrialError()));
+  mockResolveShortId.mockImplementationOnce(() => Promise.reject(new DummyError()));
 
   await withMockedOutput(
     async () => {

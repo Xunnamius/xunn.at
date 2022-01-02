@@ -18,7 +18,11 @@ if (!getEnv().DEBUG && getEnv().NODE_ENV != 'test') {
   debug.enabled = false;
 }
 
-export default async function main() {
+/**
+ * Pores over request-log entries and drops the ban hammer on rule breaking
+ * clients.
+ */
+const invoked = async () => {
   try {
     const {
       BAN_HAMMER_WILL_BE_CALLED_EVERY_SECONDS: calledEverySeconds,
@@ -76,13 +80,16 @@ export default async function main() {
       {
         $lookup: {
           from: 'request-log',
-          as: 'keyBased',
+          as: 'headerBased',
           pipeline: [
             {
               $match: {
                 header: { $ne: null },
                 $expr: {
-                  $gte: ['$time', { $subtract: [{ $toLong: '$$NOW' }, calledEveryMs] }]
+                  $gte: [
+                    '$createdAt',
+                    { $subtract: [{ $toLong: '$$NOW' }, calledEveryMs] }
+                  ]
                 }
               }
             },
@@ -91,7 +98,10 @@ export default async function main() {
                 _id: {
                   header: '$header',
                   interval: {
-                    $subtract: ['$time', { $mod: ['$time', resolutionWindowMs] }]
+                    $subtract: [
+                      '$createdAt',
+                      { $mod: ['$createdAt', resolutionWindowMs] }
+                    ]
                   }
                 },
                 count: { $sum: 1 }
@@ -104,7 +114,7 @@ export default async function main() {
             },
             {
               $project: {
-                header: '$_id.key',
+                header: '$_id.header',
                 until: { $add: [{ $toLong: '$$NOW' }, defaultBanTimeMs] }
               }
             },
@@ -125,7 +135,10 @@ export default async function main() {
             {
               $match: {
                 $expr: {
-                  $gte: ['$time', { $subtract: [{ $toLong: '$$NOW' }, calledEveryMs] }]
+                  $gte: [
+                    '$createdAt',
+                    { $subtract: [{ $toLong: '$$NOW' }, calledEveryMs] }
+                  ]
                 }
               }
             },
@@ -134,7 +147,10 @@ export default async function main() {
                 _id: {
                   ip: '$ip',
                   interval: {
-                    $subtract: ['$time', { $mod: ['$time', resolutionWindowMs] }]
+                    $subtract: [
+                      '$createdAt',
+                      { $mod: ['$createdAt', resolutionWindowMs] }
+                    ]
                   }
                 },
                 count: { $sum: 1 }
@@ -232,7 +248,7 @@ export default async function main() {
             }
           },
           ip: '$_id.ip',
-          header: '$_id.key'
+          header: '$_id.header'
         }
       },
       {
@@ -257,7 +273,9 @@ export default async function main() {
   } catch (e) {
     throw new AppError(`${e}`);
   }
-}
+};
 
-require.main === module &&
-  main().catch((e) => log.extend('<exception>')(e.message || e.toString()));
+export default invoked().catch((e: Error) => {
+  debug.error(e.message);
+  process.exit(2);
+});

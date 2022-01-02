@@ -198,7 +198,8 @@ export async function destroyDb({
    */
   name: string;
 }) {
-  return (await getDb({ name })).dropDatabase();
+  const nameActual = await getNameFromAlias(name);
+  return !memory.databases[nameActual] || (await getDb({ name })).dropDatabase();
 }
 
 /**

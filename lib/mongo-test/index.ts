@@ -1,7 +1,7 @@
 import { MongoClient } from 'mongodb';
 import { getEnv } from 'multiverse/next-env';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { InvalidConfigurationError } from 'named-app-errors';
+import { InvalidConfigurationError, TrialError } from 'named-app-errors';
 import { debugFactory } from 'multiverse/debug-extended';
 import { findProjectRoot } from 'multiverse/find-project-root';
 
@@ -188,6 +188,12 @@ export function setupMemoryServerOverride(params?: {
     const uri = server.getUri();
     debug(`connecting to in-memory dummy mongo server at ${uri}`);
 
+    if (port && !(uri.endsWith(`:${port}/`) || uri.endsWith(`:${port}`))) {
+      throw new TrialError(
+        `unable to start mongodb memory server: port ${port} seems to be in use`
+      );
+    }
+
     overwriteMemory({
       ...getInitialInternalMemoryState(),
       client: await MongoClient.connect(uri)
@@ -202,7 +208,7 @@ export function setupMemoryServerOverride(params?: {
 
   afterAll(async () => {
     await closeClient();
-    await server.stop();
+    await server.stop(true);
   });
 
   return { reinitializeServer };

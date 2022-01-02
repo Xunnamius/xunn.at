@@ -25,7 +25,7 @@ describe('::addToRequestLog', () => {
     const req2 = {
       headers: {
         'x-forwarded-for': '8.8.8.8',
-        authorization: `Bearer ${BANNED_BEARER_TOKEN}`
+        authorization: `bearer ${BANNED_BEARER_TOKEN}`
       },
       method: 'GET',
       url: '/api/route/path2'
@@ -58,7 +58,7 @@ describe('::addToRequestLog', () => {
     ).resolves.toStrictEqual({
       _id: expect.anything(),
       ip: '8.8.8.8',
-      header: `Bearer ${BANNED_BEARER_TOKEN}`,
+      header: `bearer ${BANNED_BEARER_TOKEN}`,
       route: '/api/route/path2',
       method: 'GET',
       createdAt: generatedAt,
@@ -66,7 +66,7 @@ describe('::addToRequestLog', () => {
     });
   });
 
-  it('handles null method and/or url', async () => {
+  it('handles null method and/or url and lowercases schema', async () => {
     expect.hasAssertions();
 
     const req1 = {
@@ -78,7 +78,7 @@ describe('::addToRequestLog', () => {
     const req2 = {
       headers: {
         'x-forwarded-for': '8.8.8.8',
-        authorization: `Bearer ${BANNED_BEARER_TOKEN}`
+        authorization: `BeArEr ${BANNED_BEARER_TOKEN}`
       },
       method: 'GET',
       url: null
@@ -111,7 +111,7 @@ describe('::addToRequestLog', () => {
     ).resolves.toStrictEqual({
       _id: expect.anything(),
       ip: '8.8.8.8',
-      header: `Bearer ${BANNED_BEARER_TOKEN}`,
+      header: `bearer ${BANNED_BEARER_TOKEN}`,
       route: null,
       method: 'GET',
       createdAt: generatedAt,

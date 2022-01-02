@@ -110,7 +110,7 @@ export const dummyRootData: DummyRootData = {
   'request-log': [...Array(22)].map((_, ndx) => ({
     _id: new ObjectId(),
     ip: '1.2.3.4',
-    header: ndx % 2 ? null : `Bearer ${BANNED_BEARER_TOKEN}`,
+    header: ndx % 2 ? null : `bearer ${BANNED_BEARER_TOKEN}`,
     method: ndx % 3 ? 'GET' : 'POST',
     route: 'fake/route',
     createdAt: generatedAt + 10 ** 6,
@@ -121,7 +121,7 @@ export const dummyRootData: DummyRootData = {
     { _id: new ObjectId(), ip: '5.6.7.8', until: generatedAt + 1000 * 60 * 15 },
     {
       _id: new ObjectId(),
-      header: `Bearer ${BANNED_BEARER_TOKEN}`,
+      header: `bearer ${BANNED_BEARER_TOKEN}`,
       until: generatedAt + 1000 * 60 * 60
     }
   ]

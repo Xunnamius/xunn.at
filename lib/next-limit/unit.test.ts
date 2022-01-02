@@ -11,7 +11,7 @@ setupMemoryServerOverride();
 useMockDateNow();
 
 describe('::clientIsRateLimited', () => {
-  it('returns true if ip or key are rate limited', async () => {
+  it('returns true if ip or header (case-insensitive) are rate limited', async () => {
     expect.hasAssertions();
 
     const req1 = await clientIsRateLimited({
@@ -23,7 +23,8 @@ describe('::clientIsRateLimited', () => {
     const req2 = await clientIsRateLimited({
       headers: {
         'x-forwarded-for': '8.8.8.8',
-        authorization: `Bearer ${BANNED_BEARER_TOKEN}`
+        // ? Should work with different cases too
+        authorization: `BEARER ${BANNED_BEARER_TOKEN}`
       },
       method: 'GET',
       url: '/api/route/path2'
@@ -32,7 +33,7 @@ describe('::clientIsRateLimited', () => {
     const req3 = await clientIsRateLimited({
       headers: {
         'x-forwarded-for': '1.2.3.4',
-        authorization: 'Bearer fake-key'
+        authorization: 'bearer fake-header'
       },
       method: 'POST',
       url: '/api/route/path1'
@@ -49,7 +50,7 @@ describe('::clientIsRateLimited', () => {
     const req5 = await clientIsRateLimited({
       headers: {
         'x-forwarded-for': '1.2.3.4',
-        authorization: `Bearer ${BANNED_BEARER_TOKEN}`
+        authorization: `bearer ${BANNED_BEARER_TOKEN}`
       },
       method: 'POST',
       url: '/api/route/path1'
@@ -57,7 +58,8 @@ describe('::clientIsRateLimited', () => {
 
     const req6 = await clientIsRateLimited({
       headers: {
-        authorization: `Bearer ${BANNED_BEARER_TOKEN}`
+        // ? Should work with different cases too
+        authorization: `bEaReR ${BANNED_BEARER_TOKEN}`
       },
       method: 'POST',
       url: '/api/route/path1'
@@ -75,12 +77,12 @@ describe('::clientIsRateLimited', () => {
     expect(req2.retryAfter).toBeWithin(minToMs(60) - 1000, minToMs(60) + 1000);
     expect(req3.retryAfter).toBeWithin(minToMs(15) - 1000, minToMs(15) + 1000);
     expect(req4.retryAfter).toBeWithin(minToMs(15) - 1000, minToMs(15) + 1000);
-    // ? Should return greater of the two ban times (key time > ip time)
+    // ? Should return greater of the two ban times (header time > ip time)
     expect(req5.retryAfter).toBeWithin(minToMs(60) - 1000, minToMs(60) + 1000);
     expect(req6.retryAfter).toBeWithin(minToMs(60) - 1000, minToMs(60) + 1000);
   });
 
-  it('returns false if both ip and key (if provided) are not rate limited', async () => {
+  it('returns false if both ip and header (if provided) are not rate limited', async () => {
     expect.hasAssertions();
     const req1 = {
       headers: { 'x-forwarded-for': '1.2.3.5' },
@@ -91,7 +93,7 @@ describe('::clientIsRateLimited', () => {
     const req2 = {
       headers: {
         'x-forwarded-for': '8.8.8.8',
-        authorization: 'Bearer fake-key'
+        authorization: 'bearer fake-header'
       },
       method: 'GET',
       url: '/api/route/path2'

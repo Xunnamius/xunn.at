@@ -35,7 +35,7 @@ const mockMongoMemoryServer = asMockedClass(MongoMemoryServer);
 
 const mockedMongoMemoryServer = {
   ensureInstance: jest.fn(),
-  getUri: jest.fn(() => 'fake-uri'),
+  getUri: jest.fn(),
   stop: jest.fn()
 } as unknown as MongoMemoryServer;
 
@@ -442,6 +442,53 @@ describe('::setupMemoryServerOverride', () => {
           expect(mockMongoMemoryServer).toBeCalledWith({
             instance: expect.objectContaining({ port: 5678 })
           });
+        },
+        {
+          VSCODE_INSPECTOR_OPTIONS: 'exists',
+          MONGODB_MS_PORT: '5678'
+        }
+      );
+    } finally {
+      // eslint-disable-next-line no-global-assign
+      beforeAll = oldBeforeAll;
+      // eslint-disable-next-line no-global-assign
+      beforeEach = oldBeforeEach;
+      // eslint-disable-next-line no-global-assign
+      afterAll = oldAfterAll;
+    }
+  });
+
+  it('hook rejects if port does not match uri (EADDRINUSE)', async () => {
+    expect.hasAssertions();
+
+    const oldBeforeAll = beforeAll;
+    const oldBeforeEach = beforeEach;
+    const oldAfterAll = afterAll;
+
+    try {
+      const testLib = importTestDbLib();
+
+      // eslint-disable-next-line no-global-assign
+      beforeAll = jest.fn();
+      // eslint-disable-next-line no-global-assign
+      beforeEach = jest.fn();
+      // eslint-disable-next-line no-global-assign
+      afterAll = jest.fn();
+
+      // eslint-disable-next-line jest/unbound-method
+      asMockedFunction(mockedMongoMemoryServer.getUri).mockImplementationOnce(
+        () => 'uri-not-ending-in-colon-5678'
+      );
+
+      await withMockedEnv(
+        async () => {
+          testLib.setupMemoryServerOverride();
+
+          await expect(
+            asMockedFunction(beforeAll).mock.calls[0][0](
+              undefined as unknown as jest.DoneCallback
+            )
+          ).rejects.toThrow('port 5678 seems to be in use');
         },
         {
           VSCODE_INSPECTOR_OPTIONS: 'exists',

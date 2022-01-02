@@ -17,7 +17,6 @@ import 'jest-extended';
 
 import type { Debugger } from 'multiverse/debug-extended';
 import type { SimpleGit } from 'simple-git';
-import type { Promisable } from 'type-fest';
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 import type { Entry } from 'universe/backend/tar';
 
@@ -229,7 +228,7 @@ export type MockEnvOptions = {
 
 // TODO: XXX: make this into a separate (mock-argv) package
 export async function withMockedArgv(
-  fn: () => Promisable<void>,
+  fn: () => unknown,
   newArgv: string[],
   options: MockArgvOptions = { replace: false }
 ) {
@@ -253,7 +252,7 @@ export function mockArgvFactory(
   const factoryNewArgv = newArgv;
   const factoryOptions = options;
 
-  return (fn: () => Promisable<void>, newArgv?: string[], options?: MockArgvOptions) => {
+  return (fn: () => unknown, newArgv?: string[], options?: MockArgvOptions) => {
     return withMockedArgv(
       fn,
       [...factoryNewArgv, ...(newArgv || [])],
@@ -264,7 +263,7 @@ export function mockArgvFactory(
 
 // TODO: XXX: make this into a separate (mock-env) package
 export async function withMockedEnv(
-  fn: () => Promisable<void>,
+  fn: () => unknown,
   newEnv: Record<string, string>,
   options: MockEnvOptions = { replace: true }
 ) {
@@ -286,22 +285,23 @@ export async function withMockedEnv(
 
 // TODO: XXX: make this into a separate (mock-env) package (along w/ the above)
 export function mockEnvFactory(
-  newEnv: Record<string, string>,
+  newEnv: Record<string, string | undefined>,
   options: MockEnvOptions = { replace: true }
 ) {
   const factoryNewEnv = newEnv;
   const factoryOptions = options;
 
   return (
-    fn: () => Promisable<void>,
-    newEnv?: Record<string, string>,
+    fn: () => unknown,
+    newEnv?: Record<string, string | undefined>,
     options?: MockEnvOptions
   ) => {
-    return withMockedEnv(
-      fn,
-      { ...factoryNewEnv, ...(newEnv || {}) },
-      options || factoryOptions
-    );
+    const env = { ...factoryNewEnv, ...(newEnv || {}) };
+    const opts = { ...options, ...factoryOptions };
+
+    // ? The process.env proxy casts undefineds to strings, so we'll delete them
+    Object.keys(env).forEach((key) => env[key] === undefined && delete env[key]);
+    return withMockedEnv(fn, env as Record<string, string>, opts);
   };
 }
 
@@ -323,8 +323,8 @@ export function isolatedImport<T = unknown>(args: {
    */
   path: string;
   /**
-   * By default, if `module.__esModule === true`, the default export will be
-   * returned instead. Use `useDefault` to override this behavior in either
+   * By default, only if `module.__esModule === true`, the default export will
+   * be returned instead. Use `useDefault` to override this behavior in either
    * direction.
    */
   useDefault?: boolean;
@@ -353,7 +353,15 @@ export function isolatedImport<T = unknown>(args: {
 
 // TODO: XXX: make this into a separate package (along with the above)
 export function isolatedImportFactory<T = unknown>(args: {
+  /**
+   * Path to the module to import. Module resolution is handled by `require`.
+   */
   path: string;
+  /**
+   * By default, only if `module.__esModule === true`, the default export will
+   * be returned instead. Use `useDefault` to override this behavior in either
+   * direction.
+   */
   useDefault?: boolean;
 }) {
   return () => isolatedImport<T>({ path: args.path, useDefault: args.useDefault });
@@ -364,44 +372,85 @@ export function isolatedImportFactory<T = unknown>(args: {
  * While `isolatedImport` performs a module import as if it were being
  * imported for the first time, `protectedImport` wraps `isolatedImport`
  * with `withMockedExit`. This makes `protectedImport` useful for testing
- * IIFE modules such as CLI entry points.
+ * IIFE modules such as CLI entry points an externals.
  */
-export function protectedImport<T = unknown>(args: {
+export async function protectedImport<T = unknown>(args: {
+  /**
+   * Path to the module to import. Module resolution is handled by `require`.
+   */
   path: string;
+  /**
+   * By default, only if `module.__esModule === true`, the default export will
+   * be returned instead. Use `useDefault` to override this behavior in either
+   * direction.
+   */
   useDefault?: boolean;
+  /**
+   * The code that must be passed to process.exit by the imported module. If
+   * `undefined` (default), then process.exit must not be called.
+   *
+   * @default undefined
+   */
+  expectedExitCode?: number | 'non-zero' | undefined;
 }) {
-  return async (params?: {
-    /**
-     * The code passed to process.exit by the imported module.
-     *
-     * @default 0
-     */
-    expectedExitCode?: number | 'non-zero';
-  }) => {
-    let pkg: unknown = undefined;
+  let pkg: unknown = undefined;
 
-    await withMockedExit(async ({ exitSpy }) => {
-      pkg = await isolatedImport({ path: args.path, useDefault: args.useDefault });
-      params?.expectedExitCode == 'non-zero'
+  await withMockedExit(async ({ exitSpy }) => {
+    pkg = await isolatedImport({ path: args.path, useDefault: args.useDefault });
+    if (expect) {
+      args?.expectedExitCode == 'non-zero'
         ? expect(exitSpy).not.toBeCalledWith(0)
-        : expect(exitSpy).toBeCalledWith(params?.expectedExitCode ?? 0);
-    });
+        : args?.expectedExitCode === undefined
+        ? expect(exitSpy).not.toBeCalled()
+        : expect(exitSpy).toBeCalledWith(args.expectedExitCode);
+    } else {
+      debug.warn('"expect" object not found, so exit check was skipped');
+    }
+  });
 
-    return pkg as T;
-  };
+  return pkg as T;
 }
 
 // TODO: XXX: make this into a separate package (along with the above)
 export function protectedImportFactory<T = unknown>(args: {
+  /**
+   * Path to the module to import. Module resolution is handled by `require`.
+   */
   path: string;
+  /**
+   * By default, only if `module.__esModule === true`, the default export will
+   * be returned instead. Use `useDefault` to override this behavior in either
+   * direction.
+   */
   useDefault?: boolean;
+  /**
+   * The code that must be passed to process.exit by the imported module. If
+   * `undefined` (default), then process.exit must not be called.
+   *
+   * @default undefined
+   */
+  expectedExitCode?: number | 'non-zero' | undefined;
 }) {
-  return () => protectedImport<T>({ path: args.path, useDefault: args.useDefault });
+  return async (params?: {
+    /**
+     * The code that must be passed to process.exit by the imported module. If
+     * `undefined` (default), then process.exit must not be called.
+     *
+     * @default undefined
+     */
+    expectedExitCode?: number | 'non-zero' | undefined;
+  }) => {
+    return protectedImport<T>({
+      path: args.path,
+      useDefault: args.useDefault,
+      expectedExitCode: params?.expectedExitCode
+    });
+  };
 }
 
 // TODO: XXX: make this into a separate (mock-exit) package
 export async function withMockedExit(
-  fn: (spies: { exitSpy: jest.SpyInstance }) => Promisable<void>
+  fn: (spies: { exitSpy: jest.SpyInstance }) => unknown
 ) {
   const exitSpy = jest
     .spyOn(process, 'exit')
@@ -423,7 +472,7 @@ export async function withMockedOutput(
     infoSpy: jest.SpyInstance;
     stdoutSpy: jest.SpyInstance;
     stdErrSpy: jest.SpyInstance;
-  }) => Promisable<void>,
+  }) => unknown,
   options?: {
     /**
      * Determine if spies provide mock implementations for output functions,
@@ -542,7 +591,7 @@ export interface WebpackTestFixtureOptions {
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
 export interface GitRepositoryFixtureOptions {
-  setupGit: (git: SimpleGit) => Promisable<void>;
+  setupGit: (git: SimpleGit) => unknown;
 }
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)

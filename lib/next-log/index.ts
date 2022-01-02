@@ -42,7 +42,9 @@ export async function addToRequestLog({
     .insertOne({
       ip: getClientIp(req),
       header:
-        req.headers.authorization?.slice(0, getEnv().AUTH_HEADER_MAX_LENGTH) || null,
+        req.headers.authorization
+          ?.slice(0, getEnv().AUTH_HEADER_MAX_LENGTH)
+          .toLowerCase() || null,
       method: req.method || null,
       route: req.url || null,
       resStatusCode: res.statusCode as HttpStatusCode,

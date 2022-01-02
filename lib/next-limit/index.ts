@@ -27,7 +27,9 @@ export type InternalLimitedLogEntry =
  */
 export async function clientIsRateLimited(req: NextApiRequest) {
   const ip = getClientIp(req);
-  const header = req.headers.authorization?.slice(0, getEnv().AUTH_HEADER_MAX_LENGTH);
+  const header = req.headers.authorization
+    ?.slice(0, getEnv().AUTH_HEADER_MAX_LENGTH)
+    .toLowerCase();
 
   const limited = await (
     await getDb({ name: 'root' })
