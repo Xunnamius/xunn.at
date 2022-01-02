@@ -5,7 +5,7 @@ import Endpoint, { config as Config } from 'universe/pages/api/ping';
 const handler = Endpoint as typeof Endpoint & { config?: typeof Config };
 handler.config = Config;
 
-// ? Unlike short-id (defers middleware invocation), we must mock this early
+// ? Unlike short-id which defers middleware invocation, we must mock this early
 jest.mock('universe/backend/middleware', () => {
   const { middlewareFactory } = require('multiverse/next-api-glue');
   const { default: handleError } = require('multiverse/next-adhesive/handle-error');

@@ -6,3 +6,4 @@ setupMemoryServerOverride();
 useMockDateNow();
 
 test.todo('this');
+test.todo('works with namespaced packages');
