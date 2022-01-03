@@ -8,8 +8,8 @@ import type { Entry } from 'universe/backend/tar';
 
 const makeFixtureStream = (name: string) => {
   return createReadStream(`${__dirname}/../fixtures/${name}.tar.gz`).pipe(
-    new Gunzip()
-  ) as unknown as NodeJS.ReadWriteStream;
+    new Gunzip() as unknown as NodeJS.ReadWriteStream
+  );
 };
 
 const tar = {

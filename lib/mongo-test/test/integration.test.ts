@@ -1,17 +1,16 @@
 import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 import { getClient } from 'multiverse/mongo-schema';
-import { setProjectRoot } from 'multiverse/find-project-root';
 
 import type { TestCustomizations } from 'multiverse/mongo-test';
 
-jest.mock(`${__dirname}/db`, () => mockedMongoCustomizations, { virtual: true });
+jest.mock('configverse/get-schema-config', () => mockedMongoCustomizations);
+jest.mock('configverse/get-dummy-data', () => mockedMongoCustomizations);
 
 const now = Date.now();
 
 let mockedMongoCustomizations: TestCustomizations;
 
 beforeEach(() => {
-  setProjectRoot(__dirname);
   mockedMongoCustomizations = mockedMongoCustomizations || {};
 
   mockedMongoCustomizations.getSchemaConfig = async () => {

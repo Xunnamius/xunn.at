@@ -76,7 +76,9 @@ module.exports = {
     // ? Ever since v4, we will rely on TypeScript to catch these
     'no-undef': 'off',
     '@typescript-eslint/no-var-requires': 'off',
-    'no-unused-vars': 'off'
+    'no-unused-vars': 'off',
+    // ? Broken as of next 12.0.7
+    '@next/next/no-page-custom-font': 'off'
   },
   overrides: [
     {
@@ -119,7 +121,13 @@ module.exports = {
           ['testverse', './test'],
           ['externals', './external-scripts'],
           ['types', './types'],
-          ['package', './package.json']
+          ['package', './package.json'],
+          // ? These are used at various points (including at compile time by
+          // ? Next.js) to get mongo schema configuration and/or test dummy data.
+          // ! Must be defined if using @xunnamius/mongo-schema
+          ['configverse/get-schema-config', './src/backend/db.ts'],
+          // ! Must be defined if using @xunnamius/mongo-test
+          ['configverse/get-dummy-data', './test/db.ts']
         ],
         extensions: ['.js', '.jsx', '.ts', '.tsx']
       },

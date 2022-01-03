@@ -1,20 +1,17 @@
 /* eslint-disable jest/no-conditional-expect */
 import { isolatedImportFactory, mockEnvFactory } from 'testverse/setup';
 import { Db, MongoClient } from 'mongodb';
-import { asMockedClass, asMockedFunction } from '@xunnamius/jest-types';
-import { findProjectRoot } from 'multiverse/find-project-root';
+import { asMockedClass } from '@xunnamius/jest-types';
 
 import type { TestCustomizations } from 'multiverse/mongo-test';
 import { getInitialInternalMemoryState } from 'multiverse/mongo-schema';
 
 jest.mock('mongodb');
-jest.mock('multiverse/find-project-root');
-jest.mock(`${__dirname}/db`, () => mockedMongoCustomizations, { virtual: true });
+jest.mock('configverse/get-schema-config', () => mockedMongoCustomizations);
 
 const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });
 
 const mockMongoClient = asMockedClass(MongoClient);
-const mockFindProjectRoot = asMockedFunction(findProjectRoot);
 let mockedMongoCustomizations: TestCustomizations;
 
 const importDbLib = isolatedImportFactory<typeof import('multiverse/mongo-schema')>({
@@ -22,7 +19,6 @@ const importDbLib = isolatedImportFactory<typeof import('multiverse/mongo-schema
 });
 
 beforeEach(() => {
-  mockFindProjectRoot.mockImplementation(() => __dirname);
   mockedMongoCustomizations = mockedMongoCustomizations || {};
 
   mockedMongoCustomizations.getSchemaConfig = async () => {
@@ -64,6 +60,7 @@ beforeEach(() => {
             createCollection;
             createIndex;
             collection;
+            admin;
 
             constructor() {
               this.dropDatabase = jest.fn();
@@ -73,6 +70,15 @@ beforeEach(() => {
               this.createCollection = jest.fn(() =>
                 Promise.resolve({ createIndex: this.createIndex })
               );
+              this.admin = jest.fn(() => ({
+                listDatabases: jest.fn(() => ({
+                  databases: [
+                    { name: 'auth' },
+                    { name: 'request-log' },
+                    { name: 'limited-log' }
+                  ]
+                }))
+              }));
             }
           })();
         }
@@ -94,60 +100,13 @@ describe('::getSchemaConfig', () => {
     );
   });
 
-  it('falls back to alternative paths when original path fails', async () => {
-    expect.hasAssertions();
-
-    const mockGetSchemaConfig = jest.fn(mockedMongoCustomizations.getSchemaConfig);
-    const schemaConfig = await mockedMongoCustomizations.getSchemaConfig();
-
-    // @ts-expect-error: don't care that we're deleting a non-optional prop
-    delete mockedMongoCustomizations.getSchemaConfig;
-
-    jest.doMock(
-      `${__dirname}/src/backend/db`,
-      () => ({ getSchemaConfig: mockGetSchemaConfig }),
-      { virtual: true }
-    );
-
-    expect(mockGetSchemaConfig).toBeCalledTimes(0);
-
-    await expect(importDbLib().getSchemaConfig()).resolves.toStrictEqual(schemaConfig);
-
-    expect(mockGetSchemaConfig).toBeCalledTimes(1);
-
-    jest.dontMock(`${__dirname}/src/backend/db`);
-    jest.doMock(`${__dirname}/src/db`, () => ({ getSchemaConfig: mockGetSchemaConfig }), {
-      virtual: true
-    });
-
-    await expect(importDbLib().getSchemaConfig()).resolves.toStrictEqual(schemaConfig);
-
-    expect(mockGetSchemaConfig).toBeCalledTimes(2);
-
-    jest.dontMock(`${__dirname}/src/db`);
-  });
-
-  it('uses given path exclusively if provided', async () => {
-    expect.hasAssertions();
-
-    await expect(importDbLib().getSchemaConfig()).resolves.toStrictEqual(
-      await mockedMongoCustomizations.getSchemaConfig()
-    );
-
-    // @ts-expect-error: don't care that we're deleting a non-optional prop
-    delete mockedMongoCustomizations.getSchemaConfig;
-    await expect(importDbLib().getSchemaConfig()).rejects.toThrow(
-      `\n\n  - ${__dirname}/db\n  - ${__dirname}/src/db\n  - ${__dirname}/src/backend/db`
-    );
-  });
-
   it('rejects if customizations are unavailable', async () => {
     expect.hasAssertions();
 
     // @ts-expect-error: don't care that we're deleting a non-optional prop
     delete mockedMongoCustomizations.getSchemaConfig;
     await expect(importDbLib().getSchemaConfig()).rejects.toThrow(
-      `\n\n  - ${__dirname}/db\n  - ${__dirname}/src/db\n  - ${__dirname}/src/backend/db`
+      'configverse/get-schema-config'
     );
   });
 });
@@ -162,7 +121,7 @@ describe('::getClient', () => {
       async () => {
         const client = await lib.getClient();
         await expect(lib.getClient()).resolves.toBe(client);
-        expect(mockMongoClient.connect).toHaveBeenCalledTimes(1);
+        expect(mockMongoClient.connect).toBeCalledTimes(1);
         expect(client.close()).toBe('abc');
       },
       { MONGODB_URI: 'abc' }
@@ -178,13 +137,33 @@ describe('::getDb', () => {
 
     await withMockedEnv(
       async () => {
-        expect(mockMongoClient.connect).toHaveBeenCalledTimes(0);
+        expect(mockMongoClient.connect).toBeCalledTimes(0);
         const db = await lib.getDb({ name: 'fake-db-1' });
         await expect(lib.getDb({ name: 'fake-db-1' })).resolves.toBe(db);
-        expect(mockMongoClient.connect).toHaveBeenCalledTimes(1);
+        expect(mockMongoClient.connect).toBeCalledTimes(1);
         await expect(lib.getDb({ name: 'fake-db-2' })).resolves.not.toBe(db);
-        expect(mockMongoClient.connect).toHaveBeenCalledTimes(1);
+        expect(mockMongoClient.connect).toBeCalledTimes(1);
         expect(db.databaseName).toBe('fake-db-1');
+      },
+      { MONGODB_URI: 'abc' }
+    );
+  });
+
+  it('automatically initializes newly created databases unless initialize is false', async () => {
+    expect.hasAssertions();
+
+    const lib = importDbLib();
+
+    await withMockedEnv(
+      async () => {
+        const db = await lib.getDb({ name: 'fake-db-1', initialize: false });
+        expect(db.createCollection).not.toBeCalled();
+        await lib.getDb({ name: 'fake-db-1' });
+        expect(db.createCollection).not.toBeCalled();
+        const db2 = await lib.getDb({ name: 'fake-db-2' });
+        expect(db2.createCollection).toBeCalled();
+        await lib.getDb({ name: 'fake-db-2' });
+        expect(db2.createCollection).toBeCalled();
       },
       { MONGODB_URI: 'abc' }
     );
@@ -250,11 +229,11 @@ describe('::destroyDb', () => {
     await withMockedEnv(
       async () => {
         const db = await lib.getDb({ name: 'fake-db-1' });
-        expect(db.dropDatabase).toHaveBeenCalledTimes(0);
+        expect(db.dropDatabase).toBeCalledTimes(0);
         await lib.destroyDb({ name: 'fake-db-2' });
-        expect(db.dropDatabase).toHaveBeenCalledTimes(0);
+        expect(db.dropDatabase).toBeCalledTimes(0);
         await lib.destroyDb({ name: 'fake-db-1' });
-        expect(db.dropDatabase).toHaveBeenCalledTimes(1);
+        expect(db.dropDatabase).toBeCalledTimes(1);
       },
       { MONGODB_URI: 'abc' }
     );

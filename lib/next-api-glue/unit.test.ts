@@ -267,7 +267,7 @@ describe('::withMiddleware', () => {
         rejectOnHandlerError: true,
         handler: withMiddleware(noopHandler, {
           use: [() => toss(new Error('error'))],
-          useOnError: [middleware, ((_, res) => res.end()) as Middleware]
+          useOnError: [middleware, (_, res) => res.end()]
         }),
         test: async ({ fetch }) => {
           await fetch();
@@ -307,7 +307,7 @@ describe('::withMiddleware', () => {
         rejectOnHandlerError: true,
         handler: withMiddleware(() => toss(new Error('error')), {
           use: [],
-          useOnError: [middleware, ((_, res) => res.end()) as Middleware]
+          useOnError: [middleware, (_, res) => res.end()]
         }),
         test: async ({ fetch }) => {
           await fetch();
@@ -437,11 +437,11 @@ describe('::withMiddleware', () => {
     expect.hasAssertions();
 
     const nextWarning = expect.stringContaining(
-      'already finished executing; calling runtime.next() at this point is a no-op'
+      'already finished executing; calling runtime.next() at this point is a noop'
     );
 
     const doneWarning = expect.stringContaining(
-      'already finished executing; calling runtime.done() at this point is a no-op'
+      'already finished executing; calling runtime.done() at this point is a noop'
     );
 
     let next: () => Promise<void>, done: () => void;
@@ -502,11 +502,11 @@ describe('::withMiddleware', () => {
     expect.hasAssertions();
 
     const nextWarning = expect.stringContaining(
-      'aborted; calling runtime.next() at this point is a no-op'
+      'aborted; calling runtime.next() at this point is a noop'
     );
 
     const doneWarning = expect.stringContaining(
-      'already aborted; calling runtime.done() at this point is a no-op'
+      'already aborted; calling runtime.done() at this point is a noop'
     );
 
     let next: () => Promise<void>, done: () => void;
@@ -563,7 +563,7 @@ describe('::withMiddleware', () => {
     expect.hasAssertions();
 
     const nextWarning = expect.stringContaining(
-      'already finished executing; calling runtime.next() at this point is a no-op'
+      'already finished executing; calling runtime.next() at this point is a noop'
     );
 
     await withDebugEnabled(async () => {
@@ -601,7 +601,7 @@ describe('::withMiddleware', () => {
 
     const middleware = jest.fn();
     const nextWarning = expect.stringContaining(
-      'already finished executing; calling runtime.next() at this point is a no-op'
+      'already finished executing; calling runtime.next() at this point is a noop'
     );
 
     await withMockedOutput(async ({ stdErrSpy }) => {
@@ -638,7 +638,7 @@ describe('::withMiddleware', () => {
                 await next();
                 expect(stdErrSpy).toBeCalledWith(
                   expect.stringContaining(
-                    'aborted; calling runtime.next() at this point is a no-op'
+                    'aborted; calling runtime.next() at this point is a noop'
                   )
                 );
               },
@@ -784,6 +784,37 @@ describe('::withMiddleware', () => {
               expect(stdErrSpy).not.toBeCalledWith(skippedMessage);
               res.status(404).end();
               expect(stdErrSpy).toBeCalledWith(skippedMessage);
+            },
+            {
+              use: []
+            }
+          ),
+          test: async ({ fetch }) => {
+            expect((await fetch()).status).toBe(404);
+          }
+        });
+      });
+    });
+  });
+
+  it('does not call runtime.done on res.end if response was already sent', async () => {
+    expect.hasAssertions();
+
+    const skippedMessage = expect.stringContaining('skipped calling runtime.done');
+
+    await withDebugEnabled(async () => {
+      await withMockedOutput(async ({ stdErrSpy }) => {
+        await testApiHandler({
+          rejectOnHandlerError: true,
+          handler: withMiddleware(
+            async (_, res) => {
+              expect(stdErrSpy).not.toBeCalledWith(skippedMessage);
+              res.status(404).end();
+              expect(stdErrSpy).toBeCalledWith(skippedMessage);
+              stdErrSpy.mockClear();
+              expect(stdErrSpy).not.toBeCalledWith(skippedMessage);
+              res.status(404).end();
+              expect(stdErrSpy).not.toBeCalledWith(skippedMessage);
             },
             {
               use: []

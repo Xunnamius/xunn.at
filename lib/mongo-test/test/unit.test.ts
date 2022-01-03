@@ -1,15 +1,15 @@
 /* eslint-disable jest/no-conditional-expect */
 import { asMockedFunction, asMockedClass } from '@xunnamius/jest-types';
-import { findProjectRoot } from 'multiverse/find-project-root';
 import { isolatedImportFactory, mockEnvFactory } from 'testverse/setup';
 import { MongoClient } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
 import type { TestCustomizations } from 'multiverse/mongo-test';
+import { DummyError } from 'named-app-errors';
+import { toss } from 'toss-expression';
 
 jest.mock('mongodb');
 jest.mock('mongodb-memory-server');
-jest.mock('multiverse/find-project-root');
 
 jest.mock('multiverse/mongo-schema', () => {
   if (mockedMongoSchema) {
@@ -19,7 +19,8 @@ jest.mock('multiverse/mongo-schema', () => {
   }
 });
 
-jest.mock(`${__dirname}/db`, () => mockedMongoCustomizations, { virtual: true });
+jest.mock('configverse/get-schema-config', () => mockedMongoCustomizations);
+jest.mock('configverse/get-dummy-data', () => mockedMongoCustomizations);
 
 const now = Date.now();
 const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });
@@ -30,7 +31,6 @@ let mockedMongoSchema: MongoSchemaPackage | undefined;
 let mockedMongoCustomizations: TestCustomizations;
 
 const mockMongoClient = asMockedClass(MongoClient);
-const mockFindProjectRoot = asMockedFunction(findProjectRoot);
 const mockMongoMemoryServer = asMockedClass(MongoMemoryServer);
 
 const mockedMongoMemoryServer = {
@@ -49,7 +49,6 @@ const importTestDbLib = isolatedImportFactory<typeof import('multiverse/mongo-te
 
 beforeEach(() => {
   mockedMongoSchema = undefined;
-  mockFindProjectRoot.mockImplementation(() => __dirname);
   mockedMongoCustomizations = mockedMongoCustomizations || {};
 
   mockedMongoCustomizations.getSchemaConfig = async () => {
@@ -104,6 +103,7 @@ beforeEach(() => {
           createCollection;
           createIndex;
           collection;
+          admin;
 
           constructor() {
             this.dropDatabase = jest.fn();
@@ -113,6 +113,15 @@ beforeEach(() => {
             this.createCollection = jest.fn(() =>
               Promise.resolve({ createIndex: this.createIndex })
             );
+            this.admin = jest.fn(() => ({
+              listDatabases: jest.fn(() => ({
+                databases: [
+                  { name: 'auth' },
+                  { name: 'request-log' },
+                  { name: 'limited-log' }
+                ]
+              }))
+            }));
           }
         })();
       }
@@ -135,46 +144,13 @@ describe('::getDummyData', () => {
     );
   });
 
-  it('falls back to alternative paths when original path fails', async () => {
-    expect.hasAssertions();
-
-    const mockGetDummyData = jest.fn(mockedMongoCustomizations.getDummyData);
-    const schemaConfig = await mockedMongoCustomizations.getDummyData();
-
-    // @ts-expect-error: don't care that we're deleting a non-optional prop
-    delete mockedMongoCustomizations.getDummyData;
-
-    jest.doMock(
-      `${__dirname}/test/backend/db`,
-      () => ({ getDummyData: mockGetDummyData }),
-      { virtual: true }
-    );
-
-    expect(mockGetDummyData).toBeCalledTimes(0);
-
-    await expect(importTestDbLib().getDummyData()).resolves.toStrictEqual(schemaConfig);
-
-    expect(mockGetDummyData).toBeCalledTimes(1);
-
-    jest.dontMock(`${__dirname}/test/backend/db`);
-    jest.doMock(`${__dirname}/test/db`, () => ({ getDummyData: mockGetDummyData }), {
-      virtual: true
-    });
-
-    await expect(importTestDbLib().getDummyData()).resolves.toStrictEqual(schemaConfig);
-
-    expect(mockGetDummyData).toBeCalledTimes(2);
-
-    jest.dontMock(`${__dirname}/test/db`);
-  });
-
   it('rejects if customizations are unavailable', async () => {
     expect.hasAssertions();
 
     // @ts-expect-error: don't care that we're deleting a non-optional prop
     delete mockedMongoCustomizations.getDummyData;
     await expect(importTestDbLib().getDummyData()).rejects.toThrow(
-      `\n\n  - ${__dirname}/db\n  - ${__dirname}/test/db\n  - ${__dirname}/test/backend/db`
+      'configverse/get-dummy-data'
     );
   });
 });
@@ -495,6 +471,97 @@ describe('::setupMemoryServerOverride', () => {
           MONGODB_MS_PORT: '5678'
         }
       );
+    } finally {
+      // eslint-disable-next-line no-global-assign
+      beforeAll = oldBeforeAll;
+      // eslint-disable-next-line no-global-assign
+      beforeEach = oldBeforeEach;
+      // eslint-disable-next-line no-global-assign
+      afterAll = oldAfterAll;
+    }
+  });
+
+  it('any rejection turns lifecycle hooks into noops', async () => {
+    expect.hasAssertions();
+
+    const oldBeforeAll = beforeAll;
+    const oldBeforeEach = beforeEach;
+    const oldAfterAll = afterAll;
+
+    try {
+      const lib = importDbLib();
+
+      mockedMongoSchema = lib;
+
+      const testLib = importTestDbLib();
+
+      const destroySpy = jest
+        .spyOn(lib, 'destroyDb')
+        .mockImplementation(async () => true);
+
+      // eslint-disable-next-line no-global-assign
+      beforeAll = jest.fn();
+      // eslint-disable-next-line no-global-assign
+      beforeEach = jest.fn();
+      // eslint-disable-next-line no-global-assign
+      afterAll = jest.fn();
+
+      // eslint-disable-next-line jest/unbound-method
+      asMockedFunction(mockedMongoMemoryServer.getUri).mockImplementationOnce(
+        () => 'uri-not-ending-in-colon-5678'
+      );
+
+      await withMockedEnv(
+        async () => {
+          testLib.setupMemoryServerOverride();
+
+          await expect(
+            asMockedFunction(beforeAll).mock.calls[0][0](
+              undefined as unknown as jest.DoneCallback
+            )
+          ).rejects.toThrow('port 5678 seems to be in use');
+
+          // ? Calling it a second time turns it into a noop
+          await expect(
+            asMockedFunction(beforeAll).mock.calls[0][0](
+              undefined as unknown as jest.DoneCallback
+            )
+          ).resolves.toBeUndefined();
+
+          // ? Other hooks are also noops
+          await expect(
+            asMockedFunction(beforeEach).mock.calls[0][0](
+              undefined as unknown as jest.DoneCallback
+            )
+          ).resolves.toBeUndefined();
+
+          expect(destroySpy).not.toBeCalled();
+        },
+        {
+          VSCODE_INSPECTOR_OPTIONS: 'exists',
+          MONGODB_MS_PORT: '5678'
+        }
+      );
+
+      asMockedFunction(beforeAll).mockReset();
+      asMockedFunction(beforeEach).mockReset();
+      asMockedFunction(afterAll).mockReset();
+      jest.spyOn(lib, 'getSchemaConfig').mockImplementation(() => toss(new DummyError()));
+
+      testLib.setupMemoryServerOverride();
+
+      await expect(
+        asMockedFunction(beforeEach).mock.calls[0][0](
+          undefined as unknown as jest.DoneCallback
+        )
+      ).rejects.toThrowError(DummyError);
+
+      // ? Calling it a second time turns it into a noop
+      await expect(
+        asMockedFunction(beforeEach).mock.calls[0][0](
+          undefined as unknown as jest.DoneCallback
+        )
+      ).resolves.toBeUndefined();
     } finally {
       // eslint-disable-next-line no-global-assign
       beforeAll = oldBeforeAll;

@@ -13,7 +13,9 @@ export { defaultConfig as config } from 'universe/backend/api';
  * An endpoint that translates short link identifiers into actual resources.
  */
 export default async function (request: NextApiRequest, response: NextApiResponse) {
-  let removeHeaders = () => {};
+  let removeHeaders = () => {
+    /* noop */
+  };
 
   return withMiddleware(
     async (req, res) => {

@@ -14,7 +14,13 @@ const IMPORT_ALIASES = {
   testverse: `${__dirname}/test/`,
   externals: `${__dirname}/external-scripts/`,
   types: `${__dirname}/types/`,
-  package: `${__dirname}/package.json`
+  package: `${__dirname}/package.json`,
+  // ? These are used at various points (including at compile time by
+  // ? Next.js) to get mongo schema configuration and/or test dummy data.
+  // ! Must be defined if using @xunnamius/mongo-schema
+  'configverse/get-schema-config': `${__dirname}/src/backend/db.ts`,
+  // ! Must be defined if using @xunnamius/mongo-test
+  'configverse/get-dummy-data': `${__dirname}/test/db.ts`
 };
 
 let sanitizedEnv = {};

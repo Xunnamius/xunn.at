@@ -49,10 +49,9 @@ it('uri links redirect to real links', async () => {
     handler,
     params: { shortId: 'some-id' },
     test: async ({ fetch }) => {
-      const res = await fetch();
-      expect(res.status).toBe(200);
-      expect(res.redirected).toBeTrue();
-      expect(res.url).toBe('https://www.google.com/');
+      const res = await fetch({ redirect: 'manual' });
+      expect(res.status).toBe(308);
+      expect(res.headers.get('location')).toBe('https://google.com/');
       expect(mockResolveShortId).toBeCalledWith({ shortId: 'some-id' });
       expect(mockPkgPipeline).not.toBeCalled();
     }
@@ -116,7 +115,6 @@ it('package links support @commitish', async () => {
     test: async ({ fetch }) => {
       const res = await fetch();
       expect(res.status).toBe(200);
-      expect(res.redirected).toBeFalse();
       expect(mockResolveShortId).toBeCalledWith({ shortId: 'some-id' });
       expect(mockPkgPipeline).toBeCalledWith({
         res: expect.anything(),

@@ -5,7 +5,6 @@ import { debugFactory } from 'multiverse/debug-extended';
 import type { Debugger } from 'multiverse/debug-extended';
 import type { NextApiRequest, NextApiResponse, NextApiHandler } from 'next';
 import type { NoInfer } from '@xunnamius/types';
-import type { Promisable } from 'type-fest';
 
 const debug = debugFactory('next-api-glue:runtime');
 
@@ -18,7 +17,7 @@ export type Middleware<
   req: NextApiRequest,
   res: NextApiResponse,
   context: MiddlewareContext<Options>
-) => Promisable<void>;
+) => unknown;
 
 /**
  * The shape of a middleware context object, potentially customized with
@@ -162,7 +161,7 @@ export function withMiddleware<
             if (!executionCompleted) {
               if (executionWasAborted) {
                 debug.warn(
-                  'runtime.next: chain was aborted; calling runtime.next() at this point is a no-op'
+                  'runtime.next: chain was aborted; calling runtime.next() at this point is a noop'
                 );
               } else {
                 chainWasPulled = true;
@@ -171,7 +170,7 @@ export function withMiddleware<
               }
             } else {
               debug.warn(
-                'runtime.next: chain already finished executing; calling runtime.next() at this point is a no-op'
+                'runtime.next: chain already finished executing; calling runtime.next() at this point is a noop'
               );
             }
           };
@@ -184,12 +183,12 @@ export function withMiddleware<
                 executionWasAborted = true;
               } else {
                 debug.warn(
-                  'runtime.done: chain already aborted; calling runtime.done() at this point is a no-op'
+                  'runtime.done: chain already aborted; calling runtime.done() at this point is a noop'
                 );
               }
             } else {
               debug.warn(
-                'runtime.done: chain already finished executing; calling runtime.done() at this point is a no-op'
+                'runtime.done: chain already finished executing; calling runtime.done() at this point is a noop'
               );
             }
           };

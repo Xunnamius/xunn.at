@@ -2,7 +2,6 @@ import { MongoClient } from 'mongodb';
 import { InvalidConfigurationError } from 'named-app-errors';
 import { getEnv } from 'multiverse/next-env';
 import { debugFactory } from 'multiverse/debug-extended';
-import { findProjectRoot } from 'multiverse/find-project-root';
 
 import type { Db } from 'mongodb';
 
@@ -62,45 +61,27 @@ export function getInitialInternalMemoryState(): InternalMemory {
 }
 
 /**
- * Finds the file at `${projectRoot}/db`, `${projectRoot}/src/db`, or
- * `${projectRoot}/src/backend/db`, imports it, calls the `getSchemaConfig`
- * function defined within, and memoizes the result.
+ * Imports `getSchemaConfig` from "configverse/get-schema-config", calls it, and
+ * memoizes the result.
  */
 export async function getSchemaConfig(): Promise<DbSchema> {
   if (memory.schema) {
     return memory.schema;
   } else {
-    const root = findProjectRoot();
-    const paths = [`${root}/db`, `${root}/src/db`, `${root}/src/backend/db`];
-    let getCustomSchemaConfig: typeof getSchemaConfig | undefined;
+    try {
+      debug('importing `getSchemaConfig` from "configverse/get-schema-config"');
+      return (memory.schema = await (
+        await import('configverse/get-schema-config')
+      ).getSchemaConfig());
+    } catch (e) {
+      debug.warn(
+        `failed to import getSchemaConfig from "configverse/get-schema-config": ${e}`
+      );
 
-    (
-      await Promise.allSettled<{
-        getSchemaConfig?: typeof getSchemaConfig;
-      }>(paths.map((path) => import(path)))
-    ).some((result, ndx) => {
-      if (result.status == 'fulfilled') {
-        getCustomSchemaConfig = result.value.getSchemaConfig;
-      }
-
-      if (getCustomSchemaConfig) {
-        debug(`using schema config from path:`, paths[ndx]);
-        return true;
-      } else {
-        debug.warn(`failed to import schema config from path:`, paths[ndx]);
-        return false;
-      }
-    });
-
-    if (!getCustomSchemaConfig) {
       throw new InvalidConfigurationError(
-        `could not resolve mongodb schema. One of the following import paths must resolve to a file with an (optionally) async "getSchemaConfig" function that returns a DbSchema object:\n\n  - ${paths.join(
-          '\n  - '
-        )}`
+        'could not resolve mongodb schema configuration: failed to import getSchemaConfig from "configverse/get-schema-config". Did you forget to register "configverse/get-schema-config" as an import alias/path?'
       );
     }
-
-    return (memory.schema = await getCustomSchemaConfig());
   }
 }
 
@@ -128,7 +109,8 @@ export async function getClient() {
 }
 
 /**
- * Kills the MongoClient instance and any related database connections.
+ * Kills the MongoClient instance and any related database connections and
+ * clears internal memory.
  */
 export async function closeClient() {
   /* istanbul ignore else */
@@ -163,22 +145,41 @@ export async function getNameFromAlias(alias: string) {
 
 /**
  * Lazily connects to a database on-demand, memoizing the result. If the
- * database does not yet exist, it is created (but not initialized) by this
- * function.
+ * database does not yet exist, it is both created and initialized by this
+ * function. The latter can be prevented by setting `initialize` to `false`.
  */
 export async function getDb({
-  name
+  name,
+  initialize
 }: {
   /**
    * The name or alias of the database to retrieve.
    */
   name: string;
+  /**
+   * Set to `false` to prevent `getDb` from calling `initializeDb` if the
+   * database does not exist prior to acquiring it.
+   *
+   * @default true
+   */
+  initialize?: boolean;
 }) {
   const nameActual = await getNameFromAlias(name);
 
   if (!memory.databases[nameActual]) {
     debug(`acquiring mongo database "${nameActual}"`);
-    memory.databases[nameActual] = (await getClient()).db(nameActual);
+
+    const client = await getClient();
+    const existingDatabases = (
+      await client.db('admin').admin().listDatabases()
+    ).databases.map(({ name }) => name);
+
+    memory.databases[nameActual] = client.db(nameActual);
+
+    if (initialize !== false && !existingDatabases.includes(nameActual)) {
+      debug(`calling initializeDb since "${nameActual}" was just created`);
+      await initializeDb({ name: nameActual });
+    }
   } else {
     debug(`acquired (from memory) mongo database "${nameActual}"`);
   }
@@ -189,6 +190,9 @@ export async function getDb({
 /**
  * Drops a database, destroying its collections. If the database does not exist
  * before calling this function, it will be created first then dropped.
+ *
+ * Note that this function does not clear the destroyed database's Db instance
+ * from internal memory for performance reasons.
  */
 export async function destroyDb({
   name
@@ -199,13 +203,15 @@ export async function destroyDb({
   name: string;
 }) {
   const nameActual = await getNameFromAlias(name);
+  debug(`destroying database "${nameActual}" and its collections`);
   return !memory.databases[nameActual] || (await getDb({ name })).dropDatabase();
 }
 
 /**
  * Creates a database and initializes its collections. If the database does not
- * exist before calling this function, it will be created first. Otherwise, this
- * function is idempotent.
+ * exist before calling this function, it will be created first. This function
+ * should only be called on empty or brand new databases **and not on databases
+ * with pre-existing collections.**
  */
 export async function initializeDb({
   name
@@ -215,8 +221,10 @@ export async function initializeDb({
    */
   name: string;
 }) {
-  const db = await getDb({ name });
+  const db = await getDb({ name, initialize: false });
   const nameActual = await getNameFromAlias(name);
+
+  debug(`initializing database "${nameActual}"`);
 
   await Promise.all(
     (

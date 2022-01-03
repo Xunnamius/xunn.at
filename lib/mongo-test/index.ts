@@ -3,7 +3,6 @@ import { getEnv } from 'multiverse/next-env';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { InvalidConfigurationError, TrialError } from 'named-app-errors';
 import { debugFactory } from 'multiverse/debug-extended';
-import { findProjectRoot } from 'multiverse/find-project-root';
 
 import {
   getSchemaConfig,
@@ -23,7 +22,6 @@ import type { DbSchema } from 'multiverse/mongo-schema';
 // TODO: webpacked!
 
 const debug = debugFactory('mongo-test:test-db');
-const memory = { dataPath: null } as { dataPath: string | null };
 
 /**
  * Generic dummy data used to hydrate databases and their collections.
@@ -56,48 +54,19 @@ export type TestCustomizations = {
 };
 
 /**
- * Finds the file at `${projectRoot}/db`, `${projectRoot}/test/db`, or
- * `${projectRoot}/test/backend/db`, imports it, and calls the `getDummyData`
- * function defined within.
+ * Imports `getDummyData` from "configverse/get-dummy-data" and calls it.
  */
 export async function getDummyData(): Promise<DummyData> {
-  const root = findProjectRoot();
-  const paths = [`${root}/db`, `${root}/test/db`, `${root}/test/backend/db`];
-  let getCustomDummyData: typeof getDummyData | undefined;
+  try {
+    debug('importing `getDummyData` from "configverse/get-dummy-data"');
+    return await (await import('configverse/get-dummy-data')).getDummyData();
+  } catch (e) {
+    debug.warn(`failed to import getDummyData from "configverse/get-dummy-data": ${e}`);
 
-  if (memory.dataPath) {
-    debug(`using dummy data from memoized path: ${memory.dataPath}`);
-    ({ getDummyData: getCustomDummyData } = await import(memory.dataPath));
-  } else {
-    (
-      await Promise.allSettled<{
-        getDummyData?: typeof getDummyData;
-      }>(paths.map((path) => import(path)))
-    ).some((result, ndx) => {
-      if (result.status == 'fulfilled') {
-        getCustomDummyData = result.value.getDummyData;
-      }
-
-      if (getCustomDummyData) {
-        memory.dataPath = paths[ndx];
-        debug(`using dummy data from path:`, memory.dataPath);
-        return true;
-      } else {
-        debug.warn(`failed to import dummy data from path: ${paths[ndx]}`);
-        return false;
-      }
-    });
-  }
-
-  if (!getCustomDummyData) {
     throw new InvalidConfigurationError(
-      `could not resolve dummy data. One of the following import paths must resolve to a file with an (optionally) async "getDummyData" function that returns a DummyData object:\n\n  - ${paths.join(
-        '\n  - '
-      )}`
+      'could not resolve mongodb dummy data: failed to import getDummyData from "configverse/get-dummy-data". Did you forget to register "configverse/get-dummy-data" as an import alias/path?'
     );
   }
-
-  return getCustomDummyData();
 }
 
 /**
@@ -156,6 +125,13 @@ export function setupMemoryServerOverride(params?: {
    */
   defer?: boolean;
 }) {
+  // ? If an error (like a bad schema config or misconfigured dummy dataset)
+  // ? occurs at any point (e.g. in one of the hooks), the other hooks should
+  // ? become noops. Without this, test database state may leak outside the test
+  // ? environment. If an .env file is defined, test state could leak into a
+  // ? real mongodb instance (super bad!!!)
+  let errored = false;
+
   const port = (getEnv().DEBUG_INSPECTING && getEnv().MONGODB_MS_PORT) || undefined;
   debug(`using ${port ? `port ${port}` : 'random port'} for mongo memory server`);
 
@@ -172,34 +148,56 @@ export function setupMemoryServerOverride(params?: {
    * Reset the dummy MongoDb server databases back to their initial states.
    */
   const reinitializeServer = async () => {
-    const databases = Object.keys((await getSchemaConfig()).databases);
-    debug('reinitializing mongo databases');
-    await Promise.all(
-      databases.map((name) =>
-        destroyDb({ name })
-          .then(() => initializeDb({ name }))
-          .then(() => hydrateDb({ name }))
-      )
-    );
+    try {
+      if (errored) {
+        debug.warn(
+          'reinitialization was skipped due to a previous jest lifecycle errors'
+        );
+      } else {
+        const databases = Object.keys((await getSchemaConfig()).databases);
+        debug('reinitializing mongo databases');
+        await Promise.all(
+          databases.map((name) =>
+            destroyDb({ name })
+              .then(() => initializeDb({ name }))
+              .then(() => hydrateDb({ name }))
+          )
+        );
+      }
+    } catch (e) {
+      errored = true;
+      debug.error('an error occurred during reinitialization');
+      throw e;
+    }
   };
 
   beforeAll(async () => {
-    await server.ensureInstance();
-    const uri = server.getUri();
-    debug(`connecting to in-memory dummy mongo server at ${uri}`);
+    try {
+      if (errored) {
+        debug.warn('"beforeAll" jest lifecycle hook was skipped due to previous errors');
+      } else {
+        await server.ensureInstance();
+        const uri = server.getUri();
+        debug(`connecting to in-memory dummy mongo server at ${uri}`);
 
-    if (port && !(uri.endsWith(`:${port}/`) || uri.endsWith(`:${port}`))) {
-      throw new TrialError(
-        `unable to start mongodb memory server: port ${port} seems to be in use`
-      );
+        if (port && !(uri.endsWith(`:${port}/`) || uri.endsWith(`:${port}`))) {
+          throw new TrialError(
+            `unable to start mongodb memory server: port ${port} seems to be in use`
+          );
+        }
+
+        overwriteMemory({
+          ...getInitialInternalMemoryState(),
+          client: await MongoClient.connect(uri)
+        });
+
+        if (params?.defer) await reinitializeServer();
+      }
+    } catch (e) {
+      errored = true;
+      debug.error('an error occurred within "beforeAll" lifecycle hook');
+      throw e;
     }
-
-    overwriteMemory({
-      ...getInitialInternalMemoryState(),
-      client: await MongoClient.connect(uri)
-    });
-
-    if (params?.defer) await reinitializeServer();
   });
 
   if (!params?.defer) {

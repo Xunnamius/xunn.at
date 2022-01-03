@@ -15,26 +15,6 @@ module.exports = () => {
     // ? Renames the build dir "build" instead of ".next"
     distDir: 'build',
 
-    // ? Webpack configuration
-    // ! Note that the webpack configuration is executed twice: once
-    // ! server-side and once client-side!
-    webpack: (config) => {
-      // ? These are aliases that can be used during JS import calls
-      // ! If changed, also update these aliases in tsconfig.json,
-      // ! jest.config.js, webpack.config.ts, and .eslintrc.js
-      config.resolve &&
-        (config.resolve.alias = {
-          ...config.resolve.alias,
-          universe: `${__dirname}/src/`,
-          multiverse: `${__dirname}/lib/`,
-          externals: `${__dirname}/external-scripts/`,
-          types: `${__dirname}/types/`,
-          package: `${__dirname}/package.json`
-        });
-
-      return config;
-    },
-
     // ? Select some environment variables defined in .env to push to the
     // ? client.
     // !! DO NOT PUT ANY SECRET ENVIRONMENT VARIABLES HERE !!

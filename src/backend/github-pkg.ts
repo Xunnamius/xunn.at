@@ -53,9 +53,11 @@ export async function githubPackageDownloadPipeline({
         codeloadRes.body,
         ...(subdir
           ? [
-              new Gunzip(),
+              new Gunzip() as unknown as NodeJS.ReadWriteStream,
               extractSubdirAndRepack({ subdir }),
-              new Gzip({ level: constants.Z_BEST_COMPRESSION })
+              new Gzip({
+                level: constants.Z_BEST_COMPRESSION
+              }) as unknown as NodeJS.ReadWriteStream
             ]
           : []),
         res

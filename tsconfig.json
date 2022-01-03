@@ -26,14 +26,20 @@
     "noUnusedParameters": true,
     "paths": {
       // ! If changed, also update these aliases in jest.config.js,
-      // ! webpack.config.js, next.config.ts, and .eslintrc.js
+      // ! webpack.config.js, and .eslintrc.js
       "externals/*": ["external-scripts/*"],
       "multiverse/*": ["lib/*"],
       "package": ["package.json"],
       "pkgverse/*": ["packages/*"],
       "testverse/*": ["test/*"],
       "types/*": ["types/*"],
-      "universe/*": ["src/*"]
+      "universe/*": ["src/*"],
+      // ? These are used at various points (including at compile time by
+      // ? Next.js) to get mongo schema configuration and/or test dummy data.
+      // ! Must be defined if using @xunnamius/mongo-schema
+      "configverse/get-schema-config": ["src/backend/db.ts"],
+      // ! Must be defined if using @xunnamius/mongo-test
+      "configverse/get-dummy-data": ["test/db.ts"]
     },
     "resolveJsonModule": true,
     "skipLibCheck": true,

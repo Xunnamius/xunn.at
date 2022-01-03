@@ -34,6 +34,9 @@ export function useMockDateNow() {
 /**
  * A JSON representation of the backend Mongo database structure. This is used
  * for common consistent "well-known" db structure across projects.
+ *
+ * Well-known databases and their well-known collections currently include:
+ *   - `root` (collections: `auth`, `request-log`, `limited-log`)
  */
 export function getCommonSchemaConfig(additionalSchemaConfig?: DbSchema): DbSchema {
   return {

@@ -1024,6 +1024,8 @@ export async function withMockedFixture<
     ...options
   } as CustomizedFixtureOptions & { use: CustomizedMockFixture[] };
 
+  // TODO:
+  // @ts-expect-error: TODO: fix this
   const ctx = {
     root: '',
     testIdentifier,

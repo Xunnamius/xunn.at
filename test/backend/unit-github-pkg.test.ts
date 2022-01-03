@@ -188,7 +188,7 @@ describe('::githubPackageDownloadPipeline', () => {
         const res = await fetch();
         expect(res.status).toBe(200);
         await expect(
-          getEntries(res.body.pipe(new Gunzip()) as unknown as NodeJS.ReadableStream)
+          getEntries(res.body.pipe(new Gunzip() as unknown as NodeJS.ReadWriteStream))
         ).resolves.toStrictEqual(expectedEntries.pkg1);
       }
     });
@@ -220,7 +220,7 @@ describe('::githubPackageDownloadPipeline', () => {
         const res = await fetch();
         expect(res.status).toBe(200);
         await expect(
-          getEntries(res.body.pipe(new Gunzip()) as unknown as NodeJS.ReadableStream)
+          getEntries(res.body.pipe(new Gunzip() as unknown as NodeJS.ReadWriteStream))
         ).resolves.toStrictEqual(expectedEntries.pkg2);
       }
     });

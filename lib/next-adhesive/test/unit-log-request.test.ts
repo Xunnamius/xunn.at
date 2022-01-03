@@ -38,7 +38,7 @@ it('logs requests on call to res.end', async () => {
   await testApiHandler({
     handler: wrapHandler(
       wrapHandler(
-        withMiddleware(async (_req, res) => res.status(404).end(), {
+        withMiddleware(async (_req, res) => void res.status(404).end(), {
           use: [logRequest]
         })
       )
