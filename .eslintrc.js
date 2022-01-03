@@ -5,7 +5,7 @@ const restrictedGlobals = require('confusing-browser-globals');
 
 module.exports = {
   parser: '@typescript-eslint/parser',
-  plugins: ['jest', '@typescript-eslint', 'import'],
+  plugins: ['jest', 'jest-dom', '@typescript-eslint', 'import'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/eslint-recommended',
@@ -83,7 +83,7 @@ module.exports = {
   overrides: [
     {
       files: ['*.test.*'],
-      extends: ['plugin:jest/all', 'plugin:jest/style'],
+      extends: ['plugin:jest/all', 'plugin:jest/style', 'plugin:jest-dom/recommended'],
       rules: {
         'jest/lowercase': 'off',
         'jest/consistent-test-it': 'off',

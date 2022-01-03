@@ -14,6 +14,7 @@ import gitFactory from 'simple-git';
 // ? See: https://github.com/jest-community/jest-extended#setup
 import 'jest-extended/all';
 import 'jest-extended';
+import '@testing-library/jest-dom/extend-expect';
 
 import type { Debugger } from 'multiverse/debug-extended';
 import type { SimpleGit } from 'simple-git';
