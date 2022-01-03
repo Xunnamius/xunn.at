@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 declare module 'minizlib' {
   import Minipass from 'minipass';
   import zlib from 'zlib';
