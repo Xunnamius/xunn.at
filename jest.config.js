@@ -26,5 +26,10 @@ module.exports = {
     '^configverse/get-dummy-data$': '<rootDir>/test/db.ts'
   },
   setupFilesAfterEnv: ['./test/setup.ts'],
-  collectCoverageFrom: ['src/**/*.ts*', 'lib/**/*.ts*', 'external-scripts/**/*.ts*']
+  collectCoverageFrom: [
+    'src/**/*.ts*',
+    'lib/**/*.ts*',
+    'external-scripts/**/*.ts*',
+    '!**/*.test.*'
+  ]
 };
