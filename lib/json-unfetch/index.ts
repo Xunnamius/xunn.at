@@ -232,6 +232,7 @@ export async function jsonFetch<
     }
   }
 
+  // @ts-expect-error: if an error occurs here, let it bubble
   const res = await unfetch(url, parsedOptions);
   const responseContentType = res.headers.get('content-type');
 
