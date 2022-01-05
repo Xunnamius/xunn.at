@@ -166,7 +166,7 @@ export async function jsonFetch<
   ErrorType extends JsonObject = JsonType
 >(
   url: string,
-  init?: Omit<JsonRequestInit, 'rejectIfNotOk' | 'rejectIfNonJsonContentType'> & {
+  init: Omit<JsonRequestInit, 'rejectIfNotOk' | 'rejectIfNonJsonContentType'> & {
     rejectIfNotOk?: false;
     rejectIfNonJsonContentType: true;
   }
@@ -214,7 +214,6 @@ export async function jsonFetch<
  */
 export async function jsonFetch<
   JsonType extends JsonObject = JsonObject,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ErrorType extends JsonObject = JsonType
 >(
   url: string,

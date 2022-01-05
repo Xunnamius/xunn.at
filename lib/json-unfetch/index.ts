@@ -13,7 +13,7 @@ export class JsonUnfetchError<
   T extends JsonObject | JsonPrimitive | undefined
 > extends Error {
   constructor(
-    public readonly status: number | undefined,
+    public readonly res: Response | undefined,
     public readonly json: T,
     message: string
   ) {
@@ -41,23 +41,28 @@ export type JsonRequestInit = Omit<RequestInit, 'body'> & {
    */
   swr?: boolean;
   /**
-   * If `true`, jsonFetch will reject if `response.ok` is not `true`.
+   * If `true`, jsonFetch will reject when `response.ok` is not `true`; if
+   * `false`, `json` will be undefined and `error` will be an empty object.
    *
    * @default false
    * @see https://developer.mozilla.org/en-US/docs/Web/API/Response/ok
    */
   rejectIfNotOk?: boolean;
   /**
-   * If `true`, jsonFetch will not return an error when a response is missing
-   * the `application/json` content-type header; in this case, both `json` and
-   * `error` will be undefined, leaving you to examine `res` manually.
+   * If `true`, jsonFetch will reject when a response is missing the
+   * `application/json` content-type header; if `false`, `json` will be
+   * undefined and `error` will be an empty object.
    *
    * @default false
    */
-  allowAnyContentType?: boolean;
+  rejectIfNonJsonContentType?: boolean;
   /**
    * The request body to send. Automatically stringified (via `JSON.stringify`)
    * if request content-type is `application/json`.
+   *
+   * Note that this type is loose enough to accept JSON objects, but if you're
+   * not using the `application/json` content-type when passing a JSON object as
+   * the body then jsonFetch will reject with an error.
    */
   body?: BodyInit | JsonObject | JsonPrimitive;
 };
@@ -73,40 +78,45 @@ export type JsonRequestInit = Omit<RequestInit, 'body'> & {
  * @see https://github.com/developit/unfetch#api
  */
 export const globalJsonRequestOptions: JsonRequestInit = {
-  headers: { 'content-type': JsonContentType }
+  headers: { 'content-type': JsonContentType },
+  rejectIfNotOk: false,
+  rejectIfNonJsonContentType: false
 };
 
 /**
  * Fetches a resource and returns an object containing two items: the response
- * itself (under `res`) and the response body parsed as JSON (under either
- * `json` or `error` depending on status code).
+ * itself under `res` and the response body parsed as JSON under either `error`
+ * (if the response has a non-2xx status) or `json`.
  *
  * If the response was not received with an `application/json` content-type
- * header and `allowAnyContentType` is `true`, both `error` and `json` will be
- * undefined. Otherwise, if the response has a non-2xx status, the `json`
- * property will be undefined; conversely, if a 2xx status is received, the
- * `error` property will be undefined.
+ * header or has a non-2xx status _and_ unparseable response body, `json` will
+ * be undefined and `error` will be an empty object.
  *
- * This function rejects 1) if the request body cannot be parsed as JSON but is
- * being sent with an `application/json` content-type header, 2) the response
- * was not received with an `application/json` content-type header but
- * `allowAnyContentType` is not `true`, or 3) the response body cannot be parsed
- * as JSON but is being sent with an `application/json` content-type header.
+ * This function rejects if 1) the request body cannot be parsed as JSON but is
+ * being sent with an `application/json` content-type header or 2) the response
+ * body cannot be parsed as JSON but was received with an `application/json`
+ * content-type header.
  *
  * @example
  * ```
- * type ExpectedJson = { data: number };
- * type PotentialErr = { message: string };
- * const { json, error } = jsonFetch<ExpectedJson, PotentialErr>(
+ * type ResJson = { myNumber: number };
+ * type ResErr = { reason: string };
+ * const { res, json, error } = await jsonFetch<ResJson, ResErr>(
  *   'api/endpoint',
  *   {
+ *     method: 'POST',
  *     headers: { authorization: `Bearer ${apiKey}` },
  *     body: requestData
  *   }
  * );
  *
- * if(error) throw new Error(error.reason);
- * return json.myData;
+ * if (error) {
+ *   console.error(error?.reason ?? (res.ok
+ *       ? 'bad json'
+ *       : res.statusText));
+ * } else {
+ *   console.log(`number is: ${json?.myNumber}`);
+ * }
  * ```
  */
 export async function jsonFetch<
@@ -114,43 +124,153 @@ export async function jsonFetch<
   ErrorType extends JsonObject = JsonType
 >(
   url: string,
-  init?: Omit<JsonRequestInit, 'swr' | 'rejectIfNotOk'> & {
+  init?: Omit<JsonRequestInit, 'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'> & {
     swr?: false;
     rejectIfNotOk?: false;
+    rejectIfNonJsonContentType?: false;
   }
 ): Promise<{
   res: Response;
   json: JsonType | undefined;
-  error: ErrorType | undefined;
+  error: Partial<ErrorType> | undefined;
 }>;
 /**
  * Fetches a resource and returns an object containing two items: the response
- * itself (under `res`) and the response body parsed as JSON (under either
- * `json` or `error` depending on status code).
+ * itself under `res` and the response body parsed as JSON under either `error`
+ * (if the response has a non-2xx status) or `json`.
  *
- * If the response was not received with an `application/json` content-type
- * header and `allowAnyContentType` is `true`, both `error` and `json` will be
- * undefined.
+ * If the response was received with a non-2xx status _and_ unparseable response
+ * body, `json` will be undefined and `error` will be an empty object.
  *
- * If a response with a proper content-type header is received but with a
- * non-2xx status, this function will reject. Hence, if this function returns
- * without incident, `error` will always be undefined and `json` will always be
- * defined (with respect to the constraints above).
+ * This function rejects if 1) the request body cannot be parsed as JSON but is
+ * being sent with an `application/json` content-type header, 2) the response
+ * body cannot be parsed as JSON but was received with an `application/json`
+ * content-type header, or 3) the response was received with a content-type
+ * header other than `application/json`.
  *
- * This function also rejects 1) if the request body cannot be parsed as JSON
- * but is being sent with an `application/json` content-type header, 2) the
- * response was not received with an `application/json` content-type header but
- * `allowAnyContentType` is not `true`, or 3) the response body cannot be parsed
- * as JSON but is being sent with an `application/json` content-type header.
+ * @example
+ * ```
+ * type ResJson = { myNumber: number };
+ * type ResErr = { reason: string };
+ *
+ * try {
+ *   const { res, json, error } = await jsonFetch<ResJson, ResErr>(
+ *     'api/endpoint',
+ *     { rejectIfNonJsonContentType: true }
+ *   );
+ *
+ *   if (error) {
+ *     console.error(error?.reason ?? res.statusText);
+ *   } else {
+ *     console.log(`number is: ${json?.myNumber}`);
+ *   }
+ * } catch(e) {
+ *   if(e instanceof JsonFetchError) {
+ *     // Special handling for non-json response bodies
+ *     specialHandler(e.res.status, e.json);
+ *   } else {
+ *     throw e;
+ *   }
+ * }
+ * ```
+ */
+export async function jsonFetch<
+  JsonType extends JsonObject = JsonObject,
+  ErrorType extends JsonObject = JsonType
+>(
+  url: string,
+  init: Omit<JsonRequestInit, 'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'> & {
+    swr?: false;
+    rejectIfNotOk?: false;
+    rejectIfNonJsonContentType: true;
+  }
+): Promise<{
+  res: Response;
+  json: JsonType | undefined;
+  error: Partial<ErrorType> | undefined;
+}>;
+/**
+ * Fetches a resource and returns an object containing two items: the response
+ * itself under `res` and either the response body parsed as JSON under `json`
+ * or, if the response was received with a content-type header other than
+ * `application/json`, an empty object under `error`.
+ *
+ * This function rejects if 1) the request body cannot be parsed as JSON but is
+ * being sent with an `application/json` content-type header, 2) the response
+ * body cannot be parsed as JSON but was received with an `application/json`
+ * content-type header, or 3) the response was received with a non-2xx status.
+ *
+ * @example
+ * ```
+ * type ResJson = { myNumber: number };
+ * type ResErr = { reason: string };
+ *
+ * try {
+ *   const { res, json, error } = await jsonFetch<ResJson, ResErr>(
+ *     'api/endpoint',
+ *     { rejectIfNotOk: true }
+ *   );
+ *
+ *   if (error) {
+ *     console.error(error?.reason ?? 'bad json');
+ *   } else {
+ *     console.log(`number is: ${json?.myNumber}`);
+ *   }
+ * } catch(e) {
+ *   if(e instanceof JsonFetchError) {
+ *     // Special handling for non-2xx responses
+ *     specialHandler(e.res.status, e.json);
+ *   } else {
+ *     throw e;
+ *   }
+ * }
+ * ```
+ */
+export async function jsonFetch<
+  JsonType extends JsonObject = JsonObject,
+  ErrorType extends JsonObject = JsonType
+>(
+  url: string,
+  init: Omit<JsonRequestInit, 'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'> & {
+    swr?: false;
+    rejectIfNotOk: true;
+    rejectIfNonJsonContentType?: false;
+  }
+): Promise<{
+  res: Response;
+  json: JsonType | undefined;
+  error: Partial<ErrorType> | undefined;
+}>;
+/**
+ * Fetches a resource and returns an object containing two items: the response
+ * itself under `res` and and the response body parsed as JSON under `json`.
+ *
+ * This function rejects if 1) the request body cannot be parsed as JSON but is
+ * being sent with an `application/json` content-type header, 2) the response
+ * body cannot be parsed as JSON but was received with an `application/json`
+ * content-type header, 3) the response was received with a content-type header
+ * other than `application/json`, or 4) the response was received with a non-2xx
+ * status.
+ *
+ * Hence, when jsonFetch is called in this way, `json` will always be defined
+ * and `error` will always be undefined.
  *
  * @example
  * ```
  * try {
  *   const url = 'https://some.resource.com/data.json';
- *   const { json } = await jsonFetch(url, { rejectIfNotOk: true });
+ *   const { json } = await jsonFetch(url, {
+ *     rejectIfNotOk: true,
+ *     rejectIfNonJsonContentType: true
+ *   });
  *   doSomethingWith(json);
  * } catch(e) {
- *   // ...
+ *   if(e instanceof JsonFetchError) {
+ *     // Special handling for non-2xx/non-json response bodies
+ *     specialHandler(e.res.status, e.json);
+ *   } else {
+ *     throw e;
+ *   }
  * }
  * ```
  */
@@ -160,9 +280,10 @@ export async function jsonFetch<
   ErrorType extends JsonObject = JsonType
 >(
   url: string,
-  init: Omit<JsonRequestInit, 'swr' | 'rejectIfNotOk'> & {
+  init: Omit<JsonRequestInit, 'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'> & {
     swr?: false;
     rejectIfNotOk: true;
+    rejectIfNonJsonContentType: true;
   }
 ): Promise<{
   res: Response;
@@ -172,21 +293,16 @@ export async function jsonFetch<
 /**
  * Fetches a resource and returns the response body parsed as a JSON object.
  *
- * If the response was not received with an `application/json` content-type
- * header and `allowAnyContentType` is `true`, both `error` and `json` will be
- * undefined.
- *
- * This function rejects 1) if a response with a proper content-type header is
- * received but with a non-2xx status, 2) if the request body cannot be parsed
- * as JSON but is being sent with an `application/json` content-type header, 3)
- * the response was not received with an `application/json` content-type header
- * but `allowAnyContentType` is not `true`, or 4) the response body cannot be
- * parsed as JSON but is being sent with an `application/json` content-type
- * header.
+ * This function rejects if 1) the request body cannot be parsed as JSON but is
+ * being sent with an `application/json` content-type header, 2) the response
+ * body cannot be parsed as JSON but was received with an `application/json`
+ * content-type header, 3) the response was received with a content-type header
+ * other than `application/json`, or 4) the response was received with a non-2xx
+ * status.
  *
  * The object SWR returns will contain the rejection reason under the `error`
  * property. Usually, `error` is as an instance of JsonUnfetchError complete
- * with `json` and `status` properties. If unfetch itself fails, the `error`
+ * with `json` and `res` properties. If unfetch itself fails, the `error`
  * object returned will not have these properties.
  *
  * @example
@@ -232,34 +348,33 @@ export async function jsonFetch<
     }
   }
 
-  // @ts-expect-error: if an error occurs here, let it bubble
-  const res = await unfetch(url, parsedOptions);
+  const res = await unfetch(url, parsedOptions as RequestInit);
   const responseContentType = res.headers.get('content-type');
 
+  let parseError = '';
   let json: JsonType | undefined = undefined;
-  let error: ErrorType | undefined = undefined;
+  let error: Partial<ErrorType> | undefined = undefined;
 
-  if (!res.ok && (parsedOptions.swr || parsedOptions.rejectIfNotOk)) {
+  try {
+    json = await res.json();
+  } catch (e) {
+    parseError = `${e instanceof Error ? e.message : e}`;
+  }
+
+  if (!res.ok && (parsedOptions.rejectIfNotOk || parsedOptions.swr)) {
     throw new JsonUnfetchError(
-      res.status,
+      res,
       json,
       `response status code ${res.status} was not in the range 200-299`
     );
   }
 
-  if (responseContentType == JsonContentType) {
-    try {
-      json = await res.json();
-    } catch (e) {
-      throw new JsonUnfetchError(
-        res.status,
-        json,
-        `failed to parse response body: ${e instanceof Error ? e.message : e}`
-      );
-    }
-  } else if (!parsedOptions.allowAnyContentType) {
+  if (
+    responseContentType != JsonContentType &&
+    (parsedOptions.rejectIfNonJsonContentType || parsedOptions.swr)
+  ) {
     throw new JsonUnfetchError(
-      res.status,
+      res,
       json,
       `received response ${
         responseContentType
@@ -269,8 +384,15 @@ export async function jsonFetch<
     );
   }
 
-  if (!res.ok) {
-    error = json as unknown as ErrorType;
+  if (parseError && responseContentType == JsonContentType) {
+    throw new JsonUnfetchError(res, json, `failed to parse response body: ${parseError}`);
+  }
+
+  if (responseContentType != JsonContentType || parseError) {
+    json = undefined;
+    error = {};
+  } else if (!res.ok) {
+    error = json as unknown as Partial<ErrorType>;
     json = undefined;
   }
 
@@ -280,21 +402,16 @@ export async function jsonFetch<
 /**
  * Fetches a resource and returns the response body parsed as a JSON object.
  *
- * If the response was not received with an `application/json` content-type
- * header and `allowAnyContentType` is `true`, both `error` and `json` will be
- * undefined.
- *
- * This function rejects 1) if a response with a proper content-type header is
- * received but with a non-2xx status, 2) if the request body cannot be parsed
- * as JSON but is being sent with an `application/json` content-type header, 3)
- * the response was not received with an `application/json` content-type header
- * but `allowAnyContentType` is not `true`, or 4) the response body cannot be
- * parsed as JSON but is being sent with an `application/json` content-type
- * header.
+ * This function rejects if 1) the request body cannot be parsed as JSON but is
+ * being sent with an `application/json` content-type header, 2) the response
+ * body cannot be parsed as JSON but was received with an `application/json`
+ * content-type header, 3) the response was received with a content-type header
+ * other than `application/json`, or 4) the response was received with a non-2xx
+ * status.
  *
  * The object SWR returns will contain the rejection reason under the `error`
  * property. Usually, `error` is as an instance of JsonUnfetchError complete
- * with `json` and `status` properties. If unfetch itself fails, the `error`
+ * with `json` and `res` properties. If unfetch itself fails, the `error`
  * object returned will not have these properties.
  *
  * @example

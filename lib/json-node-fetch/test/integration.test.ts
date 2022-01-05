@@ -153,6 +153,13 @@ describe('::jsonFetch', () => {
 
     await expect(
       jsonFetch(localUrl, {
+        rejectIfNonJsonContentType: true,
+        rejectIfNotOk: true
+      })
+    ).rejects.toThrow(/500/);
+
+    await expect(
+      jsonFetch(localUrl, {
         rejectIfNonJsonContentType: true
       })
     ).rejects.toThrow(/failed to parse response body:/);
