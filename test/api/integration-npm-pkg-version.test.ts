@@ -29,17 +29,21 @@ const server = setupServer(
     );
   }),
   rest.get('https://registry.npmjs.com/:package/latest', (req, res, ctx) => {
-    if (
-      ![encodeURIComponent('some-pkg'), encodeURIComponent('@some/pkg')].includes(
-        req.params.package.toString()
-      )
-    ) {
-      return res(ctx.status(404));
+    if (!['some-pkg', '@some/pkg'].includes(req.params.package.toString())) {
+      return res(
+        ctx.status(404),
+        ctx.set('content-type', 'application/json'),
+        ctx.body(JSON.stringify('Not Found'))
+      );
     } else {
       return res(
         ctx.status(200),
         ctx.set('content-type', 'application/json'),
-        ctx.body(JSON.stringify({ version: req.params.package == '' }))
+        ctx.body(
+          JSON.stringify({
+            version: req.params.package == 'some-pkg' ? 'x.y.z' : 'w.x.y'
+          })
+        )
       );
     }
   })
@@ -79,16 +83,6 @@ it('handles bad requests', async () => {
 
   await testApiHandler({
     handler,
-    params: { pkgName: 'package-does-not-exist' },
-    test: async ({ fetch }) => {
-      const res = await fetch();
-      await expect(res.json()).resolves.toMatchObject({ success: false });
-      expect(res.status).toBe(404);
-    }
-  });
-
-  await testApiHandler({
-    handler,
     params: { pkgName: 'some-pkg' },
     test: async ({ fetch }) => {
       const res = await fetch({
@@ -118,7 +112,7 @@ it('returns a version badge', async () => {
     params: { pkgName: 'some-pkg' },
     test: async ({ fetch }) => {
       const res = await fetch();
-      await expect(res.text()).resolves.toMatch(/npm install.*?some-pkg@.*?x\.y\.z/);
+      await expect(res.text()).resolves.toMatch(/npm install.*?some-pkg@x\.y\.z/);
       expect(res.status).toBe(200);
     }
   });
@@ -132,7 +126,7 @@ it('works with namespaced packages', async () => {
     params: { pkgName: ['@some', 'pkg'] },
     test: async ({ fetch }) => {
       const res = await fetch();
-      await expect(res.text()).resolves.toMatch(/npm install.*?@some\/pkg@.*?w\.x\.y/);
+      await expect(res.text()).resolves.toMatch(/npm install.*?@some\/pkg@w\.x\.y/);
       expect(res.status).toBe(200);
     }
   });
@@ -143,10 +137,12 @@ it('handles non-existent packages', async () => {
 
   await testApiHandler({
     handler,
-    params: { pkgName: ['does-not-exist'] },
+    params: { pkgName: 'package-does-not-exist' },
     test: async ({ fetch }) => {
       const res = await fetch();
-      expect(res.status).toBe(404);
+
+      await expect(res.text()).resolves.toMatch(/red.*?npm install.*?error/);
+      expect(res.status).toBe(200);
     }
   });
 });

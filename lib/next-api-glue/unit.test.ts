@@ -60,9 +60,7 @@ describe('::withMiddleware', () => {
         await expect(
           fetch({
             method: 'POST',
-            body: Array.from({ length: MAX_CONTENT_LENGTH_BYTES_PLUS_1 })
-              .map(() => 'x')
-              .join('')
+            body: 'x'.repeat(MAX_CONTENT_LENGTH_BYTES_PLUS_1)
           }).then((r) => r.status)
         ).resolves.toBe(413);
       }

@@ -14,7 +14,7 @@ export default withMiddleware(
     const {
       query: { pkgName }
     } = req;
-    const pkg = Array.from(pkgName).join('/');
+    const pkg = [pkgName].flat().join('/');
 
     try {
       version = await getNpmPackageVersion(pkg);
