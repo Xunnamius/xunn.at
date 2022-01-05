@@ -60,7 +60,7 @@
     "@types/node": "^16.11.11",
     "@types/react": "^17.0.37",
     "@types/request-ip": "^0.0.37",
-    "@xunnamius/types": "^1.1.7",
+    "@xunnamius/types": "^1.2.2",
     "babel-plugin-explicit-exports-references": "^1.0.1",
     "babel-plugin-transform-default-named-imports": "^1.2.1",
     "bytes": "^3.1.1",
