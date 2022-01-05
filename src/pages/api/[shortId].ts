@@ -13,9 +13,7 @@ export { defaultConfig as config } from 'universe/backend/api';
  * An endpoint that translates short link identifiers into actual resources.
  */
 export default async function (request: NextApiRequest, response: NextApiResponse) {
-  let removeHeaders = () => {
-    /* noop */
-  };
+  let removeHeaders = () => undefined;
 
   return withMiddleware(
     async (req, res) => {
@@ -30,9 +28,8 @@ export default async function (request: NextApiRequest, response: NextApiRespons
       if (headers) {
         const headerEntries = Object.entries(headers);
         headerEntries.forEach(([header, value]) => res.setHeader(header, value));
-        removeHeaders = () => {
-          headerEntries.forEach(([header]) => res.removeHeader(header));
-        };
+        removeHeaders = () =>
+          void headerEntries.forEach(([header]) => res.removeHeader(header));
       }
 
       if (shortData.type == 'github-pkg') {
