@@ -2,7 +2,7 @@ import fetch, { FetchError } from 'node-fetch';
 import { pipeline as promisedPipeline } from 'stream/promises';
 import { GuruMeditationError, HttpError } from 'universe/error';
 import { extractSubdirAndRepack } from 'universe/backend/tar';
-import { Gzip, Gunzip, constants } from 'minizlib';
+import { createGzip, createGunzip } from 'zlib';
 import { toss } from 'toss-expression';
 
 import type { NextApiResponse } from 'next';
@@ -52,13 +52,7 @@ export async function githubPackageDownloadPipeline({
       await promisedPipeline([
         codeloadRes.body,
         ...(subdir
-          ? [
-              new Gunzip() as unknown as NodeJS.ReadWriteStream,
-              extractSubdirAndRepack({ subdir }),
-              new Gzip({
-                level: constants.Z_BEST_COMPRESSION
-              }) as unknown as NodeJS.ReadWriteStream
-            ]
+          ? [createGunzip(), extractSubdirAndRepack({ subdir }), createGzip()]
           : []),
         res
       ]);

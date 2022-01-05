@@ -4,6 +4,7 @@ import { pipeline as promisedPipeline } from 'stream/promises';
 import { extract as extractStream, pack as repackStream } from 'tar-stream';
 
 import type { Headers } from 'tar-stream';
+import type { Writable, Readable } from 'stream';
 
 /**
  * The shape of a single entry in an uncompressed tar archive.
@@ -17,15 +18,13 @@ export type Entry = { headers: Headers; data: string };
  *
  * @param entries An array into which each entry encountered will be written.
  */
-export function getEntries(entries: Entry[]): NodeJS.WritableStream;
+export function getEntries(entries: Entry[]): Writable;
 /**
  * Accepts a readable _uncompressed_ (not gzipped) tar archive `stream` and
  * returns an array of the archive's entries.
  */
-export function getEntries(stream: NodeJS.ReadableStream): Promise<Entry[]>;
-export function getEntries(
-  arg: NodeJS.ReadableStream | Entry[]
-): NodeJS.WritableStream | Promise<Entry[]> {
+export function getEntries(stream: Readable): Promise<Entry[]>;
+export function getEntries(arg: Readable | Entry[]): Writable | Promise<Entry[]> {
   const entries: Entry[] = Array.isArray(arg) ? arg : [];
 
   const xstream = extractStream();
