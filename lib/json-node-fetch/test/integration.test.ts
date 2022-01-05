@@ -1,14 +1,12 @@
 import { createServer, ServerResponse, IncomingMessage } from 'http';
-import { jsonFetch } from 'multiverse/json-node-fetch';
+import { globalJsonRequestOptions, jsonFetch } from 'multiverse/json-node-fetch';
 
-let cleanupFn = () => {
-  /* noop */
-};
+let cleanupFn = () => undefined;
 
 afterAll(() => cleanupFn());
 
 describe('::jsonFetch', () => {
-  it('works as expected', async () => {
+  it('works', async () => {
     expect.hasAssertions();
 
     let status = 200;
@@ -23,7 +21,9 @@ describe('::jsonFetch', () => {
 
       let dat;
       try {
-        dat = JSON.stringify(data);
+        if (data != '{"broken') {
+          dat = JSON.stringify(data);
+        }
       } catch {
         dat = data;
       }
@@ -31,7 +31,7 @@ describe('::jsonFetch', () => {
       res.end(dat);
     });
 
-    cleanupFn = () => server.close();
+    cleanupFn = () => void server.close();
 
     const port = await new Promise<number>((resolve, reject) => {
       server.listen(() => {
@@ -43,15 +43,14 @@ describe('::jsonFetch', () => {
     });
 
     const localUrl = `http://localhost:${port}/`;
-    let res, json, error;
-
-    ({ res, json, error } = await jsonFetch(localUrl));
+    let { res, json, error } = await jsonFetch(localUrl);
 
     expect(res.url).toBe(localUrl);
     expect(json).toStrictEqual(data);
     expect(error).toBeUndefined();
 
     status = 555;
+
     ({ res, json, error } = await jsonFetch(localUrl));
 
     expect(json).toBeUndefined();
@@ -59,32 +58,65 @@ describe('::jsonFetch', () => {
 
     status = 200;
     header = {};
-    await expect(jsonFetch(localUrl)).rejects.toThrow('without a content-type');
+
+    ({ res, json, error } = await jsonFetch(localUrl));
+
+    expect(json).toBeUndefined();
+    expect(error).toStrictEqual({});
+
+    await expect(
+      jsonFetch(localUrl, { rejectIfNonJsonContentType: true })
+    ).rejects.toThrow('without a content-type');
 
     header = { 'content-type': 'text/unknown' };
-    await expect(jsonFetch(localUrl)).rejects.toThrow('"text/unknown"');
+    ({ res, json, error } = await jsonFetch(localUrl));
 
-    data = 'hello';
-    ({ res, json, error } = await jsonFetch(localUrl, { allowAnyContentType: true }));
-
-    await expect(res.text()).resolves.toBe(`"${data}"`);
     expect(json).toBeUndefined();
-    expect(error).toBeUndefined();
+    expect(error).toStrictEqual({});
+
+    await expect(
+      jsonFetch(localUrl, { rejectIfNotOk: true, rejectIfNonJsonContentType: true })
+    ).rejects.toThrow('"text/unknown"');
+
+    data = { hello: 'world!' };
+
+    await expect(
+      jsonFetch(localUrl, { rejectIfNonJsonContentType: true }).catch((e) => e.json)
+    ).resolves.toStrictEqual(data);
 
     header = { 'content-type': 'application/json' };
     status = 666;
-    await expect(jsonFetch(localUrl, { rejectIfNotOk: true })).rejects.toThrow('666');
+
+    ({ res, json, error } = await jsonFetch(localUrl));
+
+    expect(json).toBeUndefined();
+    expect(error).toStrictEqual(data);
+
+    data = {};
+
+    ({ res, json, error } = await jsonFetch(localUrl));
+
+    expect(json).toBeUndefined();
+    expect(error).toStrictEqual({});
+
+    globalJsonRequestOptions.rejectIfNotOk = true;
+
+    await expect(jsonFetch(localUrl)).rejects.toThrow('666');
 
     data = { hello: 'worlds!' };
     status = 201;
-    ({ res, json, error } = await jsonFetch(localUrl, { rejectIfNotOk: true }));
+
+    ({ res, json, error } = await jsonFetch(localUrl));
 
     expect(res.status).toBe(status);
     expect(json).toStrictEqual(data);
     expect(error).toBeUndefined();
 
+    delete globalJsonRequestOptions.rejectIfNotOk;
+
     header = { 'CONTENT-TYPE': 'application/json' };
     status = 200;
+
     ({ res, json, error } = await jsonFetch(localUrl));
 
     expect(res.status).toBe(status);
@@ -101,11 +133,37 @@ describe('::jsonFetch', () => {
 
     header = {};
     status = 500;
-    data = 'some sort of deep error happened resulting in an unparseable body';
-    ({ res, json, error } = await jsonFetch(localUrl, { allowAnyContentType: true }));
+    data = '{"broken';
+
+    await expect(
+      jsonFetch(localUrl, {
+        rejectIfNonJsonContentType: true
+      })
+    ).rejects.toThrow(/without a content-type/);
+
+    ({ res, json, error } = await jsonFetch(localUrl));
 
     expect(res.status).toBe(status);
     expect(json).toBeUndefined();
-    expect(error).toBeUndefined();
+    expect(error).toStrictEqual({});
+
+    header = { 'content-type': 'application/json' };
+
+    await expect(jsonFetch(localUrl)).rejects.toThrow(/failed to parse response body:/);
+
+    await expect(
+      jsonFetch(localUrl, {
+        rejectIfNonJsonContentType: true
+      })
+    ).rejects.toThrow(/failed to parse response body:/);
+
+    const badObj = { badObj: {} };
+    badObj.badObj = badObj;
+
+    await expect(
+      jsonFetch(localUrl, {
+        body: badObj
+      })
+    ).rejects.toThrow(/failed to stringify request body:/);
   });
 });

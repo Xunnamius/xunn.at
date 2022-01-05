@@ -298,7 +298,7 @@ describe('::setupMemoryServerOverride', () => {
     }
   });
 
-  it('non-deferred hooks run as expected', async () => {
+  it('non-deferred hooks run', async () => {
     expect.hasAssertions();
 
     const oldBeforeAll = beforeAll;

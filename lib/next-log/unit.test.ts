@@ -13,7 +13,7 @@ setupMemoryServerOverride();
 useMockDateNow();
 
 describe('::addToRequestLog', () => {
-  it('adds request to mongo collection as expected', async () => {
+  it('adds request to mongo collection', async () => {
     expect.hasAssertions();
 
     const req1 = {

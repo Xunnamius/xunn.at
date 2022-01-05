@@ -60,7 +60,7 @@ beforeEach(() => {
 describe('[run using non-deferred setupMemoryServerOverride]', () => {
   setupMemoryServerOverride();
 
-  it('setupMemoryServerOverride works as expected', async () => {
+  it('setupMemoryServerOverride works', async () => {
     expect.hasAssertions();
 
     const client = await getClient();

@@ -5,14 +5,12 @@ import { createServer, ServerResponse, IncomingMessage } from 'http';
 import { createHttpTerminator } from 'http-terminator';
 import { jsonFetch } from 'multiverse/json-unfetch';
 
-let cleanupFn = async () => {
-  /* noop */
-};
+let cleanupFn = async () => undefined;
 
 afterAll(async () => cleanupFn());
 
 describe('::jsonFetch', () => {
-  it('works as expected', async () => {
+  it('works', async () => {
     expect.hasAssertions();
 
     let status = 200;
@@ -39,7 +37,7 @@ describe('::jsonFetch', () => {
     // ? Unlike node-fetch, unfetch keeps connection handles open a while after
     // ? they complete, perhaps for pooling/caching reasons...
     const httpTerminator = createHttpTerminator({ server });
-    cleanupFn = async () => httpTerminator.terminate();
+    cleanupFn = async () => void (await httpTerminator.terminate());
 
     const port = await new Promise<number>((resolve, reject) => {
       server.listen(() => {

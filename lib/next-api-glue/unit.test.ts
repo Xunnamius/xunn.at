@@ -85,7 +85,7 @@ describe('::withMiddleware', () => {
     });
   });
 
-  it('parses url parameters as expected', async () => {
+  it('parses url parameters', async () => {
     expect.hasAssertions();
 
     await testApiHandler({
@@ -419,11 +419,7 @@ describe('::withMiddleware', () => {
           rejectOnHandlerError: true,
           handler: withMiddleware(undefined, {
             use: [() => toss(new Error('bad'))],
-            useOnError: [
-              () => {
-                /* noop */
-              }
-            ]
+            useOnError: [() => undefined]
           }),
           test: async ({ fetch }) => {
             await fetch();

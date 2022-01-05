@@ -36,6 +36,7 @@ export type ErrorHandler = (
  * A Map of Error class constructors to the special middleware that handles
  * them.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ErrorHandlerMap = Map<new (...args: any[]) => Error, ErrorHandler>;
 
 export type Options = {
@@ -78,6 +79,7 @@ export default async function (
     for (const [errorType, errorHandler] of errorHandlers) {
       if (error instanceof errorType) {
         debug(`using custom error handler for type "${error.name}"`);
+        // eslint-disable-next-line no-await-in-loop
         await errorHandler(res, errorJson);
         return;
       }
@@ -91,6 +93,7 @@ export default async function (
   );
 
   if (error instanceof GuruMeditationError) {
+    // eslint-disable-next-line no-console
     console.error(`error - sanity check failed on request: ${req.url}\n`, error);
     sendHttpError(res, {
       error: 'sanity check failed: please report exactly what you did just now!'
@@ -104,6 +107,7 @@ export default async function (
   } else if (error instanceof NotImplementedError) {
     sendNotImplementedError(res);
   } else if (error instanceof AppError) {
+    // eslint-disable-next-line no-console
     console.error(`error - exception on request: ${req.url}\n`, error);
     sendHttpError(res, errorJson);
   } else {
