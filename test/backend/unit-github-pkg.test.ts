@@ -5,10 +5,11 @@ import { asMockedFunction } from '@xunnamius/jest-types';
 import { getEntries } from 'universe/backend/tar';
 import { createReadStream, readFileSync } from 'fs';
 import { expectedEntries } from 'testverse/setup';
-import { Gunzip } from 'minizlib';
+import { createGunzip } from 'zlib';
 import { Readable } from 'stream';
 
 import type { Response } from 'node-fetch';
+import { DummyError } from 'named-app-errors';
 
 jest.mock('node-fetch', () => {
   const fetch = jest.fn();
@@ -28,6 +29,7 @@ const fetchActual = jest.requireActual('node-fetch');
 beforeEach(() => {
   // ? We need to leave node-fetch alone since NTARH uses it too
   // ! MOCK FETCH CALLS IN EACH TEST HANDLER SO IT'S NOT MAKING REAL REQUESTS !
+  // TODO: replace this with MSW
   mockFetch.mockImplementation(fetchActual);
 });
 
@@ -49,6 +51,7 @@ describe('::githubPackageDownloadPipeline', () => {
             }
           })
         ).rejects.toThrow('walked off potential commits array');
+        // ? Ensure response is sent since this error happens very early
         res.end();
       },
       test: async ({ fetch }) => void (await fetch())
@@ -81,6 +84,7 @@ describe('::githubPackageDownloadPipeline', () => {
         ).rejects.toThrow(
           /^could not find package at url\(s\): https:\/\/\S+?\/\[dummy-1, dummy-2\]$/
         );
+        // ? Ensure response is sent since this error happens very early
         res.end();
       },
       test: async ({ fetch }) => void (await fetch())
@@ -113,9 +117,10 @@ describe('::githubPackageDownloadPipeline', () => {
               subdir: ''
             }
           })
-        ).toResolve();
+        ).resolves.toBeUndefined();
 
         expect(mockFetch).toBeCalledTimes(3);
+        // ? Ensure response is sent since the null stream breaks the pipeline
         res.end();
       },
       test: async ({ fetch }) => void (await fetch())
@@ -147,8 +152,8 @@ describe('::githubPackageDownloadPipeline', () => {
               subdir: ''
             }
           })
-        ).toResolve();
-        res.status(200).end();
+        ).resolves.toBeUndefined();
+        // ? Don't need to call end since data is flowing through pipeline
       },
       test: async ({ fetch }) => {
         const res = await fetch();
@@ -171,6 +176,10 @@ describe('::githubPackageDownloadPipeline', () => {
           } as unknown as Response)
         );
 
+        mockFetch.mockImplementationOnce(() =>
+          Promise.resolve({ ok: true } as unknown as Response)
+        );
+
         await expect(
           githubPackageDownloadPipeline({
             res,
@@ -181,15 +190,15 @@ describe('::githubPackageDownloadPipeline', () => {
               subdir: 'packages/pkg-1'
             }
           })
-        ).toResolve();
-        res.status(200).end();
+        ).resolves.toBeUndefined();
+        // ? Don't need to call end since data is flowing through pipeline
       },
       test: async ({ fetch }) => {
         const res = await fetch();
         expect(res.status).toBe(200);
-        await expect(
-          getEntries(res.body.pipe(new Gunzip() as unknown as NodeJS.ReadWriteStream))
-        ).resolves.toStrictEqual(expectedEntries.pkg1);
+        await expect(getEntries(res.body.pipe(createGunzip()))).resolves.toStrictEqual(
+          expectedEntries.pkg1
+        );
       }
     });
 
@@ -203,6 +212,10 @@ describe('::githubPackageDownloadPipeline', () => {
           } as unknown as Response)
         );
 
+        mockFetch.mockImplementationOnce(() =>
+          Promise.resolve({ ok: true } as unknown as Response)
+        );
+
         await expect(
           githubPackageDownloadPipeline({
             res,
@@ -213,15 +226,15 @@ describe('::githubPackageDownloadPipeline', () => {
               subdir: 'packages/pkg-2'
             }
           })
-        ).toResolve();
-        res.status(200).end();
+        ).resolves.toBeUndefined();
+        // ? Don't need to call end since data is flowing through pipeline
       },
       test: async ({ fetch }) => {
         const res = await fetch();
         expect(res.status).toBe(200);
-        await expect(
-          getEntries(res.body.pipe(new Gunzip() as unknown as NodeJS.ReadWriteStream))
-        ).resolves.toStrictEqual(expectedEntries.pkg2);
+        await expect(getEntries(res.body.pipe(createGunzip()))).resolves.toStrictEqual(
+          expectedEntries.pkg2
+        );
       }
     });
   });
@@ -239,6 +252,13 @@ describe('::githubPackageDownloadPipeline', () => {
           } as unknown as Response)
         );
 
+        mockFetch.mockImplementationOnce(() =>
+          Promise.resolve({ ok: false } as unknown as Response)
+        );
+
+        // ? Call end early since throwing will destroy the pipeline otherwise
+        // ? (i.e. ECONNRESET). In real life, use pre-emptive error checking
+        // ? before invoking the pipeline so that it doesn't explode.
         res.end();
 
         await expect(
@@ -251,13 +271,15 @@ describe('::githubPackageDownloadPipeline', () => {
               subdir: 'packages/pkg-3'
             }
           })
-        ).rejects.toThrow('invalid subdirectory: packages/pkg-3');
+        ).rejects.toThrow(
+          'repository user/repo@1 does not contain sub directory "packages/pkg-3"'
+        );
       },
       test: async ({ fetch }) => void (await fetch())
     });
   });
 
-  it('throws on pipeline error', async () => {
+  it('throws on generic pipeline error', async () => {
     expect.hasAssertions();
 
     await testApiHandler({
@@ -266,10 +288,21 @@ describe('::githubPackageDownloadPipeline', () => {
         mockFetch.mockImplementationOnce(() =>
           Promise.resolve({
             ok: true,
-            body: createReadStream(`/does/not/exist`)
+            body: new Readable({
+              read() {
+                this.destroy(new DummyError('bad bad is bad not good good'));
+              }
+            })
           } as unknown as Response)
         );
 
+        mockFetch.mockImplementationOnce(() =>
+          Promise.resolve({ ok: true } as unknown as Response)
+        );
+
+        // ? Call end early since throwing will destroy the pipeline otherwise
+        // ? (i.e. ECONNRESET). In real life, use pre-emptive error checking
+        // ? before invoking the pipeline so that it doesn't explode.
         res.end();
 
         await expect(
@@ -282,7 +315,7 @@ describe('::githubPackageDownloadPipeline', () => {
               subdir: 'packages/pkg-3'
             }
           })
-        ).rejects.toThrow('ENOENT');
+        ).rejects.toThrow('bad bad is bad not good good');
       },
       test: async ({ fetch }) => void (await fetch())
     });
@@ -305,6 +338,13 @@ describe('::githubPackageDownloadPipeline', () => {
           } as unknown as Response)
         );
 
+        mockFetch.mockImplementationOnce(() =>
+          Promise.resolve({ ok: true } as unknown as Response)
+        );
+
+        // ? Call end early since throwing will destroy the pipeline otherwise
+        // ? (i.e. ECONNRESET). In real life, use pre-emptive error checking
+        // ? before invoking the pipeline so that it doesn't explode.
         res.end();
 
         await expect(

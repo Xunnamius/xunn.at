@@ -19,7 +19,6 @@ import '@testing-library/jest-dom/extend-expect';
 import type { Debugger } from 'multiverse/debug-extended';
 import type { SimpleGit } from 'simple-git';
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
-import type { Entry } from 'universe/backend/tar';
 import { Promisable } from 'type-fest';
 
 const { writeFile, access: accessFile } = fs;
@@ -62,7 +61,7 @@ export const wrapHandler = (handler: NextApiHandler) => {
  * Contains the expected shapes of the gzipped tar archives under
  * `test/fixtures`.
  */
-export const expectedEntries: Record<string, Entry[]> = {
+export const expectedEntries = {
   monorepo: [
     {
       headers: expect.objectContaining({ name: 'monorepo/' }),
@@ -127,6 +126,7 @@ export const expectedEntries: Record<string, Entry[]> = {
       headers: expect.objectContaining({ name: 'pkg-1/package.json' }),
       data:
         '{\n' +
+        // ? Oops... too late now
         '  "name": "dummy-monorepo-pkg-2",\n' +
         '  "version": "1.0.0",\n' +
         '  "main": "index.js"\n' +

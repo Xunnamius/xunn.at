@@ -17,7 +17,7 @@ jest.mock('universe/backend/middleware', () => {
   };
 });
 
-it('adds request to log as expected', async () => {
+it('pongs when we ping', async () => {
   expect.hasAssertions();
 
   const oldDate = Date;

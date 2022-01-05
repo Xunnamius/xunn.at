@@ -36,7 +36,7 @@ export type DummyCompatData = {
  */
 export const dummyAppData: DummyAppData = {
   _generatedAt: generatedAt,
-  // ! In unit-index.test.ts, order matters, so only append!
+  // ! In unit-index.test.ts and integration tests order matters, so APPEND ONLY
   'link-map': [
     {
       _id: new ObjectId(),
@@ -75,7 +75,8 @@ export const dummyAppData: DummyAppData = {
       owner: 'owner',
       repo: 'repo',
       subdir: null,
-      tagPrefix: 'prefix-'
+      tagPrefix: 'prefix-',
+      headers: { 'header-5': 'header-5-value' }
     },
     {
       _id: new ObjectId(),
@@ -83,10 +84,11 @@ export const dummyAppData: DummyAppData = {
       shortId: 'eee',
       createdAt: generatedAt,
       defaultCommit: 'commit',
-      owner: 'owner',
-      repo: 'repo',
-      subdir: 'subdir',
-      tagPrefix: 'prefix-'
+      owner: 'ownr',
+      repo: 'rpo',
+      subdir: 'subdir/does/not/exist',
+      tagPrefix: 'pre-',
+      headers: { 'header-6': 'header-6-value' }
     },
     {
       _id: new ObjectId(),
@@ -96,8 +98,9 @@ export const dummyAppData: DummyAppData = {
       defaultCommit: 'commit-2',
       owner: 'owner-2',
       repo: 'repo-2',
-      subdir: 'sub/d/i/r',
-      tagPrefix: 'prefix-'
+      subdir: 'packages/pkg-1',
+      tagPrefix: 'fix-',
+      headers: { 'header-7': 'header-7-value', 'header-8': 'header-8-value' }
     },
     {
       _id: new ObjectId(),

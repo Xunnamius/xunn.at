@@ -1,15 +1,13 @@
 import { extractSubdirAndRepack, getEntries } from 'universe/backend/tar';
 import { pipeline as promisedPipeline } from 'stream/promises';
 import { createReadStream } from 'fs';
-import { Gunzip } from 'minizlib';
+import { createGunzip } from 'zlib';
 import { expectedEntries } from 'testverse/setup';
 
 import type { Entry } from 'universe/backend/tar';
 
 const makeFixtureStream = (name: string) => {
-  return createReadStream(`${__dirname}/../fixtures/${name}.tar.gz`).pipe(
-    new Gunzip() as unknown as NodeJS.ReadWriteStream
-  );
+  return createReadStream(`${__dirname}/../fixtures/${name}.tar.gz`).pipe(createGunzip());
 };
 
 const tar = {
