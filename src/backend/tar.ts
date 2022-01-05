@@ -1,10 +1,12 @@
+import * as util from 'util';
 import { ValidationError } from 'universe/error';
 import { Transform, pipeline } from 'stream';
-import { pipeline as promisedPipeline } from 'stream/promises';
 import { extract as extractStream, pack as repackStream } from 'tar-stream';
 
 import type { Headers } from 'tar-stream';
 import type { Writable, Readable } from 'stream';
+
+const promisedPipeline = util.promisify(pipeline);
 
 /**
  * The shape of a single entry in an uncompressed tar archive.

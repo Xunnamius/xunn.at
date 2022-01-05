@@ -1,10 +1,13 @@
+import * as util from 'util';
 import { extractSubdirAndRepack, getEntries } from 'universe/backend/tar';
-import { pipeline as promisedPipeline } from 'stream/promises';
+import { pipeline } from 'stream';
 import { createReadStream } from 'fs';
 import { createGunzip } from 'zlib';
 import { expectedEntries } from 'testverse/setup';
 
 import type { Entry } from 'universe/backend/tar';
+
+const promisedPipeline = util.promisify(pipeline);
 
 const makeFixtureStream = (name: string) => {
   return createReadStream(`${__dirname}/../fixtures/${name}.tar.gz`).pipe(createGunzip());

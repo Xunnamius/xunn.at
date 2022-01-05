@@ -41,9 +41,7 @@ module.exports = {
     'import/no-unresolved': [
       'error',
       {
-        commonjs: true,
-        /* Once node 12 dies, these can be used in sharable code and libs */
-        ignore: ['fs/promises', 'dns/promises', 'stream/promises']
+        commonjs: true
       }
     ],
     'no-restricted-globals': ['warn'].concat(restrictedGlobals),

@@ -1,5 +1,6 @@
+import * as util from 'util';
 import { getDb } from 'multiverse/mongo-schema';
-import { pipeline } from 'stream/promises';
+import { pipeline } from 'stream';
 import { jsonFetch } from 'multiverse/json-node-fetch';
 import { HttpError, ItemNotFoundError } from 'named-app-errors';
 import fetch from 'node-fetch';
@@ -13,6 +14,8 @@ import type {
   InternalLinkMapEntryBadge,
   InternalPkgCompatFlagEntry
 } from 'universe/backend/db';
+
+const promisedPipeline = util.promisify(pipeline);
 
 /**
  * Translates a short link identifier into a link map entry.
@@ -106,5 +109,5 @@ export async function sendBadgeSvgResponse({
   }
 
   res.setHeader('content-type', 'image/svg+xml;charset=utf-8');
-  await pipeline(svgRes.body, res);
+  await promisedPipeline(svgRes.body, res);
 }

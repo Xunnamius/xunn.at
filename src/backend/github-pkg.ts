@@ -1,5 +1,6 @@
+import * as util from 'util';
 import fetch, { FetchError } from 'node-fetch';
-import { pipeline as promisedPipeline } from 'stream/promises';
+import { pipeline } from 'stream';
 import { GuruMeditationError, HttpError } from 'universe/error';
 import { extractSubdirAndRepack } from 'universe/backend/tar';
 import { createGzip, createGunzip } from 'zlib';
@@ -8,6 +9,8 @@ import { toss } from 'toss-expression';
 
 import type { NextApiResponse } from 'next';
 import type { Response } from 'node-fetch';
+
+const promisedPipeline = util.promisify(pipeline);
 
 /**
  * This is a special GitHub url that makes it easy to grab gzipped source
