@@ -68,7 +68,7 @@
     "bytes": "^3.1.1",
     "clone-deep": "^4.0.1",
     "cors": "^2.8.5",
-    "find-up": "^5.0.0",
+    "find-up": "^6.2.0",
     "gunzip-maybe": "^1.4.2",
     "is-plain-object": "^5.0.0",
     "is-server-side": "^1.0.2",
