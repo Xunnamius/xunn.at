@@ -37,7 +37,7 @@ export function getEnv<T extends Environment>(customizedEnv?: T) {
     DISABLED_API_VERSIONS: !!process.env.DISABLED_API_VERSIONS
       ? envToArray(process.env.DISABLED_API_VERSIONS.toLowerCase())
       : [],
-    RESULTS_PER_PAGE: Number(process.env.RESULTS_PER_PAGE),
+    RESULTS_PER_PAGE: Number(process.env.RESULTS_PER_PAGE) || 100,
     IGNORE_RATE_LIMITS:
       !!process.env.IGNORE_RATE_LIMITS && process.env.IGNORE_RATE_LIMITS !== 'false',
     LOCKOUT_ALL_CLIENTS:
@@ -45,9 +45,8 @@ export function getEnv<T extends Environment>(customizedEnv?: T) {
     DISALLOWED_METHODS: !!process.env.DISALLOWED_METHODS
       ? envToArray(process.env.DISALLOWED_METHODS.toUpperCase())
       : [],
-    MAX_CONTENT_LENGTH_BYTES: parseAsBytes(
-      process.env.MAX_CONTENT_LENGTH_BYTES ?? '-Infinity'
-    ),
+    MAX_CONTENT_LENGTH_BYTES:
+      parseAsBytes(process.env.MAX_CONTENT_LENGTH_BYTES ?? '-Infinity') || 102400,
     AUTH_HEADER_MAX_LENGTH: Number(process.env.AUTH_HEADER_MAX_LENGTH) || 500,
     DEBUG: process.env.DEBUG ?? null,
     DEBUG_INSPECTING: !!process.env.VSCODE_INSPECTOR_OPTIONS,

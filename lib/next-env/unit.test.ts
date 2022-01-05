@@ -91,9 +91,7 @@ describe('::getEnv', () => {
     await withMockedEnv(() => {
       expect(() => getEnv()).toThrow(`bad variables:
  - bad NODE_ENV, saw "unknown"
- - bad MONGODB_URI, saw ""
- - bad RESULTS_PER_PAGE, saw "NaN" (expected a non-negative number)
- - bad MAX_CONTENT_LENGTH_BYTES, saw "NaN" (expected a non-negative number)`);
+ - bad MONGODB_URI, saw ""`);
     }, {});
   });
 });
