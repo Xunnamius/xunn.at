@@ -105,9 +105,13 @@ export function getEnv<T extends Environment>(customizedEnv?: T) {
       if (env.MONGODB_URI === '')
         errors.push(`bad MONGODB_URI, saw "${env.MONGODB_URI}"`);
 
-      (['RESULTS_PER_PAGE', 'MAX_CONTENT_LENGTH_BYTES'] as (keyof typeof env)[]).forEach(
-        (name) => envIsGtZero(name)
-      );
+      (
+        [
+          'RESULTS_PER_PAGE',
+          'MAX_CONTENT_LENGTH_BYTES',
+          'AUTH_HEADER_MAX_LENGTH'
+        ] as (keyof typeof env)[]
+      ).forEach((name) => envIsGtZero(name));
 
       env.DISALLOWED_METHODS.forEach((method) => {
         if (!validHttpMethods.includes(method as ValidHttpMethod)) {
