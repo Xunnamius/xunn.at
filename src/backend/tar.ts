@@ -2,11 +2,14 @@ import * as util from 'util';
 import { ValidationError } from 'universe/error';
 import { Transform, pipeline } from 'stream';
 import { extract as extractStream, pack as repackStream } from 'tar-stream';
+import { name as pkgName } from 'package';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import type { Headers } from 'tar-stream';
 import type { Writable, Readable } from 'stream';
 
 const promisedPipeline = util.promisify(pipeline);
+const debug = debugFactory(`${pkgName}:github-pkg`);
 
 /**
  * The shape of a single entry in an uncompressed tar archive.
@@ -62,6 +65,7 @@ export function extractSubdirAndRepack({ subdir }: { subdir: string }) {
   const pstream = repackStream();
 
   const destroyStreams = (mainstream: Transform, error: Error) => {
+    debug('destroying pipeline with error: ', error);
     mainstream.destroy(error);
     xstream.destroy();
     pstream.destroy();
@@ -75,15 +79,25 @@ export function extractSubdirAndRepack({ subdir }: { subdir: string }) {
   xstream.on('entry', (headers, readableEntryStream, next) => {
     if (!subdir) {
       tarIsEmpty = false;
+      debug('no subdir detected; transform stream is in passthrough mode');
       pipeline(readableEntryStream, pstream.entry(headers), (err) => next(err));
     } else {
       if (tarRoot === null) {
         if (headers.type != 'directory') {
-          next(new ValidationError('invalid archive: first entry must be a directory'));
+          const error = new ValidationError(
+            'invalid archive: first entry must be a directory'
+          );
+          debug('propagating error: ', error);
+          next(error);
         } else {
           tarRoot = headers.name;
           targetRoot = `${tarRoot}${subdir}/`;
           newRoot = `${subdir.split('/').slice(-1)[0]}/`;
+
+          debug('updated tarRoot: ', tarRoot);
+          debug('updated targetRoot: ', targetRoot);
+          debug('updated newRoot: ', newRoot);
+
           // ? Ignore this entry
           readableEntryStream.resume().once('end', () => next());
         }
@@ -93,14 +107,22 @@ export function extractSubdirAndRepack({ subdir }: { subdir: string }) {
           tarIsEmpty = false;
           // ? Modify file path if necessary
           headers.name = `${newRoot}${headers.name.slice(targetRoot.length)}`;
+
+          debug('including entry: ', headers.name);
+
           // ? Commit modifications
           pipeline(readableEntryStream, pstream.entry(headers), (err) => next(err));
         } else {
+          debug('excluding entry: ', headers.name);
           // ? Ignore this entry
           readableEntryStream.resume().once('end', () => next());
         }
       } else {
-        next(new ValidationError('invalid archive: multi-directory root not allowed'));
+        const error = new ValidationError(
+          'invalid archive: multi-directory root not allowed'
+        );
+        debug('propagating error: ', error);
+        next(error);
       }
     }
   });
@@ -124,11 +146,13 @@ export function extractSubdirAndRepack({ subdir }: { subdir: string }) {
         if (tarIsEmpty) {
           destroyStreams(this, new ValidationError(`invalid subdirectory: ${subdir}`));
         } else {
+          debug('flushing last chunks downstream');
           // ? Flush the final outgoing chunk(s) downstream.
           pstream.finalize();
         }
       });
 
+      debug('beginning extraction and repackaging process');
       begin();
     },
 
@@ -144,6 +168,7 @@ export function extractSubdirAndRepack({ subdir }: { subdir: string }) {
     },
 
     flush(end) {
+      debug('ending extraction and repackaging process');
       // ? Trigger pstream finalization and flush the final outgoing chunk(s)
       // ? downstream.
       xstream.end(() => {

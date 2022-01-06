@@ -6,11 +6,14 @@ import { extractSubdirAndRepack } from 'universe/backend/tar';
 import { createGzip, createGunzip } from 'zlib';
 import { AppError, NotFoundError } from 'named-app-errors';
 import { toss } from 'toss-expression';
+import { name as pkgName } from 'package';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiResponse } from 'next';
 import type { Response } from 'node-fetch';
 
 const promisedPipeline = util.promisify(pipeline);
+const debug = debugFactory(`${pkgName}:github-pkg`);
 
 /**
  * This is a special GitHub url that makes it easy to grab gzipped source
@@ -54,6 +57,8 @@ export async function githubPackageDownloadPipeline({
         potentialCommits.shift() ||
         toss(new GuruMeditationError('walked off potential commits array')))
     );
+
+    debug(`attempting codeload from ${url}`);
     // eslint-disable-next-line no-await-in-loop
     codeloadRes = await fetch(url);
   } while (potentialCommits.length && !codeloadRes.ok);
@@ -64,13 +69,17 @@ export async function githubPackageDownloadPipeline({
     try {
       if (subdir) {
         const url = treeExistsUrl(`${owner}/${repo}`, actualCommit, subdir);
+        debug(`checking for subdir existence at ${url}`);
         const treeExistsRes = await fetch(url, { method: 'HEAD' });
+
         if (!treeExistsRes.ok) {
           throw new AppError(
             `GitHub repository ${owner}/${repo}@${actualCommit} does not contain sub directory "${subdir}"`
           );
         }
       }
+
+      debug('starting pipeline');
 
       await promisedPipeline([
         codeloadRes.body,

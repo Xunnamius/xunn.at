@@ -2,9 +2,13 @@ import { withMiddleware } from 'universe/backend/middleware';
 import { githubPackageDownloadPipeline } from 'universe/backend/github-pkg';
 import { resolveShortId, sendBadgeSvgResponse } from 'universe/backend';
 import { AppError, NotImplementedError } from 'universe/error';
+import { NotFoundError } from 'named-app-errors';
+import { name as pkgName } from 'package';
+import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { NotFoundError } from 'named-app-errors';
+
+const debug = debugFactory(`${pkgName}:github-pkg`);
 
 // ? https://nextjs.org/docs/api-routes/api-middlewares#custom-config
 export { defaultConfig as config } from 'universe/backend/api';
@@ -24,6 +28,9 @@ export default async function (request: NextApiRequest, response: NextApiRespons
       res.status(200).setHeader('cache-control', 's-maxage=60, stale-while-revalidate');
 
       const { headers, ...shortData } = await resolveShortId({ shortId });
+
+      debug('shortData: ', shortData);
+      debug('headers: ', headers);
 
       if (headers) {
         const headerEntries = Object.entries(headers);
