@@ -111,7 +111,12 @@ export function extractSubdirAndRepack({ subdir }: { subdir: string }) {
           debug('including entry: ', headers.name);
 
           // ? Commit modifications
-          pipeline(readableEntryStream, pstream.entry(headers), (err) => next(err));
+          pipeline(readableEntryStream, pstream.entry(headers), (err) => {
+            err
+              ? console.error(`commit failed with error: ${err}`)
+              : console.log('committed without error');
+            next(err);
+          });
         } else {
           debug('excluding entry: ', headers.name);
           // ? Ignore this entry
