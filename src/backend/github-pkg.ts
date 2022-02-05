@@ -84,7 +84,7 @@ export async function githubPackageDownloadPipeline({
       await promisedPipeline([
         codeloadRes.body,
         ...(subdir
-          ? [createGunzip(), extractSubdirAndRepack({ subdir }), createGzip()]
+          ? [createGunzip(), /*extractSubdirAndRepack({ subdir }),*/ createGzip()]
           : []),
         res
       ]);
