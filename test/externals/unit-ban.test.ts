@@ -12,7 +12,7 @@ import {
 
 import type { InternalLimitedLogEntry } from 'multiverse/next-limit';
 import type { InternalRequestLogEntry } from 'multiverse/next-log';
-import type { WithId } from 'mongodb';
+import { ObjectId, WithId } from 'mongodb';
 
 // ? Ensure the isolated external picks up the memory server override
 jest.mock('multiverse/mongo-schema', () => {
@@ -147,6 +147,7 @@ it('rate limits only those ips and auth headers that exceed limits', async () =>
   await (
     await getRequestLogCollection()
   ).insertOne({
+    _id: new ObjectId(),
     ip: '1.2.3.4',
     header: `bearer ${BANNED_BEARER_TOKEN}`,
     method: 'PUT',
