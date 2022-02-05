@@ -101,7 +101,7 @@
     "@types/confusing-browser-globals": "^1.0.0",
     "@types/fast-shuffle": "^4.5.0",
     "@types/jest": "^27.4.0",
-    "@types/node-fetch": "^2.5.12",
+    "@types/node-fetch": "^3.0.3",
     "@types/semver": "^7.3.9",
     "@types/tar-stream": "^2.2.2",
     "@types/test-listen": "^1.1.0",
