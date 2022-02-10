@@ -124,7 +124,7 @@
     "eslint-plugin-jest": "^26.1.0",
     "eslint-plugin-jest-dom": "^4.0.1",
     "eslint-plugin-react": "^7.28.0",
-    "execa": "^5.1.1",
+    "execa": "^6.0.0",
     "fast-shuffle": "^4.5.1",
     "http-terminator": "^3.0.4",
     "husky": "^7.0.4",
