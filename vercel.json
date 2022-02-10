@@ -1,3 +1,9 @@
 {
-  "trailingSlash": false
+  "trailingSlash": false,
+  "functions": {
+    "api/[shortId].js": {
+      "memory": 1536,
+      "maxDuration": 60
+    }
+  }
 }
