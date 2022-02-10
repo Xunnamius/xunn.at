@@ -15,6 +15,7 @@ const makeFixtureStream = (name: string) => {
 
 const tar = {
   fileroot: () => makeFixtureStream('file-root'),
+  polyrepo: () => makeFixtureStream('polyrepo'),
   monorepo: () => makeFixtureStream('monorepo'),
   multiroot: () => makeFixtureStream('multi-root')
 };
@@ -115,4 +116,16 @@ it('throws if subdir does not exist', async () => {
       getEntries([])
     ])
   ).rejects.toThrow('invalid subdirectory: packages/pkg-x');
+});
+
+it('throws if archived file is too large', async () => {
+  expect.hasAssertions();
+
+  await expect(
+    promisedPipeline([
+      tar.polyrepo(),
+      extractSubdirAndRepack({ subdir: 'does/not/matter', maxEntrySizeBytes: 50 }),
+      getEntries([])
+    ])
+  ).rejects.toThrow('entry too large to process: polyrepo/package.json');
 });
