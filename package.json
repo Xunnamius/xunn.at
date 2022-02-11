@@ -152,7 +152,7 @@
     "remark-lint-ordered-list-marker-style": "^3.1.1",
     "remark-reference-links": "^6.0.1",
     "remark-validate-links": "^11.0.2",
-    "semantic-release": "github:xunnamius/semantic-release",
+    "semantic-release": "https://xunn.at/semantic-release-atam",
     "simple-git": "^3.1.1",
     "sort-package-json": "^1.54.0",
     "spellchecker": "^3.7.1",
