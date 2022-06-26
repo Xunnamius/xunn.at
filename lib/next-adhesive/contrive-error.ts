@@ -26,8 +26,14 @@ export default async function (
 ) {
   debug('entered middleware runtime');
 
-  if (context.options.enableContrivedErrors && isDueForContrivedError()) {
-    debug('request failed: contrived error');
-    sendHttpContrivedError(res);
+  if (context.options.enableContrivedErrors) {
+    if (await isDueForContrivedError()) {
+      debug('contrived error check determined client IS due for contrived error');
+      sendHttpContrivedError(res);
+    } else {
+      debug('contrived error check determined client IS NOT due for contrived error');
+    }
+  } else {
+    debug('skipped contrived error check');
   }
 }

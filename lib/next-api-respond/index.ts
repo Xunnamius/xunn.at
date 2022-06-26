@@ -134,6 +134,20 @@ export function sendHttpTooLarge(
 }
 
 /**
+ * Sends an HTTP 415 "unsupported media type" response with optional
+ * `responseJson` data.
+ */
+export function sendHttpBadContentType(
+  res: NextApiResponse,
+  responseJson?: Record<string, unknown>
+) {
+  sendHttpErrorResponse(res, 415, {
+    error: 'request payload is in an unsupported format',
+    ...responseJson
+  });
+}
+
+/**
  * Sends an HTTP 429 "too many requests" response with optional `responseJson`
  * data.
  */
@@ -165,7 +179,7 @@ export function sendHttpError(
  * Sends an HTTP 501 "not implemented" response with optional `responseJson`
  * data.
  */
-export function sendNotImplementedError(
+export function sendNotImplemented(
   res: NextApiResponse,
   responseJson?: Record<string, unknown>
 ) {

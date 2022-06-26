@@ -24,11 +24,14 @@ export default async function (
 ) {
   debug('entered middleware runtime');
 
-  if (
-    context.options.apiVersion !== undefined &&
-    getEnv().DISABLED_API_VERSIONS.includes(context.options.apiVersion)
-  ) {
-    debug('request failed: api version of endpoint is disabled');
-    sendHttpNotFound(res);
+  if (context.options.apiVersion !== undefined) {
+    if (getEnv().DISABLED_API_VERSIONS.includes(context.options.apiVersion)) {
+      debug('version check failed: endpoint is disabled');
+      sendHttpNotFound(res);
+    } else {
+      debug('version check succeeded: endpoint is available');
+    }
+  } else {
+    debug('skipped version check');
   }
 }

@@ -36,7 +36,7 @@ export { debugFactory };
  * what would more accurately be called an `ExtendedDebugger` instance.
  */
 export function extendDebugger(instance: Debugger) {
-  const extend = instance.extend;
+  const extend = instance.extend.bind(instance);
   const finalInstance = instance as ExtendedDebugger;
 
   finalInstance.error = finalInstance.extend('<error>');

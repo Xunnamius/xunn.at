@@ -1,7 +1,7 @@
 import { testApiHandler } from 'next-test-api-route-handler';
 import { isolatedImport, wrapHandler, noopHandler } from 'testverse/setup';
 import { withMiddleware } from 'multiverse/next-api-glue';
-import useCors from 'multiverse/next-adhesive/use-cors';
+import useCors, { Options } from 'multiverse/next-adhesive/use-cors';
 
 afterEach(() => {
   jest.dontMock('cors');
@@ -13,18 +13,25 @@ it('works', async () => {
   await testApiHandler({
     handler: wrapHandler(withMiddleware(noopHandler, { use: [] })),
     test: async ({ fetch }) => {
-      const res = await fetch();
+      const res = await fetch({ method: 'OPTIONS' });
       expect(res.status).toBe(200);
       expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
+      expect(res.headers.get('Access-Control-Allow-Methods')).toBeNull();
     }
   });
 
   await testApiHandler({
-    handler: wrapHandler(withMiddleware(noopHandler, { use: [useCors] })),
+    handler: wrapHandler(
+      withMiddleware<Options>(noopHandler, {
+        use: [useCors],
+        options: { allowedMethods: ['GET', 'POST', 'HEAD'] }
+      })
+    ),
     test: async ({ fetch }) => {
-      const res = await fetch();
-      expect(res.status).toBe(200);
+      const res = await fetch({ method: 'OPTIONS' });
+      expect(res.status).toBe(204);
       expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      expect(res.headers.get('Access-Control-Allow-Methods')).toBe('GET,POST,HEAD');
     }
   });
 });

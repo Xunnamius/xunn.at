@@ -1,5 +1,5 @@
 import { MongoClient } from 'mongodb';
-import { InvalidConfigurationError } from 'named-app-errors';
+import { InvalidAppConfigurationError } from 'named-app-errors';
 import { getEnv } from 'multiverse/next-env';
 import { debugFactory } from 'multiverse/debug-extended';
 
@@ -17,8 +17,17 @@ type createIndexParams = Parameters<Db['createIndex']>;
  * An internal cache of connection, server schema, and database state.
  */
 export type InternalMemory = {
+  /**
+   * Memoized resolved database schemas and aliases.
+   */
   schema: DbSchema | null;
+  /**
+   * Memoized MongoDB driver client connection.
+   */
   client: MongoClient | null;
+  /**
+   * Memoized MongoDB driver Database instances.
+   */
   databases: Record<string, Db>;
 };
 
@@ -26,8 +35,19 @@ export type InternalMemory = {
  * A configuration object representing a MongoDB collection.
  */
 export type CollectionSchema = {
+  /**
+   * The valid MongoDB name of the collection.
+   */
   name: string;
+  /**
+   * An object passed directly to the MongoDB `createCollection` function via
+   * the `createOptions` parameter.
+   */
   createOptions?: Parameters<Db['createCollection']>[1];
+  /**
+   * An object representing indices to be created on the MongoDB collection via
+   * `createIndex`.
+   */
   indices?: {
     spec: createIndexParams[1];
     options?: createIndexParams[2];
@@ -35,12 +55,16 @@ export type CollectionSchema = {
 };
 
 /**
- * A configuration object representing a MongoDB database.
+ * A configuration object representing one or more MongoDB databases and their
+ * aliases.
  */
 export type DbSchema = {
   databases: Record<
     string,
     {
+      /**
+       * An array of MongoDB collections.
+       */
       collections: (string | CollectionSchema)[];
     }
   >;
@@ -66,6 +90,7 @@ export function getInitialInternalMemoryState(): InternalMemory {
  */
 export async function getSchemaConfig(): Promise<DbSchema> {
   if (memory.schema) {
+    debug('returning schema configuration from memory');
     return memory.schema;
   } else {
     try {
@@ -78,7 +103,7 @@ export async function getSchemaConfig(): Promise<DbSchema> {
         `failed to import getSchemaConfig from "configverse/get-schema-config": ${e}`
       );
 
-      throw new InvalidConfigurationError(
+      throw new InvalidAppConfigurationError(
         'could not resolve mongodb schema configuration: failed to import getSchemaConfig from "configverse/get-schema-config". Did you forget to register "configverse/get-schema-config" as an import alias/path?'
       );
     }
@@ -123,8 +148,8 @@ export async function closeClient() {
 }
 
 /**
- * Accepts a database alias and returns its real name. If the actual database
- * is not listed in the schema, an error is thrown.
+ * Accepts a database alias (or real name) and returns its real name. If the
+ * actual database is not listed in the schema, an error is thrown.
  */
 export async function getNameFromAlias(alias: string) {
   const schema = await getSchemaConfig();
@@ -135,7 +160,7 @@ export async function getNameFromAlias(alias: string) {
   }
 
   if (!schema.databases[nameActual]?.collections) {
-    throw new InvalidConfigurationError(
+    throw new InvalidAppConfigurationError(
       `database "${nameActual}" is not defined in schema`
     );
   }
@@ -237,6 +262,7 @@ export async function initializeDb({
             }
           : colNameOrSchema;
 
+      debug(`initializing collection "${nameActual}.${colSchema.name}"`);
       return db.createCollection(colSchema.name, colSchema.createOptions).then((col) => {
         return Promise.all(
           colSchema.indices?.map((indexSchema) =>

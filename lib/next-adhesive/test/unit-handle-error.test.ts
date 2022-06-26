@@ -6,8 +6,11 @@ import handleError, { Options } from 'multiverse/next-adhesive/handle-error';
 
 import {
   ValidationError,
-  InvalidEnvironmentError,
-  InvalidConfigurationError,
+  AppValidationError,
+  InvalidAppConfigurationError,
+  InvalidAppEnvironmentError,
+  ClientValidationError,
+  InvalidClientConfigurationError,
   InvalidItemError,
   InvalidSecretError,
   AuthError,
@@ -15,6 +18,7 @@ import {
   NotAuthorizedError,
   NotFoundError,
   ItemNotFoundError,
+  ItemsNotFoundError,
   HttpError,
   TrialError,
   DummyError,
@@ -29,8 +33,11 @@ it('sends correct HTTP error codes when certain errors occur', async () => {
   const factory = itemFactory<[AppError | string, number]>([
     [new ValidationError(), 400],
     [new ValidationError(''), 400], // ! Edge case for code coverage
-    [new InvalidEnvironmentError(), 400],
-    [new InvalidConfigurationError(), 400],
+    [new AppValidationError(), 500],
+    [new InvalidAppConfigurationError(), 500],
+    [new InvalidAppEnvironmentError(), 500],
+    [new ClientValidationError(), 400],
+    [new InvalidClientConfigurationError(), 400],
     [new InvalidItemError(), 400],
     [new InvalidSecretError(), 400],
     [new AuthError(), 403],
@@ -38,6 +45,7 @@ it('sends correct HTTP error codes when certain errors occur', async () => {
     [new NotAuthorizedError(), 403],
     [new NotFoundError(), 404],
     [new ItemNotFoundError(), 404],
+    [new ItemsNotFoundError(), 404],
     [new HttpError(), 500],
     [new TrialError(), 500],
     [new DummyError(), 500],

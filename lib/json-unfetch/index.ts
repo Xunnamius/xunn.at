@@ -1,5 +1,7 @@
 import unfetch from 'unfetch';
 import { makeNamedError } from 'named-app-errors';
+import { isError } from '@xunnamius/types';
+
 import type { JsonObject, JsonPrimitive } from 'type-fest';
 
 const JsonContentType = 'application/json';
@@ -343,7 +345,7 @@ export async function jsonFetch<
       throw new JsonUnfetchError(
         undefined,
         undefined,
-        `failed to stringify request body: ${e instanceof Error ? e.message : e}`
+        `failed to stringify request body: ${isError(e) ? e.message : e}`
       );
     }
   }
@@ -358,7 +360,7 @@ export async function jsonFetch<
   try {
     json = await res.json();
   } catch (e) {
-    parseError = `${e instanceof Error ? e.message : e}`;
+    parseError = `${isError(e) ? e.message : e}`;
   }
 
   if (!res.ok && (parsedOptions.rejectIfNotOk || parsedOptions.swr)) {

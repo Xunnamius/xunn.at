@@ -1,4 +1,4 @@
-import { useMockDateNow, generatedAt } from 'multiverse/mongo-common';
+import { useMockDateNow, mockDateNowMs } from 'multiverse/mongo-common';
 import { getDb } from 'multiverse/mongo-schema';
 import { BANNED_BEARER_TOKEN } from 'multiverse/next-auth';
 import { addToRequestLog } from 'multiverse/next-log';
@@ -6,7 +6,6 @@ import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 
 import type { InternalRequestLogEntry } from 'multiverse/next-log';
 import type { HttpStatusCode } from '@xunnamius/types';
-import type { WithId } from 'mongodb';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 setupMemoryServerOverride();
@@ -37,9 +36,9 @@ describe('::addToRequestLog', () => {
     await addToRequestLog({ req: req1, res: res1 });
     await addToRequestLog({ req: req2, res: res2 });
 
-    const reqlog = (await getDb({ name: 'root' })).collection<
-      WithId<InternalRequestLogEntry>
-    >('request-log');
+    const reqlog = (await getDb({ name: 'root' })).collection<InternalRequestLogEntry>(
+      'request-log'
+    );
 
     await expect(
       reqlog.findOne({ resStatusCode: 1111 as HttpStatusCode })
@@ -49,7 +48,7 @@ describe('::addToRequestLog', () => {
       header: null,
       route: '/api/route/path1',
       method: 'POST',
-      createdAt: generatedAt,
+      createdAt: mockDateNowMs,
       resStatusCode: 1111
     });
 
@@ -61,7 +60,7 @@ describe('::addToRequestLog', () => {
       header: `bearer ${BANNED_BEARER_TOKEN}`,
       route: '/api/route/path2',
       method: 'GET',
-      createdAt: generatedAt,
+      createdAt: mockDateNowMs,
       resStatusCode: 2222
     });
   });
@@ -90,9 +89,9 @@ describe('::addToRequestLog', () => {
     await addToRequestLog({ req: req1, res: res1 });
     await addToRequestLog({ req: req2, res: res2 });
 
-    const reqlog = (await getDb({ name: 'root' })).collection<
-      WithId<InternalRequestLogEntry>
-    >('request-log');
+    const reqlog = (await getDb({ name: 'root' })).collection<InternalRequestLogEntry>(
+      'request-log'
+    );
 
     await expect(
       reqlog.findOne({ resStatusCode: 1111 as HttpStatusCode })
@@ -102,7 +101,7 @@ describe('::addToRequestLog', () => {
       header: null,
       route: '/api/route/path1',
       method: null,
-      createdAt: generatedAt,
+      createdAt: mockDateNowMs,
       resStatusCode: 1111
     });
 
@@ -114,7 +113,7 @@ describe('::addToRequestLog', () => {
       header: `bearer ${BANNED_BEARER_TOKEN}`,
       route: null,
       method: 'GET',
-      createdAt: generatedAt,
+      createdAt: mockDateNowMs,
       resStatusCode: 2222
     });
   });
