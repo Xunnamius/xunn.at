@@ -1,7 +1,7 @@
 import { useMockDateNow } from 'multiverse/mongo-common';
 import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 import { testApiHandler } from 'next-test-api-route-handler';
-import Endpoint, { config as Config } from 'universe/pages/api/ping';
+import Endpoint, { config as Config } from 'universe/pages/api/sys/ping';
 
 const handler = Endpoint as typeof Endpoint & { config?: typeof Config };
 handler.config = Config;
