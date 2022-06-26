@@ -149,7 +149,7 @@ it('handles bad requests', async () => {
   });
 });
 
-it.only('handles a uri short-id', async () => {
+it('handles a uri short-id', async () => {
   expect.hasAssertions();
 
   const { shortId, realLink } = uriEntry;
