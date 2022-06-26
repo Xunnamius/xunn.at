@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { getCommonDummyData, generatedAt } from 'multiverse/mongo-common';
+import { getCommonDummyData, mockDateNowMs } from 'multiverse/mongo-common';
 
 import type { DummyData } from 'multiverse/mongo-test';
 import type { WithId } from 'mongodb';
@@ -16,7 +16,7 @@ export function getDummyData(): DummyData {
 }
 
 /**
- * The shape of the application database(s)' test data.
+ * The shape of the application database's test data.
  */
 export type DummyAppData = {
   _generatedAt: number;
@@ -32,17 +32,17 @@ export type DummyCompatData = {
 };
 
 /**
- * Test data for the application database(s).
+ * Test data for the application database.
  */
 export const dummyAppData: DummyAppData = {
-  _generatedAt: generatedAt,
+  _generatedAt: mockDateNowMs,
   // ! In unit-index.test.ts and integration tests order matters, so APPEND ONLY
   'link-map': [
     {
       _id: new ObjectId(),
       type: 'uri',
       shortId: 'aaa',
-      createdAt: generatedAt,
+      createdAt: mockDateNowMs,
       realLink: 'https://fake1.fake1',
       headers: { 'header-1': 'header-1-value' }
     },
@@ -50,7 +50,7 @@ export const dummyAppData: DummyAppData = {
       _id: new ObjectId(),
       type: 'file',
       shortId: 'bbb',
-      createdAt: generatedAt,
+      createdAt: mockDateNowMs,
       name: 'file-b.xml',
       resourceLink: 'https://fake2.fake2',
       headers: { 'header-2': 'header-2-value', 'header-3': 'header-3-value' }
@@ -59,7 +59,7 @@ export const dummyAppData: DummyAppData = {
       _id: new ObjectId(),
       type: 'badge',
       shortId: 'ccc',
-      createdAt: generatedAt,
+      createdAt: mockDateNowMs,
       color: 'yellow',
       label: 'label-1',
       labelColor: 'black',
@@ -70,7 +70,7 @@ export const dummyAppData: DummyAppData = {
       _id: new ObjectId(),
       type: 'github-pkg',
       shortId: 'ddd',
-      createdAt: generatedAt,
+      createdAt: mockDateNowMs,
       defaultCommit: 'commit',
       owner: 'owner',
       repo: 'repo',
@@ -82,7 +82,7 @@ export const dummyAppData: DummyAppData = {
       _id: new ObjectId(),
       type: 'github-pkg',
       shortId: 'eee',
-      createdAt: generatedAt,
+      createdAt: mockDateNowMs,
       defaultCommit: 'commit',
       owner: 'ownr',
       repo: 'rpo',
@@ -94,7 +94,7 @@ export const dummyAppData: DummyAppData = {
       _id: new ObjectId(),
       type: 'github-pkg',
       shortId: 'fff',
-      createdAt: generatedAt,
+      createdAt: mockDateNowMs,
       defaultCommit: 'commit-2',
       owner: 'owner-2',
       repo: 'repo-2',
@@ -106,7 +106,7 @@ export const dummyAppData: DummyAppData = {
       _id: new ObjectId(),
       type: 'badge',
       shortId: 'zzz',
-      createdAt: generatedAt + 12345,
+      createdAt: mockDateNowMs + 12345,
       color: 'green',
       label: 'label-2',
       labelColor: 'white',
@@ -119,7 +119,7 @@ export const dummyAppData: DummyAppData = {
  * Test data for the compat database.
  */
 export const dummyCompatData: DummyCompatData = {
-  _generatedAt: generatedAt,
+  _generatedAt: mockDateNowMs,
   flags: [
     { _id: new ObjectId(), name: 'ntarh-next', value: '5.7.9' },
     { _id: new ObjectId(), name: 'fake-flag', value: 5 }
