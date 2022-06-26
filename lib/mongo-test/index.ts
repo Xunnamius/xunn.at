@@ -1,8 +1,9 @@
 import { MongoClient } from 'mongodb';
 import { getEnv } from 'multiverse/next-env';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { InvalidConfigurationError, TrialError } from 'named-app-errors';
+import { InvalidAppConfigurationError, TrialError } from 'named-app-errors';
 import { debugFactory } from 'multiverse/debug-extended';
+import inspector from 'inspector';
 
 import {
   getSchemaConfig,
@@ -63,15 +64,15 @@ export async function getDummyData(): Promise<DummyData> {
   } catch (e) {
     debug.warn(`failed to import getDummyData from "configverse/get-dummy-data": ${e}`);
 
-    throw new InvalidConfigurationError(
+    throw new InvalidAppConfigurationError(
       'could not resolve mongodb dummy data: failed to import getDummyData from "configverse/get-dummy-data". Did you forget to register "configverse/get-dummy-data" as an import alias/path?'
     );
   }
 }
 
 /**
- * Fill an initialized database with data. You should call `initializeDb` before
- * calling this function.
+ * Fill an initialized database with data. You should call {@link initializeDb}
+ * before calling this function.
  */
 export async function hydrateDb({
   name
@@ -87,7 +88,7 @@ export async function hydrateDb({
   const dummyData = (await getDummyData())[nameActual];
 
   if (!dummyData) {
-    throw new InvalidConfigurationError(
+    throw new InvalidAppConfigurationError(
       `dummy data for database "${nameActual}" does not exist`
     );
   }
@@ -100,7 +101,7 @@ export async function hydrateDb({
     Object.entries(dummyData).map(([colName, colSchema]) => {
       if (colName != '_generatedAt') {
         if (!collectionNames.includes(colName)) {
-          throw new InvalidConfigurationError(
+          throw new InvalidAppConfigurationError(
             `collection "${nameActual}.${colName}" referenced in dummy data is not defined in source db schema`
           );
         }
@@ -132,15 +133,21 @@ export function setupMemoryServerOverride(params?: {
   // ? real mongodb instance (super bad!!!)
   let errored = false;
 
-  const port = (getEnv().DEBUG_INSPECTING && getEnv().MONGODB_MS_PORT) || undefined;
+  const port: number | undefined =
+    // * https://stackoverflow.com/a/67445850/1367414
+    ((getEnv().DEBUG_INSPECTING || inspector.url() !== undefined) &&
+      getEnv().MONGODB_MS_PORT) ||
+    undefined;
+
   debug(`using ${port ? `port ${port}` : 'random port'} for mongo memory server`);
 
   // * The in-memory server is not started until it's needed later on
   const server = new MongoMemoryServer({
     instance: {
-      port,
-      // ? Latest mongo versions error without this line
-      args: ['--enableMajorityReadConcern=0']
+      port
+      // ? MongoDB errors WITHOUT this line as of version 4.x
+      // ? However, MongoDB errors WITH this line as of version 5.x 🙃
+      // args: ['--enableMajorityReadConcern=0']
     }
   });
 
@@ -206,7 +213,7 @@ export function setupMemoryServerOverride(params?: {
 
   afterAll(async () => {
     await closeClient();
-    await server.stop(true);
+    await server.stop({ force: true });
   });
 
   return { reinitializeServer };

@@ -7,7 +7,6 @@ import { TrialError } from 'named-app-errors';
 import { DUMMY_BEARER_TOKEN, NULL_BEARER_TOKEN } from 'multiverse/next-auth';
 
 import type { InternalAuthBearerEntry } from 'multiverse/next-auth';
-import type { WithId } from 'mongodb';
 
 setupMemoryServerOverride();
 
@@ -17,7 +16,7 @@ describe('::itemExists', () => {
 
     const col = (await getDb({ name: 'root' })).collection('auth');
     const item =
-      (await col.findOne<WithId<InternalAuthBearerEntry>>()) ||
+      (await col.findOne<InternalAuthBearerEntry>()) ||
       toss(new TrialError('assert failed'));
 
     await expect(itemExists(col, item._id)).resolves.toBeTrue();
@@ -37,7 +36,7 @@ describe('::itemExists', () => {
 
     const col = (await getDb({ name: 'root' })).collection('auth');
     const item =
-      (await col.findOne<WithId<InternalAuthBearerEntry>>()) ||
+      (await col.findOne<InternalAuthBearerEntry>()) ||
       toss(new TrialError('assert failed'));
 
     await expect(itemExists(col, item._id.toString())).resolves.toBeTrue();
@@ -51,7 +50,7 @@ describe('::itemExists', () => {
 
     const col = (await getDb({ name: 'root' })).collection('auth');
     const item =
-      (await col.findOne<WithId<InternalAuthBearerEntry>>()) ||
+      (await col.findOne<InternalAuthBearerEntry>()) ||
       toss(new TrialError('assert failed'));
 
     await expect(itemExists(col, item._id)).resolves.toBeTrue();
@@ -77,7 +76,7 @@ describe('::itemExists', () => {
 
     const col = (await getDb({ name: 'root' })).collection('auth');
     const item =
-      (await col.findOne<WithId<InternalAuthBearerEntry>>()) ||
+      (await col.findOne<InternalAuthBearerEntry>()) ||
       toss(new TrialError('assert failed'));
 
     await expect(itemExists(col, item._id, { excludeId: item._id })).rejects.toThrow(
@@ -111,7 +110,7 @@ describe('::itemExists', () => {
     ).resolves.toBeFalse();
 
     const item =
-      (await col.findOne<WithId<InternalAuthBearerEntry>>()) ||
+      (await col.findOne<InternalAuthBearerEntry>()) ||
       toss(new TrialError('assert failed'));
 
     await expect(itemExists(col, item._id)).resolves.toBeTrue();

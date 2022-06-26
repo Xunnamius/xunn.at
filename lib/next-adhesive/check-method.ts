@@ -16,7 +16,8 @@ export type Options = {
 };
 
 /**
- * Rejects requests using a disallowed method.
+ * Rejects requests that are either using a disallowed method or not using an
+ * allowed method.
  */
 export default async function (
   req: NextApiRequest,
@@ -24,14 +25,25 @@ export default async function (
   context: MiddlewareContext<Options>
 ) {
   debug('entered middleware runtime');
+  debug(`original method: ${req.method}`);
+
+  const method = req.method?.toUpperCase();
+  const allowedMethods = context.options.allowedMethods?.map((m) => m.toUpperCase());
 
   if (
-    !req.method ||
-    getEnv().DISALLOWED_METHODS.includes(req.method) ||
-    (context.options.allowedMethods &&
-      !context.options.allowedMethods.includes(req.method as ValidHttpMethod))
+    !method ||
+    // ? Already guaranteed uppercase thanks to next-env
+    getEnv().DISALLOWED_METHODS.includes(method) ||
+    !allowedMethods ||
+    !allowedMethods.includes(method as ValidHttpMethod)
   ) {
-    debug(`request failed: unrecognized or disallowed method "${req.method}"`);
+    debug(
+      `method check failed: unrecognized or disallowed method "${method || '(none)'}"`
+    );
+
+    res.setHeader('Allow', allowedMethods?.join(',') || '');
     sendHttpBadMethod(res);
+  } else {
+    debug(`method check succeeded: method "${method}" is allowed`);
   }
 }

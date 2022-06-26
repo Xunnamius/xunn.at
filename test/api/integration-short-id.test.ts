@@ -11,6 +11,8 @@ import { readFileSync } from 'fs';
 import { getEntries } from 'universe/backend/tar';
 import { expectedEntries, withMockedOutput } from 'testverse/setup';
 import { createGunzip } from 'zlib';
+import { TrialError } from 'named-app-errors';
+import { toss } from 'toss-expression';
 
 import {
   InternalLinkMapEntryBadge,
@@ -18,15 +20,11 @@ import {
   InternalLinkMapEntryGithubPkg,
   InternalLinkMapEntryUri
 } from 'universe/backend/db';
-import { TrialError } from 'named-app-errors';
-import { toss } from 'toss-expression';
 
 const handler = Endpoint as typeof Endpoint & { config?: typeof Config };
 handler.config = Config;
 
-// ? Must use absolute request URLs.
-// ? See: https://mswjs.io/docs/getting-started/integrate/node#direct-usage
-const server = setupServer(rest.all(/^http:\/\/localhost:\d+/, () => undefined));
+const server = setupServer();
 
 const uriEntry = dummyAppData['link-map'][0] as InternalLinkMapEntryUri;
 const badgeEntry = dummyAppData['link-map'][2] as InternalLinkMapEntryBadge;
@@ -100,18 +98,6 @@ setupMemoryServerOverride();
 useMockDateNow();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-
-beforeEach(() => {
-  // eslint-disable-next-line no-console
-  const warn = console.warn.bind(console);
-  jest.spyOn(console, 'warn').mockImplementation(
-    // ? Silence annoying useless warnings from MSW.
-    // ? See: https://github.com/mswjs/msw/issues/676
-    // TODO: remove this after upstream fixes it
-    (...args) => String(args[0]).startsWith('[MSW]') || warn(...args)
-  );
-});
-
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
@@ -167,18 +153,21 @@ it('handles a uri short-id', async () => {
   expect.hasAssertions();
 
   const { shortId, realLink } = uriEntry;
+  const realUrl = new URL(realLink);
 
   await testApiHandler({
     handler,
     params: { shortId },
     test: async ({ fetch }) => {
       server.use(
-        rest.get(realLink, (_, res, ctx) =>
-          res(ctx.status(200), ctx.json({ it: 'worked' }))
-        )
+        rest.get('*', (req, res, ctx) => {
+          return req.url.href == realUrl.href
+            ? res(ctx.status(200), ctx.json({ it: 'worked' }))
+            : req.passthrough();
+        })
       );
 
-      const res = await fetch();
+      const res = await fetch({ headers: { 'x-msw-bypass': 'false' } });
       await expect(res.json()).resolves.toMatchObject({ it: 'worked' });
       expect(res.status).toBe(200);
     }

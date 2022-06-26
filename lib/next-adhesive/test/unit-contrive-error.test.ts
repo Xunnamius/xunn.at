@@ -10,7 +10,7 @@ jest.mock('multiverse/next-contrived');
 const mockIsDueForContrivedError = asMockedFunction(isDueForContrivedError);
 
 beforeEach(() => {
-  mockIsDueForContrivedError.mockReturnValue(false);
+  mockIsDueForContrivedError.mockReturnValue(Promise.resolve(false));
 });
 
 it('does not inject contrived errors by default', async () => {
@@ -23,7 +23,7 @@ it('does not inject contrived errors by default', async () => {
       })
     ),
     test: async ({ fetch }) => {
-      mockIsDueForContrivedError.mockReturnValue(true);
+      mockIsDueForContrivedError.mockReturnValue(Promise.resolve(true));
       await expect(fetch().then((r) => r.status)).resolves.toBe(200);
     }
   });
@@ -40,11 +40,11 @@ it('injects contrived errors when due if enabled', async () => {
       })
     ),
     test: async ({ fetch }) => {
-      mockIsDueForContrivedError.mockReturnValue(false);
+      mockIsDueForContrivedError.mockReturnValue(Promise.resolve(false));
       await expect(fetch().then((r) => r.status)).resolves.toBe(200);
-      mockIsDueForContrivedError.mockReturnValue(true);
+      mockIsDueForContrivedError.mockReturnValue(Promise.resolve(true));
       await expect(fetch().then((r) => r.status)).resolves.toBe(555);
-      mockIsDueForContrivedError.mockReturnValue(false);
+      mockIsDueForContrivedError.mockReturnValue(Promise.resolve(false));
       await expect(fetch().then((r) => r.status)).resolves.toBe(200);
     }
   });

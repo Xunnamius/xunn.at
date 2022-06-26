@@ -1,6 +1,7 @@
 import { parse as parseAsBytes } from 'bytes';
 import { isServer } from 'is-server-side';
-import { InvalidEnvironmentError } from 'named-app-errors';
+import { InvalidAppEnvironmentError } from 'named-app-errors';
+import { toss } from 'toss-expression';
 import { validHttpMethods } from '@xunnamius/types';
 import { debugFactory } from 'multiverse/debug-extended';
 
@@ -8,6 +9,11 @@ import type { ValidHttpMethod } from '@xunnamius/types';
 import type { Primitive } from 'type-fest';
 
 const debug = debugFactory('next-env:env');
+
+// * NOTE: next-env does not invoke dotenv or load any .env files for you,
+// * you'll have to do that manually. For Next.js apps, this is the desired
+// * behavior since environment variables are defined as secrets. Further note
+// * that Webpack and Jest configurations are setup to load .env files for you.
 
 /**
  * This method takes an environment variable value (string), removes illegal
@@ -23,11 +29,28 @@ export const envToArray = (envVal: string) => {
 
 export type Environment = Record<string, Primitive | Primitive[]>;
 
+type OverrideEnvExpect = 'force-check' | 'force-no-check' | undefined;
+
 /**
  * Returns an object representing the current runtime environment.
  */
 export function getEnv<T extends Environment>(customizedEnv?: T) {
+  debug(`environment definitions (resolved as NODE_ENV) listed in order of precedence:`);
+  debug(`APP_ENV: ${process.env.APP_ENV ?? '(undefined)'}`);
+  debug(`NODE_ENV: ${process.env.NODE_ENV ?? '(undefined)'}`);
+  debug(`BABEL_ENV: ${process.env.BABEL_ENV ?? '(undefined)'}`);
+
   const env = {
+    OVERRIDE_EXPECT_ENV:
+      process.env.OVERRIDE_EXPECT_ENV == 'force-check' ||
+      process.env.OVERRIDE_EXPECT_ENV == 'force-no-check' ||
+      process.env.OVERRIDE_EXPECT_ENV === undefined
+        ? (process.env.OVERRIDE_EXPECT_ENV as OverrideEnvExpect)
+        : toss(
+            new InvalidAppEnvironmentError(
+              'OVERRIDE_EXPECT_ENV must have value "force-check", "force-no-check", or undefined'
+            )
+          ),
     NODE_ENV:
       process.env.APP_ENV || process.env.NODE_ENV || process.env.BABEL_ENV || 'unknown',
     MONGODB_URI: process.env.MONGODB_URI || '',
@@ -80,12 +103,24 @@ export function getEnv<T extends Environment>(customizedEnv?: T) {
     ...customizedEnv
   };
 
+  debug('resolved env vars:');
   debug(env);
 
+  // TODO: when the following logic is retired, consider renaming this package
+  // TODO: to `@xunnamius/env` or something similar since it's not next-specific
+
+  // TODO: when in production, perhaps these checks should only be run once?
+  // TODO: Maybe this entire module should be cached? How does that work with
+  // TODO: downstream getEnv decorators (like `universe/env`)?
+
   // TODO: retire all of the following logic when expect-env is created. Also,
-  // TODO: expect-env should have the ability to skip runs on certain NODE_ENV.
+  // TODO: expect-env should have the ability to skip runs on certain NODE_ENV
+  // TODO: unless OVERRIDE_EXPECT_ENV is properly defined.
   /* istanbul ignore next */
-  if (env.NODE_ENV != 'test') {
+  if (
+    (env.NODE_ENV != 'test' && env.OVERRIDE_EXPECT_ENV != 'force-no-check') ||
+    env.OVERRIDE_EXPECT_ENV == 'force-check'
+  ) {
     const errors = [];
     const envIsGtZero = (name: keyof typeof env) => {
       if (
@@ -126,7 +161,7 @@ export function getEnv<T extends Environment>(customizedEnv?: T) {
     }
 
     if (errors.length) {
-      throw new InvalidEnvironmentError(`bad variables:\n - ${errors.join('\n - ')}`);
+      throw new InvalidAppEnvironmentError(`bad variables:\n - ${errors.join('\n - ')}`);
     }
   }
 

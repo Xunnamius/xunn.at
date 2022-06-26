@@ -1,7 +1,7 @@
-import { useMockDateNow } from 'multiverse/mongo-common';
+import { dummyRootData, useMockDateNow } from 'multiverse/mongo-common';
 import { getDb } from 'multiverse/mongo-schema';
 import { BANNED_BEARER_TOKEN } from 'multiverse/next-auth';
-import { clientIsRateLimited } from 'multiverse/next-limit';
+import { clientIsRateLimited, removeRateLimit } from 'multiverse/next-limit';
 import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 
 import type { InternalLimitedLogEntry } from 'multiverse/next-limit';
@@ -131,5 +131,173 @@ describe('::clientIsRateLimited', () => {
       isLimited: false,
       retryAfter: 0
     });
+  });
+});
+
+describe('::removeRateLimit', () => {
+  it('removes an active rate limit by ip, header', async () => {
+    expect.hasAssertions();
+
+    const db = (await getDb({ name: 'root' })).collection('limited-log');
+
+    await expect(
+      db.countDocuments({
+        ip: dummyRootData['limited-log'][0].ip,
+        until: { $gt: Date.now() }
+      })
+    ).resolves.toBe(1);
+
+    await expect(
+      removeRateLimit({ target: { ip: dummyRootData['limited-log'][0].ip } })
+    ).resolves.toBe(1);
+
+    await expect(
+      db.countDocuments({
+        ip: dummyRootData['limited-log'][0].ip,
+        until: { $gt: Date.now() }
+      })
+    ).resolves.toBe(0);
+
+    await expect(
+      db.countDocuments({
+        header: dummyRootData['limited-log'][2].header,
+        until: { $gt: Date.now() }
+      })
+    ).resolves.toBe(1);
+
+    await expect(
+      removeRateLimit({ target: { header: dummyRootData['limited-log'][2].header } })
+    ).resolves.toBe(1);
+
+    await expect(
+      db.countDocuments({
+        header: dummyRootData['limited-log'][2].header,
+        until: { $gt: Date.now() }
+      })
+    ).resolves.toBe(0);
+  });
+
+  it('removes an active rate limit by ip or header (simultaneously)', async () => {
+    expect.hasAssertions();
+
+    const db = (await getDb({ name: 'root' })).collection('limited-log');
+
+    await expect(
+      db.countDocuments({
+        $or: [
+          { ip: dummyRootData['limited-log'][1].ip },
+          { header: dummyRootData['limited-log'][2].header }
+        ],
+        until: { $gt: Date.now() }
+      })
+    ).resolves.toBe(2);
+
+    await expect(
+      removeRateLimit({
+        target: {
+          ip: dummyRootData['limited-log'][1].ip,
+          header: dummyRootData['limited-log'][2].header
+        }
+      })
+    ).resolves.toBe(2);
+
+    await expect(
+      db.countDocuments({
+        $or: [
+          { ip: dummyRootData['limited-log'][1].ip },
+          { header: dummyRootData['limited-log'][2].header }
+        ],
+        until: { $gt: Date.now() }
+      })
+    ).resolves.toBe(0);
+  });
+
+  it('only removes active rate limits', async () => {
+    expect.hasAssertions();
+
+    const db = (await getDb({ name: 'root' })).collection('limited-log');
+
+    await db.updateOne(
+      { ip: dummyRootData['limited-log'][1].ip },
+      { $set: { until: Date.now() } }
+    );
+
+    await expect(
+      removeRateLimit({
+        target: {
+          ip: dummyRootData['limited-log'][1].ip,
+          header: dummyRootData['limited-log'][2].header
+        }
+      })
+    ).resolves.toBe(1);
+  });
+
+  it('returns 0 if no active rate limit was found', async () => {
+    expect.hasAssertions();
+
+    const db = (await getDb({ name: 'root' })).collection('limited-log');
+
+    await db.updateOne(
+      { ip: dummyRootData['limited-log'][1].ip },
+      { $set: { until: Date.now() } }
+    );
+
+    await expect(
+      removeRateLimit({ target: { ip: dummyRootData['limited-log'][1].ip } })
+    ).resolves.toBe(0);
+  });
+
+  it('rejects if passed invalid data', async () => {
+    expect.hasAssertions();
+    await Promise.all([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(removeRateLimit({} as any)).rejects.toMatchObject({
+        message: 'must provide either an ip or a header'
+      }),
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(removeRateLimit({ something: 'else' } as any)).rejects.toMatchObject({
+        message: 'must provide either an ip or a header'
+      }),
+
+      expect(removeRateLimit({ target: undefined })).rejects.toMatchObject({
+        message: 'must provide either an ip or a header'
+      }),
+
+      expect(removeRateLimit({ target: {} })).rejects.toMatchObject({
+        message: 'must provide either an ip or a header'
+      }),
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(removeRateLimit({ target: { ip: true } } as any)).rejects.toMatchObject({
+        message: 'ip must be a non-empty string'
+      }),
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(removeRateLimit({ target: { header: true } as any })).rejects.toMatchObject({
+        message: 'header must be a non-empty string'
+      }),
+
+      expect(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        removeRateLimit({ target: { ip: '', header: true } as any })
+      ).rejects.toMatchObject({
+        message: 'ip must be a non-empty string'
+      }),
+
+      expect(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        removeRateLimit({ target: { ip: null, header: '' } as any })
+      ).rejects.toMatchObject({
+        message: 'ip must be a non-empty string'
+      }),
+
+      expect(
+        removeRateLimit({ target: { ip: undefined, header: undefined } })
+      ).rejects.toMatchObject({ message: 'must provide either an ip or a header' }),
+      expect(removeRateLimit({ target: { ip: '', header: '' } })).rejects.toMatchObject({
+        message: 'ip must be a non-empty string'
+      })
+    ]);
   });
 });

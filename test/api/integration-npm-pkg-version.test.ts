@@ -15,7 +15,6 @@ handler.config = Config;
 // ? Must use absolute request URLs.
 // ? See: https://mswjs.io/docs/getting-started/integrate/node#direct-usage
 const server = setupServer(
-  rest.all(/^http:\/\/localhost:\d+/, () => undefined),
   rest.get('https://img.shields.io/static/v1', (req, res, ctx) => {
     return res(
       ctx.status(200),
@@ -53,18 +52,6 @@ setupMemoryServerOverride();
 useMockDateNow();
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-
-beforeEach(() => {
-  // eslint-disable-next-line no-console
-  const warn = console.warn.bind(console);
-  jest.spyOn(console, 'warn').mockImplementation(
-    // ? Silence annoying useless warnings from MSW.
-    // ? See: https://github.com/mswjs/msw/issues/676
-    // TODO: remove this after upstream fixes it
-    (...args) => String(args[0]).startsWith('[MSW]') || warn(...args)
-  );
-});
-
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 

@@ -1,14 +1,14 @@
 import Cors from 'cors';
 import { debugFactory } from 'multiverse/debug-extended';
+import { Options as CheckMethodOptions } from 'multiverse/next-adhesive/check-method';
 
+import type { MiddlewareContext } from 'multiverse/next-api-glue';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 const debug = debugFactory('next-adhesive:use-cors');
 
-let cors: ReturnType<typeof Cors>;
-
 export type Options = {
-  // No options
+  allowedMethods?: CheckMethodOptions['allowedMethods'];
 };
 
 /**
@@ -16,13 +16,21 @@ export type Options = {
  * that this can be dangerous (huge security hole) and should only be used for
  * public APIs**.
  *
- * When present, this should be among the very first middleware in the chain.
+ * When present, this should be among the very first middleware in the chain and
+ * certainly before _check-method_.
+ *
+ * By default, allowed CORS methods are: `GET`, `HEAD`, `PUT`, `PATCH`, `POST`,
+ * and `DELETE`.
  */
-export default async function (req: NextApiRequest, res: NextApiResponse) {
+export default async function (
+  req: NextApiRequest,
+  res: NextApiResponse,
+  context: MiddlewareContext<Options>
+) {
   debug('entered middleware runtime');
 
-  cors = cors || Cors({ methods: ['GET', 'POST', 'PUT', 'DELETE'] });
+  const cors = Cors({ methods: context.options.allowedMethods });
   await new Promise((resolve, reject) =>
-    cors(req, res, (r) => (r instanceof Error ? reject : resolve)(r))
+    cors(req, res, (err) => (err ? reject(err) : resolve(undefined)))
   );
 }

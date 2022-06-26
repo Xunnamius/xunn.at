@@ -1,5 +1,5 @@
 import { toss } from 'toss-expression';
-import { sendNotImplementedError } from 'multiverse/next-api-respond';
+import { sendNotImplemented } from 'multiverse/next-api-respond';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import type { Debugger } from 'multiverse/debug-extended';
@@ -27,6 +27,9 @@ export type Middleware<
  * case that an options argument is omitted when calling `withMiddleware`. So,
  * to be safe, all custom middleware context options should be declared as
  * optional (i.e. `{ myOpt?: aType }` instead of `{ myOpt: aType })`.
+ *
+ * Middleware should default to the most restrictive configuration possible if
+ * its respective options are missing.
  */
 export type MiddlewareContext<
   Options extends Record<string, unknown> = Record<string, unknown>
@@ -256,7 +259,7 @@ export function withMiddleware<
 
       if (!res.writableEnded && !res.headersSent) {
         debug('response was not sent: sending "not implemented" error');
-        sendNotImplementedError(res);
+        sendNotImplemented(res);
       }
 
       debug('-- done --');

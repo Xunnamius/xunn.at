@@ -31,8 +31,8 @@ export type ItemExistsOptions = {
    */
   caseInsensitive?: boolean;
   /**
-   * When looking for an item matching `{ _id: id }`, where the property is
-   * `"_id"` is a string, `id` will be optimistically wrapped in a `new
+   * When looking for an item matching `{ _id: id }`, where the descriptor key
+   * is the string `"_id"`, `id` will be optimistically wrapped in a `new
    * ObjectId(id)` call. Set this to `false` to prevent this.
    *
    * @default true
@@ -93,16 +93,17 @@ export async function itemExists<T>(
     id = new ObjectId(id);
   }
 
-  const result = collection.find({
-    [idProperty]: id,
-    ...(excludeIdProperty ? { [excludeIdProperty]: { $ne: excludeId } } : {})
-  } as unknown as Parameters<typeof collection.find>[0]);
-
-  if (options?.caseInsensitive) {
-    result.collation({ locale: 'en', strength: 2 });
-  }
-
-  return (await result.count()) != 0;
+  return (
+    (await collection.countDocuments(
+      {
+        [idProperty]: id,
+        ...(excludeIdProperty ? { [excludeIdProperty]: { $ne: excludeId } } : {})
+      } as unknown as Parameters<typeof collection.countDocuments>[0],
+      {
+        ...(options?.caseInsensitive ? { collation: { locale: 'en', strength: 2 } } : {})
+      }
+    )) != 0
+  );
 }
 
 /**
