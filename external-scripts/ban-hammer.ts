@@ -1,7 +1,7 @@
 import { debugNamespace as namespace } from 'universe/constants';
 import { getEnv } from 'universe/backend/env';
-import { AppError, InvalidEnvironmentError } from 'named-app-errors';
-import { getDb } from 'multiverse/mongo-schema';
+import { AppError, InvalidAppEnvironmentError } from 'named-app-errors';
+import { closeClient, getDb } from 'multiverse/mongo-schema';
 import { debugFactory } from 'multiverse/debug-extended';
 
 const debugNamespace = `${namespace}:ban-hammer`;
@@ -33,31 +33,31 @@ const invoked = async () => {
     } = getEnv();
 
     if (!calledEverySeconds || !(Number(calledEverySeconds) > 0)) {
-      throw new InvalidEnvironmentError(
+      throw new InvalidAppEnvironmentError(
         'BAN_HAMMER_WILL_BE_CALLED_EVERY_SECONDS must be greater than zero'
       );
     }
 
     if (!maxRequestsPerWindow || !(Number(maxRequestsPerWindow) > 0)) {
-      throw new InvalidEnvironmentError(
+      throw new InvalidAppEnvironmentError(
         'BAN_HAMMER_MAX_REQUESTS_PER_WINDOW must be greater than zero'
       );
     }
 
     if (!resolutionWindowSeconds || !(Number(resolutionWindowSeconds) > 0)) {
-      throw new InvalidEnvironmentError(
+      throw new InvalidAppEnvironmentError(
         'BAN_HAMMER_RESOLUTION_WINDOW_SECONDS must be greater than zero'
       );
     }
 
     if (!defaultBanTimeMinutes || !(Number(defaultBanTimeMinutes) > 0)) {
-      throw new InvalidEnvironmentError(
+      throw new InvalidAppEnvironmentError(
         'BAN_HAMMER_DEFAULT_BAN_TIME_MINUTES must be greater than zero'
       );
     }
 
     if (!punishMultiplier || !(Number(punishMultiplier) > 0)) {
-      throw new InvalidEnvironmentError(
+      throw new InvalidAppEnvironmentError(
         'BAN_HAMMER_RECIDIVISM_PUNISH_MULTIPLIER must be greater than zero'
       );
     }
@@ -240,7 +240,9 @@ const invoked = async () => {
               if: { $ne: ['$count', 1] },
               then: {
                 $max: [
-                  { $add: [{ $toLong: '$$NOW' }, defaultBanTimeMs * punishMultiplier] },
+                  {
+                    $add: [{ $toLong: '$$NOW' }, defaultBanTimeMs * punishMultiplier]
+                  },
                   '$until'
                 ]
               },
@@ -268,10 +270,17 @@ const invoked = async () => {
 
     await cursor.next();
     await cursor.close();
-
-    log('execution complete');
   } catch (e) {
     throw new AppError(`${e}`);
+  } finally {
+    /* istanbul ignore if */
+    if (['production', 'development'].includes(getEnv().NODE_ENV)) {
+      await closeClient();
+      log('execution complete');
+      process.exit(0);
+    } else {
+      log('execution complete');
+    }
   }
 };
 
