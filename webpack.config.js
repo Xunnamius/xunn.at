@@ -35,9 +35,9 @@ try {
   nodeEnv = forceEnv || nodeEnv;
   sanitizedEnv = parsedEnv;
   debug(`NODE_ENV: ${nodeEnv}`);
-  debug('sanitized env: %O', sanitizedEnv);
+  debug('sanitized .env vars: %O', sanitizedEnv);
 } catch (e) {
-  debug(`env support disabled; reason: ${e}`);
+  debug(`.env support disabled; reason: ${e}`);
 }
 
 debug('sanitized process env: %O', sanitizedProcessEnv);
@@ -110,15 +110,9 @@ const externalsConfig = {
 
   entry: {
     'ban-hammer': `${__dirname}/external-scripts/ban-hammer.ts`,
-    'prune-data': `${__dirname}/external-scripts/prune-data.ts`,
-
-    'initialize-data': `${__dirname}/external-scripts/initialize-data/index.ts`,
-    'worker-friends': `${__dirname}/external-scripts/initialize-data/worker-friends.ts`,
-    'worker-memes': `${__dirname}/external-scripts/initialize-data/worker-memes.ts`,
-    'worker-interactions': `${__dirname}/external-scripts/initialize-data/worker-interactions.ts`,
-    'worker-chats': `${__dirname}/external-scripts/initialize-data/worker-chats.ts`,
-
-    'simulate-activity': `${__dirname}/external-scripts/simulate-activity/index.ts`
+    'prune-data': `${__dirname}/external-scripts/prune-data.ts`
+    // 'initialize-data': `${__dirname}/external-scripts/initialize-data/index.ts`,
+    // 'simulate-activity': `${__dirname}/external-scripts/simulate-activity/index.ts`
   },
 
   output: {
