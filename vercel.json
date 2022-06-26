@@ -1,7 +1,7 @@
 {
   "trailingSlash": false,
   "functions": {
-    "/api/[shortId]": {
+    "pages/api/[shortId]": {
       "memory": 1536,
       "maxDuration": 60
     }
