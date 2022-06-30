@@ -5,7 +5,7 @@ import { isError } from '@xunnamius/types';
 import type { BodyInit, RequestInit } from 'node-fetch';
 import type { JsonObject, JsonPrimitive } from 'type-fest';
 
-const JsonContentType = 'application/json';
+export const JsonContentType = 'application/json' as const;
 
 /**
  * Represents a JSON Fetch error.
@@ -63,6 +63,10 @@ export type JsonRequestInit = Omit<RequestInit, 'body'> & {
  *
  * Note: you must use `credentials: 'include'` to include cookies with your
  * requests. This is not the default setting.
+ *
+ * **WARN: this setting MUST only be used in "end-developer" source, not in
+ * libraries or anything that is meant to be imported into higher-order code or
+ * you run the risk of terrible conflicts!**
  *
  * @see https://github.com/node-fetch/node-fetch#options
  */
@@ -337,7 +341,11 @@ export async function jsonFetch<
   }
 
   if (parseError && responseContentType == JsonContentType) {
-    throw new JsonFetchError(res, json, `failed to parse response body: ${parseError}`);
+    throw new JsonFetchError(
+      res,
+      json,
+      `failed to parse response body: ${parseError}`
+    );
   }
 
   if (responseContentType != JsonContentType || parseError) {

@@ -148,10 +148,12 @@ describe('::itemToObjectId', () => {
     const ids = [id, id, id];
 
     expect(itemToObjectId(ids)).toStrictEqual(ids);
-    expect(itemToObjectId([{ _id: id }, { _id: id }, { _id: id }])).toStrictEqual(ids);
-    expect(itemToObjectId([id.toString(), id.toString(), id.toString()])).toStrictEqual(
+    expect(itemToObjectId([{ _id: id }, { _id: id }, { _id: id }])).toStrictEqual(
       ids
     );
+    expect(
+      itemToObjectId([id.toString(), id.toString(), id.toString()])
+    ).toStrictEqual(ids);
   });
 
   it('throws if item is irreducible', async () => {
@@ -193,9 +195,9 @@ describe('::itemToStringId', () => {
       idStrings
     );
 
-    expect(itemToStringId([id.toString(), id.toString(), id.toString()])).toStrictEqual(
-      idStrings
-    );
+    expect(
+      itemToStringId([id.toString(), id.toString(), id.toString()])
+    ).toStrictEqual(idStrings);
   });
 
   it('throws if item is irreducible', async () => {

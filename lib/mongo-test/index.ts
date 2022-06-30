@@ -62,7 +62,9 @@ export async function getDummyData(): Promise<DummyData> {
     debug('importing `getDummyData` from "configverse/get-dummy-data"');
     return await (await import('configverse/get-dummy-data')).getDummyData();
   } catch (e) {
-    debug.warn(`failed to import getDummyData from "configverse/get-dummy-data": ${e}`);
+    debug.warn(
+      `failed to import getDummyData from "configverse/get-dummy-data": ${e}`
+    );
 
     throw new InvalidAppConfigurationError(
       'could not resolve mongodb dummy data: failed to import getDummyData from "configverse/get-dummy-data". Did you forget to register "configverse/get-dummy-data" as an import alias/path?'
@@ -93,9 +95,9 @@ export async function hydrateDb({
     );
   }
 
-  const collectionNames = (await getSchemaConfig()).databases[nameActual].collections.map(
-    (col) => (typeof col == 'string' ? col : col.name)
-  );
+  const collectionNames = (await getSchemaConfig()).databases[
+    nameActual
+  ].collections.map((col) => (typeof col == 'string' ? col : col.name));
 
   await Promise.all(
     Object.entries(dummyData).map(([colName, colSchema]) => {
@@ -181,7 +183,9 @@ export function setupMemoryServerOverride(params?: {
   beforeAll(async () => {
     try {
       if (errored) {
-        debug.warn('"beforeAll" jest lifecycle hook was skipped due to previous errors');
+        debug.warn(
+          '"beforeAll" jest lifecycle hook was skipped due to previous errors'
+        );
       } else {
         await server.ensureInstance();
         const uri = server.getUri();

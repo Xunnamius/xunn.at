@@ -9,7 +9,9 @@ it('is a noop by default', async () => {
   expect.hasAssertions();
 
   await testApiHandler({
-    handler: wrapHandler(withMiddleware<Options>(noopHandler, { use: [checkVersion] })),
+    handler: wrapHandler(
+      withMiddleware<Options>(noopHandler, { use: [checkVersion] })
+    ),
     test: async ({ fetch }) => expect((await fetch()).status).toBe(200)
   });
 

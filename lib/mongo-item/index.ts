@@ -100,7 +100,9 @@ export async function itemExists<T>(
         ...(excludeIdProperty ? { [excludeIdProperty]: { $ne: excludeId } } : {})
       } as unknown as Parameters<typeof collection.countDocuments>[0],
       {
-        ...(options?.caseInsensitive ? { collation: { locale: 'en', strength: 2 } } : {})
+        ...(options?.caseInsensitive
+          ? { collation: { locale: 'en', strength: 2 } }
+          : {})
       }
     )) != 0
   );
@@ -110,7 +112,12 @@ export async function itemExists<T>(
  * The shape of an object that can be translated into an `ObjectId` (or `T`)
  * instance or is `null`/`undefined`.
  */
-export type IdItem<T extends ObjectId> = WithId<unknown> | string | T | null | undefined;
+export type IdItem<T extends ObjectId> =
+  | WithId<unknown>
+  | string
+  | T
+  | null
+  | undefined;
 
 /**
  * The shape of an object that can be translated into an array of `ObjectId` (or

@@ -149,7 +149,9 @@ describe('::jsonFetch', () => {
 
     header = { 'content-type': 'application/json' };
 
-    await expect(jsonFetch(localUrl)).rejects.toThrow(/failed to parse response body:/);
+    await expect(jsonFetch(localUrl)).rejects.toThrow(
+      /failed to parse response body:/
+    );
 
     await expect(
       jsonFetch(localUrl, {

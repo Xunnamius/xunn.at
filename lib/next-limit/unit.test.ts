@@ -1,7 +1,11 @@
 import { dummyRootData, useMockDateNow } from 'multiverse/mongo-common';
 import { getDb } from 'multiverse/mongo-schema';
 import { BANNED_BEARER_TOKEN } from 'multiverse/next-auth';
-import { clientIsRateLimited, removeRateLimit } from 'multiverse/next-limit';
+import {
+  clientIsRateLimited,
+  getAllRateLimits,
+  removeRateLimit
+} from 'multiverse/next-limit';
 import { setupMemoryServerOverride } from 'multiverse/mongo-test';
 
 import type { InternalLimitedLogEntry } from 'multiverse/next-limit';
@@ -273,8 +277,10 @@ describe('::removeRateLimit', () => {
         message: 'ip must be a non-empty string'
       }),
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(removeRateLimit({ target: { header: true } as any })).rejects.toMatchObject({
+      expect(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        removeRateLimit({ target: { header: true } as any })
+      ).rejects.toMatchObject({
         message: 'header must be a non-empty string'
       }),
 
@@ -295,9 +301,34 @@ describe('::removeRateLimit', () => {
       expect(
         removeRateLimit({ target: { ip: undefined, header: undefined } })
       ).rejects.toMatchObject({ message: 'must provide either an ip or a header' }),
-      expect(removeRateLimit({ target: { ip: '', header: '' } })).rejects.toMatchObject({
+      expect(
+        removeRateLimit({ target: { ip: '', header: '' } })
+      ).rejects.toMatchObject({
         message: 'ip must be a non-empty string'
       })
     ]);
+  });
+});
+
+describe('::getAllRateLimits', () => {
+  it('returns all active rate limits in the system', async () => {
+    expect.hasAssertions();
+
+    const db = (await getDb({ name: 'root' })).collection('limited-log');
+
+    await expect(getAllRateLimits()).resolves.toIncludeSameMembers(
+      await db
+        .find({ until: { $gt: Date.now() } }, { projection: { _id: false } })
+        .toArray()
+    );
+  });
+
+  it('does not crash if database is empty', async () => {
+    expect.hasAssertions();
+
+    const db = (await getDb({ name: 'root' })).collection('limited-log');
+    await db.deleteMany({});
+
+    await expect(getAllRateLimits()).resolves.toStrictEqual([]);
   });
 });

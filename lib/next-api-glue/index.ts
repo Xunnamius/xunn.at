@@ -93,7 +93,8 @@ export function withMiddleware<
   }: {
     use: Middleware<NoInfer<Options>>[];
     useOnError?: Middleware<NoInfer<Options>>[];
-    options?: Partial<MiddlewareContext<NoInfer<Options>>['options']> & NoInfer<Options>;
+    options?: Partial<MiddlewareContext<NoInfer<Options>>['options']> &
+      NoInfer<Options>;
   }
 ) {
   if (!Array.isArray(use)) {
@@ -168,7 +169,9 @@ export function withMiddleware<
                 );
               } else {
                 chainWasPulled = true;
-                localDebug('runtime.next: manually selecting next middleware in chain');
+                localDebug(
+                  'runtime.next: manually selecting next middleware in chain'
+                );
                 await pullChain();
               }
             } else {
@@ -213,7 +216,8 @@ export function withMiddleware<
             }
           } else {
             localDebug('no more middleware to execute');
-            !executionCompleted && localDebug('deactivated runtime control functions');
+            !executionCompleted &&
+              localDebug('deactivated runtime control functions');
             executionCompleted = true;
           }
         };
@@ -221,7 +225,9 @@ export function withMiddleware<
         await pullChain();
         localDebug('stopped middleware execution chain');
         localDebug(
-          `at least one middleware executed: ${ranAtLeastOneMiddleware ? 'yes' : 'no'}`
+          `at least one middleware executed: ${
+            ranAtLeastOneMiddleware ? 'yes' : 'no'
+          }`
         );
 
         return executionWasAborted;
@@ -239,7 +245,10 @@ export function withMiddleware<
 
       try {
         debug('selecting first middleware in primary middleware chain');
-        primaryChainWasAborted = await startPullingChain(use[Symbol.iterator](), debug);
+        primaryChainWasAborted = await startPullingChain(
+          use[Symbol.iterator](),
+          debug
+        );
       } catch (e) {
         debug('error in primary middleware chain');
         throw e;
@@ -272,7 +281,9 @@ export function withMiddleware<
 
         if (useOnError) {
           try {
-            debug.error('selecting first middleware in error handling middleware chain');
+            debug.error(
+              'selecting first middleware in error handling middleware chain'
+            );
             await startPullingChain(useOnError[Symbol.iterator](), debug.error);
           } catch (err) {
             // ? Error in error handler was unhandled
@@ -317,7 +328,8 @@ export function middlewareFactory<
 }: {
   use: Middleware<NoInfer<Options>>[];
   useOnError?: Middleware<NoInfer<Options>>[];
-  options?: Partial<MiddlewareContext<NoInfer<Options>>['options']> & NoInfer<Options>;
+  options?: Partial<MiddlewareContext<NoInfer<Options>>['options']> &
+    NoInfer<Options>;
 }) {
   return <PassedOptions extends Record<string, unknown> = Record<string, unknown>>(
     handler: NextApiHandler | undefined,

@@ -137,7 +137,9 @@ describe('::withMiddleware', () => {
   it('runs primary chain middleware then handler', async () => {
     expect.hasAssertions();
 
-    const middleware = jest.fn(() => expect(handler).toBeCalledTimes(0)) as Middleware;
+    const middleware = jest.fn(() =>
+      expect(handler).toBeCalledTimes(0)
+    ) as Middleware;
     const handler = jest.fn(() => expect(middleware).toBeCalledTimes(1));
 
     await testApiHandler({
@@ -673,7 +675,9 @@ describe('::withMiddleware', () => {
           test: async ({ fetch }) => {
             expect((await fetch()).status).toBe(403);
             expect(stdErrSpy).toBeCalledWith(
-              expect.stringContaining('skipping execution of non-function item in chain')
+              expect.stringContaining(
+                'skipping execution of non-function item in chain'
+              )
             );
           }
         });

@@ -100,3 +100,16 @@ export async function removeRateLimit({
 
   throw new ValidationError('must provide either an ip or a header');
 }
+
+/**
+ * Retrieve all active rate limits.
+ */
+export async function getAllRateLimits() {
+  return (await getDb({ name: 'root' }))
+    .collection<InternalLimitedLogEntry>('limited-log')
+    .find<WithoutId<InternalLimitedLogEntry>>(
+      { until: { $gt: Date.now() } },
+      { sort: { _id: -1 }, projection: { _id: false } }
+    )
+    .toArray();
+}

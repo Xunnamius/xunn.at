@@ -28,10 +28,13 @@ it('works', async () => {
       })
     ),
     test: async ({ fetch }) => {
-      const res = await fetch({ method: 'OPTIONS' });
+      let res = await fetch({ method: 'OPTIONS' });
       expect(res.status).toBe(204);
       expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
       expect(res.headers.get('Access-Control-Allow-Methods')).toBe('GET,POST,HEAD');
+
+      res = await fetch({ method: 'GET' });
+      expect(res.status).toBe(200);
     }
   });
 });

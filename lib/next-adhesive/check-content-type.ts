@@ -3,7 +3,10 @@ import { ValidHttpMethod } from '@xunnamius/types';
 import { InvalidAppConfigurationError } from 'named-app-errors';
 import { toss } from 'toss-expression';
 
-import { sendHttpBadContentType, sendHttpBadRequest } from 'multiverse/next-api-respond';
+import {
+  sendHttpBadContentType,
+  sendHttpBadRequest
+} from 'multiverse/next-api-respond';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { MiddlewareContext } from 'multiverse/next-api-glue';
@@ -48,7 +51,9 @@ export type Options = {
    *
    * @see https://www.iana.org/assignments/media-types/media-types.xhtml
    */
-  allowedContentTypes?: AllowedContentTypesConfig | AllowedContentTypesPerMethodConfig;
+  allowedContentTypes?:
+    | AllowedContentTypesConfig
+    | AllowedContentTypesPerMethodConfig;
 };
 
 /**
@@ -65,7 +70,9 @@ export default async function (
   const contentType = req.headers['content-type']?.toLowerCase();
   const method = req.method?.toUpperCase();
 
-  const configToLowercase = (c: AllowedContentTypesConfig): AllowedContentTypesConfig => {
+  const configToLowercase = (
+    c: AllowedContentTypesConfig
+  ): AllowedContentTypesConfig => {
     return typeof c == 'string'
       ? (c.toLowerCase() as typeof c)
       : Array.isArray(c)
@@ -153,7 +160,10 @@ export default async function (
                 if (!allowsNone) {
                   return sendError();
                 }
-              } else if (contentType == 'none' || !allowedSubset.includes(contentType)) {
+              } else if (
+                contentType == 'none' ||
+                !allowedSubset.includes(contentType)
+              ) {
                 return sendError();
               }
             }

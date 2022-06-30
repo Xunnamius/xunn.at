@@ -49,7 +49,10 @@ export function sendHttpErrorResponse(
 /**
  * Sends an HTTP 200 "ok" response with optional `responseJson` data.
  */
-export function sendHttpOk(res: NextApiResponse, responseJson?: Record<string, unknown>) {
+export function sendHttpOk(
+  res: NextApiResponse,
+  responseJson?: Record<string, unknown>
+) {
   sendHttpSuccessResponse(res, 200, responseJson);
 }
 

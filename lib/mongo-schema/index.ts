@@ -263,13 +263,15 @@ export async function initializeDb({
           : colNameOrSchema;
 
       debug(`initializing collection "${nameActual}.${colSchema.name}"`);
-      return db.createCollection(colSchema.name, colSchema.createOptions).then((col) => {
-        return Promise.all(
-          colSchema.indices?.map((indexSchema) =>
-            col.createIndex(indexSchema.spec, indexSchema.options || {})
-          ) || []
-        );
-      });
+      return db
+        .createCollection(colSchema.name, colSchema.createOptions)
+        .then((col) => {
+          return Promise.all(
+            colSchema.indices?.map((indexSchema) =>
+              col.createIndex(indexSchema.spec, indexSchema.options || {})
+            ) || []
+          );
+        });
     })
   );
 }

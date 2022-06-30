@@ -3,7 +3,9 @@ import { noopHandler, withMockedOutput, wrapHandler } from 'testverse/setup';
 import { withMiddleware } from 'multiverse/next-api-glue';
 import randomizeCase from 'random-case';
 
-import checkContentType, { Options } from 'multiverse/next-adhesive/check-content-type';
+import checkContentType, {
+  Options
+} from 'multiverse/next-adhesive/check-content-type';
 
 it('sends 415 by default for POST, PUT, and PATCH requests with or without a Content-Type header', async () => {
   expect.hasAssertions();
@@ -75,7 +77,8 @@ it('sends 415 by default for requests not using POST, PUT, or PATCH methods if t
       // ).toBe(415);
 
       expect(
-        (await fetch({ method: 'OPTIONS', headers: { 'content-type': 'a/j' } })).status
+        (await fetch({ method: 'OPTIONS', headers: { 'content-type': 'a/j' } }))
+          .status
       ).toBe(415);
 
       expect(

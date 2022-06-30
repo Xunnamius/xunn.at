@@ -126,7 +126,10 @@ export async function jsonFetch<
   ErrorType extends JsonObject = JsonType
 >(
   url: string,
-  init?: Omit<JsonRequestInit, 'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'> & {
+  init?: Omit<
+    JsonRequestInit,
+    'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'
+  > & {
     swr?: false;
     rejectIfNotOk?: false;
     rejectIfNonJsonContentType?: false;
@@ -181,7 +184,10 @@ export async function jsonFetch<
   ErrorType extends JsonObject = JsonType
 >(
   url: string,
-  init: Omit<JsonRequestInit, 'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'> & {
+  init: Omit<
+    JsonRequestInit,
+    'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'
+  > & {
     swr?: false;
     rejectIfNotOk?: false;
     rejectIfNonJsonContentType: true;
@@ -233,7 +239,10 @@ export async function jsonFetch<
   ErrorType extends JsonObject = JsonType
 >(
   url: string,
-  init: Omit<JsonRequestInit, 'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'> & {
+  init: Omit<
+    JsonRequestInit,
+    'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'
+  > & {
     swr?: false;
     rejectIfNotOk: true;
     rejectIfNonJsonContentType?: false;
@@ -282,7 +291,10 @@ export async function jsonFetch<
   ErrorType extends JsonObject = JsonType
 >(
   url: string,
-  init: Omit<JsonRequestInit, 'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'> & {
+  init: Omit<
+    JsonRequestInit,
+    'swr' | 'rejectIfNotOk' | 'rejectIfNonJsonContentType'
+  > & {
     swr?: false;
     rejectIfNotOk: true;
     rejectIfNonJsonContentType: true;
@@ -387,7 +399,11 @@ export async function jsonFetch<
   }
 
   if (parseError && responseContentType == JsonContentType) {
-    throw new JsonUnfetchError(res, json, `failed to parse response body: ${parseError}`);
+    throw new JsonUnfetchError(
+      res,
+      json,
+      `failed to parse response body: ${parseError}`
+    );
   }
 
   if (responseContentType != JsonContentType || parseError) {

@@ -4,6 +4,7 @@ import { toss } from 'toss-expression';
 import { isError } from '@xunnamius/types';
 import { debugFactory } from 'multiverse/debug-extended';
 import { randomUUID as generateUUID } from 'node:crypto';
+import { MongoServerError } from 'mongodb';
 
 import {
   AppValidationError,
@@ -12,8 +13,8 @@ import {
   InvalidSecretError
 } from 'universe/error';
 
-import { MongoServerError, WithId, WithoutId } from 'mongodb';
-import type { Merge } from 'type-fest';
+import type { WithId, WithoutId } from 'mongodb';
+import type { JsonValue, Merge } from 'type-fest';
 
 // TODO: consider breaking this into multiple different files (and tests) when
 // TODO: turned into a standalone package. Also, multiple debug identifiers.
@@ -107,7 +108,7 @@ export type TargetToken = Partial<{
   /**
    * The target token.
    */
-  token: Record<string, unknown>;
+  token: Record<string, JsonValue>;
 }>;
 
 /**
@@ -122,7 +123,7 @@ export type Token = {
   /**
    * The actual token.
    */
-  token: Record<string, unknown>;
+  token: Record<string, JsonValue>;
 };
 
 /**
@@ -541,7 +542,8 @@ export async function getAttributes<T extends TokenAttributes>({
         // ? To hit the index, order matters
         { scheme, token },
         { projection: { _id: false, attributes: true } }
-      )) || toss(new InvalidSecretError('authentication scheme and token combination'));
+      )) ||
+    toss(new InvalidSecretError('authentication scheme and token combination'));
 
   return attributes;
 }
@@ -593,27 +595,37 @@ export async function updateAttributes({
  * Returns all entries with a matching `owner` attribute in the well-known
  * "auth" MongoDB collection. Throws on invalid/missing `owner` attribute.
  */
-export async function getOwnerEntries({
-  owner
+export async function getOwnersEntries({
+  owners: rawOwners
 }: {
   /**
-   * A valid token `owner`.
+   * An array of one or more valid `owner` tokens.
    *
    * @see {@link TokenAttributes}
    */
-  owner?: TokenAttributes['owner'];
+  owners: (TokenAttributes['owner'] | undefined)[];
 }): Promise<PublicAuthEntry[]> {
-  if (owner === undefined || isTokenAttributes({ owner })) {
+  const owners = rawOwners.filter((owner): owner is string => owner !== undefined);
+
+  const isValidOwnerArray = (
+    owners: unknown[]
+  ): owners is TokenAttributes['owner'][] => {
+    return owners.every((owner) => isTokenAttributes({ owner }));
+  };
+
+  const returnAll = owners.length == 0;
+
+  if (returnAll || isValidOwnerArray(owners)) {
     return (await getDb({ name: 'root' }))
       .collection<InternalAuthEntry>('auth')
       .find<PublicAuthEntry>(
         // * Query is covered by the index
-        owner ? { 'attributes.owner': owner } : {},
-        { projection: { _id: false } }
+        returnAll ? {} : { 'attributes.owner': { $in: owners } },
+        { projection: { _id: false }, sort: { _id: 1 } }
       )
       .toArray();
   } else {
-    throw new InvalidSecretError('owner');
+    throw new InvalidSecretError('owner(s)');
   }
 }
 
@@ -643,7 +655,9 @@ export async function createEntry({
     };
 
     try {
-      await (await getDb({ name: 'root' })).collection('auth').insertOne({ ...newEntry });
+      await (await getDb({ name: 'root' }))
+        .collection('auth')
+        .insertOne({ ...newEntry });
     } catch (e) {
       /* istanbul ignore else */
       if (e instanceof MongoServerError && e.code == 11000) {

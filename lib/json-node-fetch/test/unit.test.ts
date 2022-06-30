@@ -95,7 +95,9 @@ describe('::jsonFetch', () => {
     expect.hasAssertions();
 
     mockedFetchResult.headers.set('content-type', 'application/json');
-    mockedFetchResultJson = new SyntaxError('unexpected token ? in JSON at position ??');
+    mockedFetchResultJson = new SyntaxError(
+      'unexpected token ? in JSON at position ??'
+    );
 
     await expect(jsonFetch('some-url')).rejects.toThrow(
       'failed to parse response body: unexpected token ? in JSON at position ??'
@@ -215,7 +217,9 @@ describe('::jsonFetch', () => {
     ).rejects.toMatchObject({ res: mockedFetchResult, json: mockedFetchResultJson });
 
     mockedFetchResult.headers.set('content-type', 'application/json');
-    mockedFetchResultJson = new SyntaxError('unexpected token ? in JSON at position ??');
+    mockedFetchResultJson = new SyntaxError(
+      'unexpected token ? in JSON at position ??'
+    );
 
     await expect(
       jsonFetch('some-url', { rejectIfNotOk: true, rejectIfNonJsonContentType: true })

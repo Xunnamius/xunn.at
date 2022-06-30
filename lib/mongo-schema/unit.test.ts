@@ -198,7 +198,9 @@ describe('::overwriteMemory', () => {
     lib.overwriteMemory({ ...getInitialInternalMemoryState(), client, databases });
 
     await expect(lib.getClient()).resolves.toBe(client);
-    await expect(lib.getDb({ name: 'fake-db-1' })).resolves.toBe(databases['fake-db-1']);
+    await expect(lib.getDb({ name: 'fake-db-1' })).resolves.toBe(
+      databases['fake-db-1']
+    );
   });
 });
 
@@ -273,7 +275,9 @@ describe('::initializeDb', () => {
 
         schema.databases['fake-db-1'].collections.forEach((col) => {
           expect(db1.createCollection).toBeCalledWith(
-            ...(typeof col == 'string' ? [col, undefined] : [col.name, col.createOptions])
+            ...(typeof col == 'string'
+              ? [col, undefined]
+              : [col.name, col.createOptions])
           );
         });
 

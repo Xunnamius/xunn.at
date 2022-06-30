@@ -16,7 +16,8 @@ describe('::<default export>', () => {
     expect.hasAssertions();
 
     const handler = wrapHandler(
-      withMiddleware<Options>(noopHandler, { use: [addRawBody] })
+      withMiddleware<Options>(noopHandler, { use: [addRawBody] }),
+      {}
     );
 
     await withMockedOutput(async () => {

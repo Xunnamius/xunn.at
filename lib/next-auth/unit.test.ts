@@ -20,7 +20,7 @@ import {
   isAllowedScheme,
   isTokenAttributes,
   isNewAuthEntry,
-  getOwnerEntries,
+  getOwnersEntries,
   deleteEntry,
   createEntry,
   toPublicAuthEntry
@@ -58,7 +58,11 @@ beforeEach(() => {
 
 afterEach(() => {
   mutableAuthSchemes.splice(0, mutableAuthSchemes.length, ..._authSchemes);
-  mutableAuthConstraints.splice(0, mutableAuthConstraints.length, ..._authConstraints);
+  mutableAuthConstraints.splice(
+    0,
+    mutableAuthConstraints.length,
+    ..._authConstraints
+  );
 });
 
 test('ensure authSchemes contains only lowercase alphanumeric strings', () => {
@@ -118,6 +122,7 @@ describe('::isTokenAttributes', () => {
     expect(isTokenAttributes({})).toBeFalse();
     expect(isTokenAttributes({ owner: true })).toBeFalse();
     expect(isTokenAttributes({ owner: null })).toBeFalse();
+    expect(isTokenAttributes({ owner: undefined })).toBeFalse();
     expect(isTokenAttributes({ owner: '' })).toBeFalse();
     expect(isTokenAttributes({ owner: 'owner', isGlobalAdmin: 1 })).toBeFalse();
     expect(isTokenAttributes({ owner: 'owner', isGlobalAdmin: 'true' })).toBeFalse();
@@ -141,6 +146,7 @@ describe('::isTokenAttributes', () => {
     expect(isTokenAttributes({}, { patch: true })).toBeTrue();
     expect(isTokenAttributes({ owner: true }, { patch: true })).toBeFalse();
     expect(isTokenAttributes({ owner: null }, { patch: true })).toBeFalse();
+    expect(isTokenAttributes({ owner: undefined }, { patch: true })).toBeTrue();
     expect(isTokenAttributes({ owner: '' })).toBeFalse();
 
     expect(
@@ -370,9 +376,9 @@ describe('::deriveSchemeAndToken', () => {
       'invalid auth string'
     );
 
-    await expect(deriveSchemeAndToken({ authString: 'bearer-bearer' })).rejects.toThrow(
-      'invalid auth string'
-    );
+    await expect(
+      deriveSchemeAndToken({ authString: 'bearer-bearer' })
+    ).rejects.toThrow('invalid auth string');
   });
 
   it('rejects on unknown schemes', async () => {
@@ -561,7 +567,9 @@ describe('::authorizeHeader', () => {
         constraints: ['isGlobalAdmin', 'isGlobalAdmin']
       })
     ).rejects.toMatchObject({
-      message: expect.stringContaining('encountered duplicate authorization constraints')
+      message: expect.stringContaining(
+        'encountered duplicate authorization constraints'
+      )
     });
   });
 
@@ -626,7 +634,9 @@ describe('::updateAttributes', () => {
   it('updates (patches) an existing auth entry', async () => {
     expect.hasAssertions();
 
-    const authDb = (await getDb({ name: 'root' })).collection<InternalAuthEntry>('auth');
+    const authDb = (await getDb({ name: 'root' })).collection<InternalAuthEntry>(
+      'auth'
+    );
 
     await expect(
       updateAttributes({
@@ -779,7 +789,10 @@ describe('::updateAttributes', () => {
       ],
       [
         {
-          attributes: { owner: 'name', isGlobalAdmin: 1 } as unknown as TokenAttributes
+          attributes: {
+            owner: 'name',
+            isGlobalAdmin: 1
+          } as unknown as TokenAttributes
         },
         'invalid attributes'
       ],
@@ -825,70 +838,99 @@ describe('::updateAttributes', () => {
   });
 });
 
-describe('::getOwnerEntries', () => {
-  it('returns array of all auth entries owned by the target', async () => {
+describe('::getOwnersEntries', () => {
+  it('returns array of all auth entries owned by the targets', async () => {
     expect.hasAssertions();
 
-    const owner = dummyRootData.auth[0].attributes.owner;
+    const owners = [
+      dummyRootData.auth[0].attributes.owner,
+      dummyRootData.auth[1].attributes.owner
+    ];
 
-    const newAuthEntry: InternalAuthEntry = {
+    const newAuthEntry1: InternalAuthEntry = {
       _id: new ObjectId(),
-      attributes: { owner },
+      attributes: { owner: owners[0] },
       scheme: 'bearer',
       token: { bearer: jest.requireActual('node:crypto').randomUUID() }
     };
 
-    await expect(getOwnerEntries({ owner })).resolves.toStrictEqual([
-      toPublicAuthEntry(dummyRootData.auth[0])
+    const newAuthEntry2: InternalAuthEntry = {
+      _id: new ObjectId(),
+      attributes: { owner: owners[1] },
+      scheme: 'bearer',
+      token: { bearer: jest.requireActual('node:crypto').randomUUID() }
+    };
+
+    await expect(getOwnersEntries({ owners })).resolves.toStrictEqual([
+      toPublicAuthEntry(dummyRootData.auth[0]),
+      toPublicAuthEntry(dummyRootData.auth[1])
     ]);
 
     await (await getDb({ name: 'root' }))
       .collection<InternalAuthEntry>('auth')
-      .insertOne(newAuthEntry);
+      .insertMany([newAuthEntry1, newAuthEntry2]);
 
-    await expect(getOwnerEntries({ owner })).resolves.toStrictEqual([
+    await expect(getOwnersEntries({ owners })).resolves.toStrictEqual([
       toPublicAuthEntry(dummyRootData.auth[0]),
-      toPublicAuthEntry(newAuthEntry)
+      toPublicAuthEntry(dummyRootData.auth[1]),
+      toPublicAuthEntry(newAuthEntry1),
+      toPublicAuthEntry(newAuthEntry2)
+    ]);
+
+    await expect(
+      getOwnersEntries({ owners: [...owners, undefined] })
+    ).resolves.toStrictEqual([
+      toPublicAuthEntry(dummyRootData.auth[0]),
+      toPublicAuthEntry(dummyRootData.auth[1]),
+      toPublicAuthEntry(newAuthEntry1),
+      toPublicAuthEntry(newAuthEntry2)
     ]);
   });
 
-  it('returns empty array if target owner does not exist', async () => {
+  it('returns empty array if target owners do not exist', async () => {
     expect.hasAssertions();
 
-    await expect(getOwnerEntries({ owner: 'does-not-exist' })).resolves.toStrictEqual([]);
+    await expect(
+      getOwnersEntries({ owners: ['does-not-exist'] })
+    ).resolves.toStrictEqual([]);
+
+    await expect(
+      getOwnersEntries({ owners: ['does-not-exist-1', 'does-not-exist-2'] })
+    ).resolves.toStrictEqual([]);
   });
 
-  it('returns all auth entries if no owner specified', async () => {
+  it('returns all auth entries if no owners specified', async () => {
     expect.hasAssertions();
 
-    await expect(getOwnerEntries({})).resolves.toStrictEqual(
+    await expect(getOwnersEntries({ owners: [] })).resolves.toStrictEqual(
       dummyRootData.auth.map(toPublicAuthEntry)
     );
 
-    await expect(getOwnerEntries({ owner: undefined })).resolves.toStrictEqual(
+    await expect(getOwnersEntries({ owners: [undefined] })).resolves.toStrictEqual(
       dummyRootData.auth.map(toPublicAuthEntry)
     );
+
+    await expect(
+      getOwnersEntries({ owners: [undefined, undefined] })
+    ).resolves.toStrictEqual(dummyRootData.auth.map(toPublicAuthEntry));
   });
 
   it('rejects if passed invalid data', async () => {
     expect.hasAssertions();
 
-    const errors: [
-      params: Partial<Parameters<typeof getOwnerEntries>[0]>,
-      error: string
-    ][] = [
-      [{ owner: null } as unknown as TokenAttributes, 'invalid owner'],
-      [{ owner: false } as unknown as TokenAttributes, 'invalid owner'],
-      [{ owner: true } as unknown as TokenAttributes, 'invalid owner'],
-      [{ owner: '', isGlobalAdmin: null } as unknown as TokenAttributes, 'invalid owner'],
-      [{ owner: '', isGlobalAdmin: 1 } as unknown as TokenAttributes, 'invalid owner'],
-      [{ owner: '', name: 'owner' } as unknown as TokenAttributes, 'invalid owner'],
-      [{ owner: null } as unknown as TokenAttributes, 'invalid owner']
+    type Params = Parameters<typeof getOwnersEntries>[0];
+
+    const errors: [params: Params, error: string][] = [
+      [{ owners: [false] as unknown as Params['owners'] }, 'invalid owner(s)'],
+      [{ owners: [true] as unknown as Params['owners'] }, 'invalid owner(s)'],
+      [{ owners: [''] }, 'invalid owner(s)'],
+      [{ owners: [5] as unknown as Params['owners'] }, 'invalid owner(s)'],
+      [{ owners: [null] as unknown as Params['owners'] }, 'invalid owner(s)']
     ];
 
     await Promise.all(
       errors.map(async ([params, error]) => {
-        await expect(getOwnerEntries(params)).rejects.toMatchObject({
+        await expect(getOwnersEntries(params as Params)).rejects.toMatchObject({
           message: expect.stringContaining(error)
         });
       })
@@ -907,7 +949,9 @@ describe('::createEntry', () => {
     mockRandomUUID.mockReturnValueOnce(newToken1);
     mockRandomUUID.mockReturnValueOnce(newToken2);
 
-    const authDb = (await getDb({ name: 'root' })).collection<InternalAuthEntry>('auth');
+    const authDb = (await getDb({ name: 'root' })).collection<InternalAuthEntry>(
+      'auth'
+    );
 
     await expect(
       authDb.countDocuments({ 'attributes.owner': 'new-owner' })
@@ -965,95 +1009,97 @@ describe('::createEntry', () => {
   it('rejects if passed invalid data', async () => {
     expect.hasAssertions();
 
-    const errors: [params: Partial<Parameters<typeof createEntry>[0]>, error: string][] =
+    const errors: [
+      params: Partial<Parameters<typeof createEntry>[0]>,
+      error: string
+    ][] = [
+      [{}, 'invalid entry data'],
+      [{ entry: { attributes: undefined } }, 'invalid entry data'],
       [
-        [{}, 'invalid entry data'],
-        [{ entry: { attributes: undefined } }, 'invalid entry data'],
-        [
-          { entry: { attributes: null as unknown as TokenAttributes } },
-          'invalid entry data'
-        ],
-        [
-          { entry: { attributes: false as unknown as TokenAttributes } },
-          'invalid entry data'
-        ],
-        [
-          { entry: { attributes: true as unknown as TokenAttributes } },
-          'invalid entry data'
-        ],
-        [
-          { entry: { attributes: {} as unknown as TokenAttributes } },
-          'invalid entry data'
-        ],
-        [
-          {
-            entry: { attributes: { isGlobalAdmin: null } as unknown as TokenAttributes }
-          },
-          'invalid entry data'
-        ],
-        [
-          { entry: { attributes: { isGlobalAdmin: 1 } as unknown as TokenAttributes } },
-          'invalid entry data'
-        ],
-        [
-          {
-            entry: { attributes: { isGlobalAdmin: true } as unknown as TokenAttributes }
-          },
-          'invalid entry data'
-        ],
-        [
-          { entry: { attributes: { name: 'owner' } as unknown as TokenAttributes } },
-          'invalid entry data'
-        ],
-        [
-          { entry: { attributes: { owner: null } as unknown as TokenAttributes } },
-          'invalid entry data'
-        ],
-        [
-          {
-            entry: {
-              attributes: {
-                owner: 'name',
-                isGlobalAdmin: 1
-              } as unknown as TokenAttributes
-            }
-          },
-          'invalid entry data'
-        ],
-        [
-          {
-            entry: {
-              attributes: {
-                owner: 'name',
-                isGlobalAdmin: null
-              } as unknown as TokenAttributes
-            }
-          },
-          'invalid entry data'
-        ],
-        [
-          {
-            entry: {
-              attributes: {
-                owner: 'name',
-                isGlobalAdmin: 'true'
-              } as unknown as TokenAttributes
-            }
-          },
-          'invalid entry data'
-        ],
-        [
-          {
-            entry: {
-              attributes: {
-                owner: 'name',
-                extra: 1
-              } as unknown as TokenAttributes
-            }
-          },
-          'invalid entry data'
-        ]
-      ];
+        { entry: { attributes: null as unknown as TokenAttributes } },
+        'invalid entry data'
+      ],
+      [
+        { entry: { attributes: false as unknown as TokenAttributes } },
+        'invalid entry data'
+      ],
+      [
+        { entry: { attributes: true as unknown as TokenAttributes } },
+        'invalid entry data'
+      ],
+      [
+        { entry: { attributes: {} as unknown as TokenAttributes } },
+        'invalid entry data'
+      ],
+      [
+        {
+          entry: { attributes: { isGlobalAdmin: null } as unknown as TokenAttributes }
+        },
+        'invalid entry data'
+      ],
+      [
+        { entry: { attributes: { isGlobalAdmin: 1 } as unknown as TokenAttributes } },
+        'invalid entry data'
+      ],
+      [
+        {
+          entry: { attributes: { isGlobalAdmin: true } as unknown as TokenAttributes }
+        },
+        'invalid entry data'
+      ],
+      [
+        { entry: { attributes: { name: 'owner' } as unknown as TokenAttributes } },
+        'invalid entry data'
+      ],
+      [
+        { entry: { attributes: { owner: null } as unknown as TokenAttributes } },
+        'invalid entry data'
+      ],
+      [
+        {
+          entry: {
+            attributes: {
+              owner: 'name',
+              isGlobalAdmin: 1
+            } as unknown as TokenAttributes
+          }
+        },
+        'invalid entry data'
+      ],
+      [
+        {
+          entry: {
+            attributes: {
+              owner: 'name',
+              isGlobalAdmin: null
+            } as unknown as TokenAttributes
+          }
+        },
+        'invalid entry data'
+      ],
+      [
+        {
+          entry: {
+            attributes: {
+              owner: 'name',
+              isGlobalAdmin: 'true'
+            } as unknown as TokenAttributes
+          }
+        },
+        'invalid entry data'
+      ],
+      [
+        {
+          entry: {
+            attributes: {
+              owner: 'name',
+              extra: 1
+            } as unknown as TokenAttributes
+          }
+        },
+        'invalid entry data'
+      ]
+    ];
 
     await Promise.all(
       errors.map(async ([params, error]) => {
@@ -1079,7 +1125,9 @@ describe('::deleteEntry', () => {
       })
     ).resolves.toBeUndefined();
 
-    await expect(authDb.countDocuments()).resolves.toBe(dummyRootData.auth.length - 1);
+    await expect(authDb.countDocuments()).resolves.toBe(
+      dummyRootData.auth.length - 1
+    );
 
     await expect(
       deleteEntry({
@@ -1087,7 +1135,9 @@ describe('::deleteEntry', () => {
       })
     ).resolves.toBeUndefined();
 
-    await expect(authDb.countDocuments()).resolves.toBe(dummyRootData.auth.length - 2);
+    await expect(authDb.countDocuments()).resolves.toBe(
+      dummyRootData.auth.length - 2
+    );
   });
 
   it('rejects if the auth entry is not found', async () => {
@@ -1105,19 +1155,21 @@ describe('::deleteEntry', () => {
   it('rejects if passed invalid data', async () => {
     expect.hasAssertions();
 
-    const errors: [params: Partial<Parameters<typeof deleteEntry>[0]>, error: string][] =
-      [
-        [{}, 'invalid invocation'],
-        [{ target: undefined }, 'invalid invocation'],
-        [{ target: null as unknown as TargetToken }, 'invalid auth data'],
-        [{ target: false as unknown as TargetToken }, 'invalid auth data'],
-        [{ target: true as unknown as TargetToken }, 'invalid auth data'],
-        [{ target: {} }, 'invalid scheme'],
-        [{ target: { scheme: '' } }, 'invalid scheme'],
-        [{ target: { scheme: 'bearer', token: {} } }, 'token syntax'],
-        [{ target: { scheme: 'bearer', token: { fake: 1 } } }, 'token syntax'],
-        [{ target: { scheme: 'bearer', token: { bearer: null } } }, 'token syntax']
-      ];
+    const errors: [
+      params: Partial<Parameters<typeof deleteEntry>[0]>,
+      error: string
+    ][] = [
+      [{}, 'invalid invocation'],
+      [{ target: undefined }, 'invalid invocation'],
+      [{ target: null as unknown as TargetToken }, 'invalid auth data'],
+      [{ target: false as unknown as TargetToken }, 'invalid auth data'],
+      [{ target: true as unknown as TargetToken }, 'invalid auth data'],
+      [{ target: {} }, 'invalid scheme'],
+      [{ target: { scheme: '' } }, 'invalid scheme'],
+      [{ target: { scheme: 'bearer', token: {} } }, 'token syntax'],
+      [{ target: { scheme: 'bearer', token: { fake: 1 } } }, 'token syntax'],
+      [{ target: { scheme: 'bearer', token: { bearer: null } } }, 'token syntax']
+    ];
 
     await Promise.all(
       errors.map(async ([params, error]) => {
@@ -1203,7 +1255,9 @@ it('allows multiple different auth entries of various schemes to coexist', async
 
   jest.spyOn(NextAuthSpyTarget, 'isTokenAttributes').mockReturnValue(true);
 
-  const newEntry1 = await createEntry({ entry: { attributes: { owner: 'owner-1' } } });
+  const newEntry1 = await createEntry({
+    entry: { attributes: { owner: 'owner-1' } }
+  });
   const newEntry2 = await createEntry({
     entry: { attributes: { owner: 'owner-2', isGlobalAdmin: true } }
   });
@@ -1225,7 +1279,9 @@ it('allows multiple different auth entries of various schemes to coexist', async
   ).resolves.toStrictEqual({ authenticated: true });
 
   await expect(
-    authenticateHeader({ header: `${newEntryBlue.scheme} ${newEntryBlue.token.uuid}` })
+    authenticateHeader({
+      header: `${newEntryBlue.scheme} ${newEntryBlue.token.uuid}`
+    })
   ).resolves.toStrictEqual({ authenticated: true });
 
   await expect(
