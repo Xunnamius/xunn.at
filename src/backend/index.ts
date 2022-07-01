@@ -1,8 +1,8 @@
 import * as util from 'util';
 import { getDb } from 'multiverse/mongo-schema';
-import { pipeline } from 'stream';
+import { pipeline } from 'node:stream';
 import { jsonFetch } from 'multiverse/json-node-fetch';
-import { HttpError, ItemNotFoundError } from 'named-app-errors';
+import { HttpError, ItemNotFoundError } from 'universe/error';
 import fetch from 'node-fetch';
 
 import type { NextApiResponse } from 'next';

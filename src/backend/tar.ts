@@ -1,12 +1,12 @@
 import * as util from 'util';
 import { ValidationError } from 'universe/error';
-import { Transform, PassThrough, pipeline } from 'stream';
+import { Transform, PassThrough, pipeline } from 'node:stream';
 import { extract as extractStream, pack as repackStream } from 'tar-stream';
 import { name as pkgName } from 'package';
 import { debugFactory } from 'multiverse/debug-extended';
 
 import type { Headers } from 'tar-stream';
-import type { Writable, Readable } from 'stream';
+import type { Writable, Readable } from 'node:stream';
 
 const promisedPipeline = util.promisify(pipeline);
 const debug = debugFactory(`${pkgName}:github-pkg`);

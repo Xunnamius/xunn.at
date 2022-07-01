@@ -1,8 +1,8 @@
 import * as util from 'util';
 import { extractSubdirAndRepack, getEntries } from 'universe/backend/tar';
-import { pipeline } from 'stream';
-import { createReadStream } from 'fs';
-import { createGunzip } from 'zlib';
+import { pipeline } from 'node:stream';
+import { createReadStream } from 'node:fs';
+import { createGunzip } from 'node:zlib';
 import { expectedEntries } from 'testverse/setup';
 
 import type { Entry } from 'universe/backend/tar';

@@ -2,7 +2,7 @@ import { sendBadgeSvgResponse, getNpmPackageVersion } from 'universe/backend';
 import { asMockedFunction } from '@xunnamius/jest-types';
 import { testApiHandler } from 'next-test-api-route-handler';
 import { toss } from 'toss-expression';
-import { DummyError } from 'named-app-errors';
+import { DummyError } from 'universe/error';
 import { withMockedOutput } from 'testverse/setup';
 
 import Endpoint, {

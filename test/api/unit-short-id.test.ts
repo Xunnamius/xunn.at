@@ -5,7 +5,7 @@ import { withMiddleware } from 'universe/backend/middleware';
 import { asMockedFunction } from '@xunnamius/jest-types';
 import { testApiHandler } from 'next-test-api-route-handler';
 import { toss } from 'toss-expression';
-import { DummyError, ItemNotFoundError } from 'named-app-errors';
+import { DummyError, ItemNotFoundError } from 'universe/error';
 import { withMockedOutput } from 'testverse/setup';
 import { middlewareFactory } from 'multiverse/next-api-glue';
 import handleError from 'multiverse/next-adhesive/handle-error';

@@ -3,7 +3,7 @@ import { name as pkgName, version as pkgVersion } from 'package';
 import { verifyEnvironment } from '../expect-env';
 import { TrialError, GuruMeditationError } from 'universe/error';
 import { tmpdir } from 'os';
-import { promises as fs } from 'fs';
+import { promises as fs } from 'node:fs';
 import { resolve } from 'path';
 import { toss } from 'toss-expression';
 import { defaultConfig } from 'universe/backend/api';

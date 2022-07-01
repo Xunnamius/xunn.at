@@ -8,7 +8,7 @@ import {
   withMockedOutput
 } from 'testverse/setup';
 
-import { TrialError } from 'named-app-errors';
+import { TrialError } from 'universe/error';
 
 // * Follow the steps (below) to tailor these tests to this specific project 😉
 

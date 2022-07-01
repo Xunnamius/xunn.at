@@ -7,11 +7,11 @@ import { dummyAppData } from 'testverse/db';
 import { testApiHandler } from 'next-test-api-route-handler';
 import { getEnv } from 'multiverse/next-env';
 import { codeloadUrl, treeExistsUrl } from 'universe/backend/github-pkg';
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 import { getEntries } from 'universe/backend/tar';
 import { expectedEntries, withMockedOutput } from 'testverse/setup';
-import { createGunzip } from 'zlib';
-import { TrialError } from 'named-app-errors';
+import { createGunzip } from 'node:zlib';
+import { TrialError } from 'universe/error';
 import { toss } from 'toss-expression';
 
 import {
