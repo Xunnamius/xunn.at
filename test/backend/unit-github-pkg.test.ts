@@ -1,37 +1,21 @@
-import fetch, { FetchError } from 'node-fetch';
+import { readFileSync } from 'node:fs';
+import { createGunzip } from 'node:zlib';
+
 import { testApiHandler } from 'next-test-api-route-handler';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
+
 import { githubPackageDownloadPipeline } from 'universe/backend/github-pkg';
-import { asMockedFunction } from '@xunnamius/jest-types';
 import { getEntries } from 'universe/backend/tar';
-import { createReadStream, readFileSync } from 'fs';
+
 import { expectedEntries } from 'testverse/setup';
-import { createGunzip } from 'zlib';
-import { Readable } from 'stream';
+import { Readable } from 'node:stream';
 
-import type { Response } from 'node-fetch';
-import { DummyError } from 'named-app-errors';
+const server = setupServer();
 
-jest.mock('node-fetch', () => {
-  const fetch = jest.fn();
-  // ? We also need to mock FetchError (earlier than when beforeEach runs)
-  // @ts-expect-error: overriding FetchError with a custom class
-  fetch.FetchError = class FakeFetchError extends Error {
-    constructor(message: string) {
-      super(message);
-    }
-  };
-  return fetch;
-});
-
-const mockFetch = asMockedFunction(fetch);
-const fetchActual = jest.requireActual('node-fetch');
-
-beforeEach(() => {
-  // ? We need to leave node-fetch alone since NTARH uses it too
-  // ! MOCK FETCH CALLS IN EACH TEST HANDLER SO IT'S NOT MAKING REAL REQUESTS !
-  // TODO: replace this with MSW
-  mockFetch.mockImplementation(fetchActual);
-});
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 describe('::githubPackageDownloadPipeline', () => {
   it('throws when walking off potential commits array', async () => {
@@ -64,11 +48,10 @@ describe('::githubPackageDownloadPipeline', () => {
     await testApiHandler({
       rejectOnHandlerError: true,
       handler: async (_, res) => {
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({ status: 500 } as Response)
-        );
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({ status: 500 } as Response)
+        server.use(
+          rest.all('*', (_, res, ctx) => {
+            return res(ctx.status(500));
+          })
         );
 
         await expect(
@@ -97,14 +80,14 @@ describe('::githubPackageDownloadPipeline', () => {
     await testApiHandler({
       rejectOnHandlerError: true,
       handler: async (_, res) => {
-        mockFetch.mockClear();
-        mockFetch.mockImplementationOnce(() => Promise.resolve({} as Response));
-        mockFetch.mockImplementationOnce(() => Promise.resolve({} as Response));
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            body: createReadStream('/dev/null')
-          } as unknown as Response)
+        let count = 0;
+
+        server.use(
+          rest.all('*', (_, res, ctx) => {
+            return count++ >= 2
+              ? res(ctx.status(200), ctx.body('some data here'))
+              : res(ctx.status(404));
+          })
         );
 
         await expect(
@@ -119,9 +102,7 @@ describe('::githubPackageDownloadPipeline', () => {
           })
         ).resolves.toBeUndefined();
 
-        expect(mockFetch).toBeCalledTimes(3);
-        // ? Ensure response is sent since the null stream breaks the pipeline
-        res.end();
+        expect(count).toBe(3);
       },
       test: async ({ fetch }) => void (await fetch())
     });
@@ -135,11 +116,10 @@ describe('::githubPackageDownloadPipeline', () => {
     await testApiHandler({
       rejectOnHandlerError: true,
       handler: async (_, res) => {
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            body: createReadStream(target)
-          } as unknown as Response)
+        server.use(
+          rest.all('*', async (_, res, ctx) => {
+            return res(ctx.status(200), ctx.body(readFileSync(target)));
+          })
         );
 
         await expect(
@@ -153,7 +133,6 @@ describe('::githubPackageDownloadPipeline', () => {
             }
           })
         ).resolves.toBeUndefined();
-        // ? Don't need to call end since data is flowing through pipeline
       },
       test: async ({ fetch }) => {
         const res = await fetch();
@@ -169,15 +148,17 @@ describe('::githubPackageDownloadPipeline', () => {
     await testApiHandler({
       rejectOnHandlerError: true,
       handler: async (_, res) => {
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            body: createReadStream(`${__dirname}/../fixtures/monorepo.tar.gz`)
-          } as unknown as Response)
-        );
+        let count = 0;
 
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({ ok: true } as unknown as Response)
+        server.use(
+          rest.all('*', async (_, res, ctx) => {
+            return res(
+              ctx.status(200),
+              ...(count++ == 0
+                ? [ctx.body(readFileSync(`${__dirname}/../fixtures/monorepo.tar.gz`))]
+                : [])
+            );
+          })
         );
 
         await expect(
@@ -205,15 +186,17 @@ describe('::githubPackageDownloadPipeline', () => {
     await testApiHandler({
       rejectOnHandlerError: true,
       handler: async (_, res) => {
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            body: createReadStream(`${__dirname}/../fixtures/monorepo.tar.gz`)
-          } as unknown as Response)
-        );
+        let count = 0;
 
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({ ok: true } as unknown as Response)
+        server.use(
+          rest.all('*', async (_, res, ctx) => {
+            return res(
+              ctx.status(200),
+              ...(count++ == 0
+                ? [ctx.body(readFileSync(`${__dirname}/../fixtures/monorepo.tar.gz`))]
+                : [])
+            );
+          })
         );
 
         await expect(
@@ -245,15 +228,17 @@ describe('::githubPackageDownloadPipeline', () => {
     await testApiHandler({
       rejectOnHandlerError: true,
       handler: async (_, res) => {
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            body: createReadStream(`${__dirname}/../fixtures/monorepo.tar.gz`)
-          } as unknown as Response)
-        );
+        let count = 0;
 
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({ ok: false } as unknown as Response)
+        server.use(
+          rest.all('*', async (_, res, ctx) => {
+            return count++ == 0
+              ? res(
+                  ctx.status(200),
+                  ctx.body(readFileSync(`${__dirname}/../fixtures/monorepo.tar.gz`))
+                )
+              : res(ctx.status(404));
+          })
         );
 
         // ? Call end early since throwing will destroy the pipeline otherwise
@@ -279,25 +264,16 @@ describe('::githubPackageDownloadPipeline', () => {
     });
   });
 
-  it('throws on generic pipeline error', async () => {
+  it('throws HttpError on FetchError', async () => {
     expect.hasAssertions();
 
     await testApiHandler({
       rejectOnHandlerError: true,
       handler: async (_, res) => {
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            body: new Readable({
-              read() {
-                this.destroy(new DummyError('bad bad is bad not good good'));
-              }
-            })
-          } as unknown as Response)
-        );
-
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({ ok: true } as unknown as Response)
+        server.use(
+          rest.all('*', async (_, res) => {
+            return res.networkError('simulated network error');
+          })
         );
 
         // ? Call end early since throwing will destroy the pipeline otherwise
@@ -315,49 +291,7 @@ describe('::githubPackageDownloadPipeline', () => {
               subdir: 'packages/pkg-3'
             }
           })
-        ).rejects.toThrow('bad bad is bad not good good');
-      },
-      test: async ({ fetch }) => void (await fetch())
-    });
-  });
-
-  it('throws HttpError on FetchError in pipeline', async () => {
-    expect.hasAssertions();
-
-    await testApiHandler({
-      rejectOnHandlerError: true,
-      handler: async (_, res) => {
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            body: new Readable({
-              read() {
-                this.destroy(new FetchError('bad bad is not good good', 'fake'));
-              }
-            })
-          } as unknown as Response)
-        );
-
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({ ok: true } as unknown as Response)
-        );
-
-        // ? Call end early since throwing will destroy the pipeline otherwise
-        // ? (i.e. ECONNRESET). In real life, use pre-emptive error checking
-        // ? before invoking the pipeline so that it doesn't explode.
-        res.end();
-
-        await expect(
-          githubPackageDownloadPipeline({
-            res,
-            repoData: {
-              potentialCommits: ['1'],
-              repo: 'repo',
-              owner: 'user',
-              subdir: 'packages/pkg-3'
-            }
-          })
-        ).rejects.toThrow('HTTP failure: bad bad is not good good');
+        ).rejects.toThrow(/^HTTP failure: .* simulated network error$/);
       },
       test: async ({ fetch }) => void (await fetch())
     });

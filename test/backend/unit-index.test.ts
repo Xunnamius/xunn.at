@@ -1,15 +1,10 @@
-import { WithId } from 'mongodb';
-import { useMockDateNow } from 'multiverse/mongo-common';
-import { getDb } from 'multiverse/mongo-schema';
-import { setupMemoryServerOverride } from 'multiverse/mongo-test';
-import { dummyAppData, dummyCompatData } from 'testverse/db';
-import { asMockedFunction } from '@xunnamius/jest-types';
 import { toss } from 'toss-expression';
-import { DummyError } from 'named-app-errors';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
 import { testApiHandler } from 'next-test-api-route-handler';
-import { Readable } from 'stream';
-import { jsonFetch } from 'multiverse/json-node-fetch';
-import fetch, { Response } from 'node-fetch';
+import { asMockedFunction } from '@xunnamius/jest-types';
+
+import { DummyError } from 'universe/error';
 
 import {
   resolveShortId,
@@ -18,24 +13,27 @@ import {
   sendBadgeSvgResponse
 } from 'universe/backend';
 
+import { getDb } from 'multiverse/mongo-schema';
+import { useMockDateNow } from 'multiverse/mongo-common';
+import { jsonFetch } from 'multiverse/json-node-fetch';
+import { setupMemoryServerOverride } from 'multiverse/mongo-test';
+
+import { dummyAppData, dummyCompatData } from 'testverse/db';
+
+import type { WithId } from 'mongodb';
 import type { InternalLinkMapEntry } from 'universe/backend/db';
 
-jest.mock('node-fetch');
 jest.mock('multiverse/json-node-fetch');
 
-const fetchActual = jest.requireActual('node-fetch');
-const mockFetch = asMockedFunction(fetch);
 const mockJsonFetch = asMockedFunction(jsonFetch);
+const server = setupServer();
 
 setupMemoryServerOverride();
 useMockDateNow();
 
-beforeEach(() => {
-  // ? We need to leave node-fetch alone since NTARH uses it too
-  // ! MOCK FETCH CALLS IN EACH TEST HANDLER SO IT'S NOT MAKING REAL REQUESTS !
-  // TODO: replace this with MSW
-  mockFetch.mockImplementation(fetchActual);
-});
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 describe('::resolveShortId', () => {
   it('throws if short link id not found', async () => {
@@ -162,22 +160,13 @@ describe('::sendBadgeSvgResponse', () => {
   it('sets header and pipes badge response data', async () => {
     expect.hasAssertions();
 
-    const mockSetHeader = jest.fn();
-
     await testApiHandler({
       rejectOnHandlerError: true,
       handler: async (_, res) => {
-        mockFetch.mockImplementation(() =>
-          Promise.resolve({
-            ok: true,
-            body: new Readable({
-              read() {
-                this.push('{ "some": "json" }');
-                this.push(null);
-              }
-            }),
-            setHeader: mockSetHeader
-          } as unknown as Response)
+        server.use(
+          rest.all('*', async (_, res, ctx) => {
+            return res(ctx.status(200), ctx.json({ some: 'json' }));
+          })
         );
 
         await expect(
@@ -201,22 +190,13 @@ describe('::sendBadgeSvgResponse', () => {
   it('handles naked badge', async () => {
     expect.hasAssertions();
 
-    const mockSetHeader = jest.fn();
-
     await testApiHandler({
       rejectOnHandlerError: true,
       handler: async (_, res) => {
-        mockFetch.mockImplementation(() =>
-          Promise.resolve({
-            ok: true,
-            body: new Readable({
-              read() {
-                this.push('{ "some": "json" }');
-                this.push(null);
-              }
-            }),
-            setHeader: mockSetHeader
-          } as unknown as Response)
+        server.use(
+          rest.all('*', async (_, res, ctx) => {
+            return res(ctx.status(200), ctx.json({ some: 'json' }));
+          })
         );
 
         await expect(
@@ -234,18 +214,10 @@ describe('::sendBadgeSvgResponse', () => {
   it('rejects if badge response is not ok', async () => {
     expect.hasAssertions();
 
-    const mockSetHeader = jest.fn();
-
     await testApiHandler({
       rejectOnHandlerError: true,
       handler: async (_, res) => {
-        mockFetch.mockImplementationOnce(() =>
-          Promise.resolve({
-            status: 555,
-            ok: false,
-            setHeader: mockSetHeader
-          } as unknown as Response)
-        );
+        server.use(rest.all('*', async (_, res, ctx) => res(ctx.status(555))));
 
         await expect(
           sendBadgeSvgResponse({
