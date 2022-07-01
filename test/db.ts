@@ -12,7 +12,10 @@ import type {
  * Returns data used to hydrate databases and their collections.
  */
 export function getDummyData(): DummyData {
-  return getCommonDummyData({ 'xunn-at': dummyAppData, 'pkg-compat': dummyCompatData });
+  return getCommonDummyData({
+    'xunn-at': dummyAppData,
+    'pkg-compat': dummyCompatData
+  });
 }
 
 /**

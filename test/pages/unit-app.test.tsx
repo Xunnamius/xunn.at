@@ -10,7 +10,9 @@ it('renders without crashing', async () => {
   expect.hasAssertions();
 
   render(
-    <App {...({ Component: () => <div>Hello, world!</div> } as unknown as AppProps)} />
+    <App
+      {...({ Component: () => <div>Hello, world!</div> } as unknown as AppProps)}
+    />
   );
 
   expect(screen.getByText('Hello, world!')).toBeInTheDocument();

@@ -62,7 +62,9 @@ const codeloader = ({
     ),
     (_, res, ctx) => {
       if (!return404 && !fixture) {
-        throw new TrialError('codeloader with return404==false must pass fixture name');
+        throw new TrialError(
+          'codeloader with return404==false must pass fixture name'
+        );
       }
       return return404
         ? res(ctx.status(404))
@@ -288,7 +290,8 @@ it('handles a github-pkg short-id with subdir', async () => {
 it('handles a github-pkg short-id with subdir and commitish', async () => {
   expect.hasAssertions();
 
-  const { shortId, headers, owner, repo, subdir, tagPrefix } = githubPkgEntryWithSubdir;
+  const { shortId, headers, owner, repo, subdir, tagPrefix } =
+    githubPkgEntryWithSubdir;
 
   await testApiHandler({
     handler,
@@ -359,7 +362,9 @@ it('handles a github-pkg short-id with bad subdir', async () => {
 
         const res = await fetch();
         expect(res.status).toBe(500);
-        expect(Object.keys(headers || {}).every((h) => !res.headers.has(h))).toBeTrue();
+        expect(
+          Object.keys(headers || {}).every((h) => !res.headers.has(h))
+        ).toBeTrue();
         expect(res.headers.has('content-disposition')).toBeFalse();
         expect(res.headers.get('content-type')).not.toBe('application/gzip');
       }

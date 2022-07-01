@@ -10,7 +10,9 @@ import type { Entry } from 'universe/backend/tar';
 const promisedPipeline = util.promisify(pipeline);
 
 const makeFixtureStream = (name: string) => {
-  return createReadStream(`${__dirname}/../fixtures/${name}.tar.gz`).pipe(createGunzip());
+  return createReadStream(`${__dirname}/../fixtures/${name}.tar.gz`).pipe(
+    createGunzip()
+  );
 };
 
 const tar = {

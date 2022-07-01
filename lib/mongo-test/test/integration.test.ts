@@ -71,11 +71,13 @@ describe('[run using non-deferred setupMemoryServerOverride]', () => {
       expect.objectContaining({ name: 'col', options: {} })
     );
 
-    await expect(db2.listCollections().toArray()).resolves.toIncludeAllPartialMembers([
-      { name: 'col-1', options: {} },
-      { name: 'col-2', options: { capped: true, size: 256 } },
-      { name: 'col-3', options: {} }
-    ]);
+    await expect(db2.listCollections().toArray()).resolves.toIncludeAllPartialMembers(
+      [
+        { name: 'col-1', options: {} },
+        { name: 'col-2', options: { capped: true, size: 256 } },
+        { name: 'col-3', options: {} }
+      ]
+    );
 
     await expect(
       db2.collection('col-3').listIndexes().toArray()

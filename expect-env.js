@@ -239,11 +239,14 @@ module.exports = {
             break;
           }
         } else {
-          throw new IllegalEnvironmentError(`unrecognized operation "${rule.operation}"`);
+          throw new IllegalEnvironmentError(
+            `unrecognized operation "${rule.operation}"`
+          );
         }
       }
 
-      if (!succeeded) isCli ? console.error(rule.errorMessage) : violations.push(rule);
+      if (!succeeded)
+        isCli ? console.error(rule.errorMessage) : violations.push(rule);
       verificationSucceeded = verificationSucceeded && succeeded;
     });
 

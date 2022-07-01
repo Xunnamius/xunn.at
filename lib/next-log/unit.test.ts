@@ -36,9 +36,9 @@ describe('::addToRequestLog', () => {
     await addToRequestLog({ req: req1, res: res1 });
     await addToRequestLog({ req: req2, res: res2 });
 
-    const reqlog = (await getDb({ name: 'root' })).collection<InternalRequestLogEntry>(
-      'request-log'
-    );
+    const reqlog = (
+      await getDb({ name: 'root' })
+    ).collection<InternalRequestLogEntry>('request-log');
 
     await expect(
       reqlog.findOne({ resStatusCode: 1111 as HttpStatusCode })
@@ -89,9 +89,9 @@ describe('::addToRequestLog', () => {
     await addToRequestLog({ req: req1, res: res1 });
     await addToRequestLog({ req: req2, res: res2 });
 
-    const reqlog = (await getDb({ name: 'root' })).collection<InternalRequestLogEntry>(
-      'request-log'
-    );
+    const reqlog = (
+      await getDb({ name: 'root' })
+    ).collection<InternalRequestLogEntry>('request-log');
 
     await expect(
       reqlog.findOne({ resStatusCode: 1111 as HttpStatusCode })

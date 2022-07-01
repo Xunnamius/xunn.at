@@ -47,7 +47,9 @@ useMockDateNow();
  * `database.collection` and returns their size.
  */
 async function countCollection(collections: string): Promise<number>;
-async function countCollection(collections: string[]): Promise<Record<string, number>>;
+async function countCollection(
+  collections: string[]
+): Promise<Record<string, number>>;
 async function countCollection(
   collections: string | string[]
 ): Promise<number | Record<string, number>> {

@@ -137,7 +137,9 @@ describe('::getNpmPackageVersion', () => {
     mockJsonFetch.mockImplementationOnce(() => toss(new DummyError()));
 
     await expect(getNpmPackageVersion('some-package')).resolves.toBeNull();
-    await expect(getNpmPackageVersion('some-package')).rejects.toThrowError(DummyError);
+    await expect(getNpmPackageVersion('some-package')).rejects.toThrowError(
+      DummyError
+    );
   });
 
   it('rejects if fetch fails', async () => {
@@ -150,7 +152,9 @@ describe('::getNpmPackageVersion', () => {
     mockJsonFetch.mockImplementationOnce(() => toss(new DummyError()));
 
     await expect(getNpmPackageVersion('some-package')).resolves.toBeNull();
-    await expect(getNpmPackageVersion('some-package')).rejects.toThrowError(DummyError);
+    await expect(getNpmPackageVersion('some-package')).rejects.toThrowError(
+      DummyError
+    );
   });
 });
 

@@ -61,7 +61,10 @@ const getRateLimits = async () => {
 };
 
 const getRateLimitUntils = async () => {
-  return (await getRateLimitsCollection()).find().project({ _id: 0, until: 1 }).toArray();
+  return (await getRateLimitsCollection())
+    .find()
+    .project({ _id: 0, until: 1 })
+    .toArray();
 };
 
 it('becomes verbose when no DEBUG environment variable and NODE_ENV is not test', async () => {
@@ -113,7 +116,9 @@ it('rate limits only those ips and auth headers that exceed limits', async () =>
   const now = ((n: number) => n - (n % 5000) - 1000)(mockDateNowMs);
 
   await (await getRateLimitsCollection()).deleteMany({});
-  await (await getRequestLogCollection()).updateMany({}, { $set: { createdAt: now } });
+  await (
+    await getRequestLogCollection()
+  ).updateMany({}, { $set: { createdAt: now } });
 
   await withMockedEnv(importBanHammer, {
     BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
@@ -128,7 +133,10 @@ it('rate limits only those ips and auth headers that exceed limits', async () =>
   await (await getRateLimitsCollection()).deleteMany({});
   await (
     await getRequestLogCollection()
-  ).updateMany({ header: `bearer ${BANNED_BEARER_TOKEN}` }, { $set: { ip: '9.8.7.6' } });
+  ).updateMany(
+    { header: `bearer ${BANNED_BEARER_TOKEN}` },
+    { $set: { ip: '9.8.7.6' } }
+  );
 
   await withMockedEnv(importBanHammer, {
     BAN_HAMMER_MAX_REQUESTS_PER_WINDOW: '10',
@@ -227,7 +235,10 @@ it('repeat offenders are punished to the maximum extent', async () => {
   await (await getRateLimitsCollection()).deleteMany({});
   await (
     await getRequestLogCollection()
-  ).updateMany({ header: `bearer ${BANNED_BEARER_TOKEN}` }, { $set: { ip: '9.8.7.6' } });
+  ).updateMany(
+    { header: `bearer ${BANNED_BEARER_TOKEN}` },
+    { $set: { ip: '9.8.7.6' } }
+  );
 
   const now = mockDateNowMs;
   let untils;

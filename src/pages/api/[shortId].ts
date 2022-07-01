@@ -25,7 +25,9 @@ export default async function (request: NextApiRequest, response: NextApiRespons
       const [shortId, commitish] = rawShortId.toString().split('@');
 
       // ? Cache all responses for 60 seconds by default
-      res.status(200).setHeader('cache-control', 's-maxage=60, stale-while-revalidate');
+      res
+        .status(200)
+        .setHeader('cache-control', 's-maxage=60, stale-while-revalidate');
 
       const { headers, ...shortData } = await resolveShortId({ shortId });
 

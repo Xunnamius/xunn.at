@@ -152,7 +152,9 @@ export function extractSubdirAndRepack({
         debug(`determining repackaged tar root from subdirectory: ${subdir}`);
 
         if (headers.type != 'directory') {
-          next(new ValidationError('invalid archive: first entry must be a directory'));
+          next(
+            new ValidationError('invalid archive: first entry must be a directory')
+          );
         } else {
           tarRoot = headers.name;
           targetRoot = `${tarRoot}${subdir}/`;
@@ -178,7 +180,9 @@ export function extractSubdirAndRepack({
           discardReadableStream(readableEntryStream, headers, next);
         }
       } else {
-        next(new ValidationError('invalid archive: multi-directory root not allowed'));
+        next(
+          new ValidationError('invalid archive: multi-directory root not allowed')
+        );
       }
     }
   });

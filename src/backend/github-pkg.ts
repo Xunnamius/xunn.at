@@ -48,7 +48,10 @@ export async function githubPackageDownloadPipeline({
 }) {
   let codeloadRes: Response;
   let actualCommit: string;
-  const errorReport = codeloadUrl(`${owner}/${repo}`, `[${potentialCommits.join(', ')}]`);
+  const errorReport = codeloadUrl(
+    `${owner}/${repo}`,
+    `[${potentialCommits.join(', ')}]`
+  );
 
   do {
     const url = codeloadUrl(

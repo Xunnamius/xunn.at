@@ -196,9 +196,9 @@ describe('::githubPackageDownloadPipeline', () => {
       test: async ({ fetch }) => {
         const res = await fetch();
         expect(res.status).toBe(200);
-        await expect(getEntries(res.body.pipe(createGunzip()))).resolves.toStrictEqual(
-          expectedEntries.pkg1
-        );
+        await expect(
+          getEntries(res.body.pipe(createGunzip()))
+        ).resolves.toStrictEqual(expectedEntries.pkg1);
       }
     });
 
@@ -232,9 +232,9 @@ describe('::githubPackageDownloadPipeline', () => {
       test: async ({ fetch }) => {
         const res = await fetch();
         expect(res.status).toBe(200);
-        await expect(getEntries(res.body.pipe(createGunzip()))).resolves.toStrictEqual(
-          expectedEntries.pkg2
-        );
+        await expect(
+          getEntries(res.body.pipe(createGunzip()))
+        ).resolves.toStrictEqual(expectedEntries.pkg2);
       }
     });
   });

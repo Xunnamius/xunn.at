@@ -77,7 +77,9 @@ const invoked = async () => {
               limit: limitThreshold,
               orderBy = '_id',
               deleteFn = undefined
-            } = typeof colLimitsObj == 'number' ? { limit: colLimitsObj } : colLimitsObj;
+            } = typeof colLimitsObj == 'number'
+              ? { limit: colLimitsObj }
+              : colLimitsObj;
 
             const subLog = log.extend(name);
             const collection = db.collection(collectionName);

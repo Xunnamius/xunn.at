@@ -13,7 +13,11 @@ const updateChangelog =
 
 debug(`will update changelog: ${updateChangelog ? 'yes' : 'no'}`);
 
-const { changelogTitle, parserOpts, writerOpts } = require('./conventional.config.js');
+const {
+  changelogTitle,
+  parserOpts,
+  writerOpts
+} = require('./conventional.config.js');
 
 module.exports = {
   branches: [

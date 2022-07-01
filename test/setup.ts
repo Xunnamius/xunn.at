@@ -18,7 +18,12 @@ import '@testing-library/jest-dom/extend-expect';
 
 import type { Debugger } from 'multiverse/debug-extended';
 import type { SimpleGit } from 'simple-git';
-import type { NextApiHandler, NextApiRequest, NextApiResponse, PageConfig } from 'next';
+import type {
+  NextApiHandler,
+  NextApiRequest,
+  NextApiResponse,
+  PageConfig
+} from 'next';
 import type { Promisable } from 'type-fest';
 
 const { writeFile, access: accessFile } = fs;
@@ -170,7 +175,9 @@ export function itemFactory<T>(testItems: T[]) {
     () => {
       const next = nextItem['$iter'].next() as IteratorResult<T, unknown>;
       if (next.done) {
-        throw new FactoryExhaustionError('item factory iterator exhausted unexpectedly');
+        throw new FactoryExhaustionError(
+          'item factory iterator exhausted unexpectedly'
+        );
       } else return next.value;
     },
     {
@@ -204,8 +211,10 @@ export function itemFactory<T>(testItems: T[]) {
   Object.defineProperty(nextItem, 'length', {
     configurable: false,
     enumerable: false,
-    set: () => toss(new SyntaxError('did you mean to use ::count instead of ::length?')),
-    get: () => toss(new SyntaxError('did you mean to use ::count instead of ::length?'))
+    set: () =>
+      toss(new SyntaxError('did you mean to use ::count instead of ::length?')),
+    get: () =>
+      toss(new SyntaxError('did you mean to use ::count instead of ::length?'))
   });
 
   return nextItem;
@@ -275,7 +284,9 @@ export async function withMockedEnv(
 ) {
   const prevEnv = { ...process.env };
   const clearEnv = () =>
-    Object.getOwnPropertyNames(process.env).forEach((prop) => delete process.env[prop]);
+    Object.getOwnPropertyNames(process.env).forEach(
+      (prop) => delete process.env[prop]
+    );
 
   // ? Take care to preserve the original env object reference in memory
   if (options.replace) clearEnv();
@@ -561,7 +572,8 @@ export async function withMockedOutput(
   !options?.passthrough?.errorSpy && errorSpy.mockImplementation(() => undefined);
   !options?.passthrough?.infoSpy && infoSpy.mockImplementation(() => undefined);
   !options?.passthrough?.stdoutSpy && stdoutSpy.mockImplementation(() => true);
-  options?.passthrough?.stdErrSpy === false && stdErrSpy.mockImplementation(() => true);
+  options?.passthrough?.stdErrSpy === false &&
+    stdErrSpy.mockImplementation(() => true);
 
   try {
     await fn({
@@ -757,7 +769,9 @@ export interface GitProvider {
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
 // eslint-disable-next-line @typescript-eslint/ban-types
-export type FixtureAction<Context = FixtureContext> = (ctx: Context) => Promise<unknown>;
+export type FixtureAction<Context = FixtureContext> = (
+  ctx: Context
+) => Promise<unknown>;
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
 export type ReturnsString<Context = FixtureContext> = (
@@ -859,7 +873,10 @@ export function webpackTestFixture(): MockFixture {
 
       await Promise.all([
         writeFile(`${ctx.root}/${indexPath}`, ctx.fileContents[indexPath]),
-        writeFile(`${ctx.root}/webpack.config.js`, ctx.fileContents['webpack.config.js'])
+        writeFile(
+          `${ctx.root}/webpack.config.js`,
+          ctx.fileContents['webpack.config.js']
+        )
       ]);
 
       ctx.treeOutput = await getTreeOutput(ctx);
@@ -981,7 +998,8 @@ export function dummyFilesFixture(): MockFixture {
         Object.entries(ctx.fileContents).map(async ([path, contents]) => {
           const fullPath = `${ctx.root}/${path}`;
           await accessFile(fullPath).then(
-            () => debug(`skipped creating dummy file: file already exists at ${path}`),
+            () =>
+              debug(`skipped creating dummy file: file already exists at ${path}`),
             async () => {
               debug(`creating dummy file "${path}" with contents:`);
               debug.extend('contents >')(contents);
@@ -1022,7 +1040,9 @@ export async function withMockedFixture<
   options
 }: {
   fn: FixtureAction<
-    FixtureContext<FixtureOptions & Partial<Record<string, unknown> & CustomOptions>> &
+    FixtureContext<
+      FixtureOptions & Partial<Record<string, unknown> & CustomOptions>
+    > &
       CustomContext
   >;
   testIdentifier: string;
@@ -1074,7 +1094,8 @@ export async function withMockedFixture<
   const setupDebugger = async (fixture: CustomizedMockFixture, error = false) => {
     const toString = async (
       p: CustomizedMockFixture['name'] | CustomizedMockFixture['description']
-    ) => (typeof p == 'function' ? p(ctx) : typeof p == 'string' ? p : ':impossible:');
+    ) =>
+      typeof p == 'function' ? p(ctx) : typeof p == 'string' ? p : ':impossible:';
     const name = await toString(fixture.name.toString());
     const desc = await toString(fixture.description);
     const dbg = debug.extend(error ? `${name}:<error>` : name);
@@ -1133,8 +1154,11 @@ export function mockFixtureFactory<
 >(testIdentifier: string, options?: Partial<FixtureOptions & CustomOptions>) {
   return (
     fn: FixtureAction<
-      FixtureContext<FixtureOptions & Partial<Record<string, unknown> & CustomOptions>> &
+      FixtureContext<
+        FixtureOptions & Partial<Record<string, unknown> & CustomOptions>
+      > &
         CustomContext
     >
-  ) => withMockedFixture<CustomOptions, CustomContext>({ fn, testIdentifier, options });
+  ) =>
+    withMockedFixture<CustomOptions, CustomContext>({ fn, testIdentifier, options });
 }

@@ -30,7 +30,9 @@ it('is restrictive by default', async () => {
   expect.hasAssertions();
 
   await testApiHandler({
-    handler: wrapHandler(withMiddleware<Options>(noopHandler, { use: [checkMethod] })),
+    handler: wrapHandler(
+      withMiddleware<Options>(noopHandler, { use: [checkMethod] })
+    ),
     test: async ({ fetch }) => {
       expect((await fetch({ method: 'GET' })).status).toBe(405);
       expect((await fetch({ method: 'POST' })).status).toBe(405);
@@ -45,7 +47,9 @@ it('sends 405 when request.method is undefined', async () => {
 
   await testApiHandler({
     requestPatcher: (req) => (req.method = undefined),
-    handler: wrapHandler(withMiddleware<Options>(noopHandler, { use: [checkMethod] })),
+    handler: wrapHandler(
+      withMiddleware<Options>(noopHandler, { use: [checkMethod] })
+    ),
     test: async ({ fetch }) => {
       expect((await fetch()).status).toBe(405);
     }
