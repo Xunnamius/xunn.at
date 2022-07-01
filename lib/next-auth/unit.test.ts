@@ -861,7 +861,7 @@ describe('::getOwnersEntries', () => {
       token: { bearer: jest.requireActual('node:crypto').randomUUID() }
     };
 
-    await expect(getOwnersEntries({ owners })).resolves.toStrictEqual([
+    await expect(getOwnersEntries({ owners })).resolves.toIncludeSameMembers([
       toPublicAuthEntry(dummyRootData.auth[0]),
       toPublicAuthEntry(dummyRootData.auth[1])
     ]);
@@ -870,7 +870,7 @@ describe('::getOwnersEntries', () => {
       .collection<InternalAuthEntry>('auth')
       .insertMany([newAuthEntry1, newAuthEntry2]);
 
-    await expect(getOwnersEntries({ owners })).resolves.toStrictEqual([
+    await expect(getOwnersEntries({ owners })).resolves.toIncludeSameMembers([
       toPublicAuthEntry(dummyRootData.auth[0]),
       toPublicAuthEntry(dummyRootData.auth[1]),
       toPublicAuthEntry(newAuthEntry1),
@@ -879,7 +879,7 @@ describe('::getOwnersEntries', () => {
 
     await expect(
       getOwnersEntries({ owners: [...owners, undefined] })
-    ).resolves.toStrictEqual([
+    ).resolves.toIncludeSameMembers([
       toPublicAuthEntry(dummyRootData.auth[0]),
       toPublicAuthEntry(dummyRootData.auth[1]),
       toPublicAuthEntry(newAuthEntry1),
