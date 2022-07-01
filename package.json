@@ -13,8 +13,8 @@
   "author": "Xunnamius",
   "type": "commonjs",
   "scripts": {
-    "__test-repeat-all": "echo 'Repeating test suite [initializing]...'; (i=0; while [ \"$((( i += 1 ) <= 100 ))\" -ne 0 ]; do sleep 0.1 && echo \"\\r\\033[1A\\033[0KRepeating test suite [run $i/100]...\" && JEST_SILENT_REPORTER_SHOW_WARNINGS=true BABEL_ENV=test npx jest --reporters=jest-silent-reporter || exit; done) && echo \"All tests passed! Congrats!\"",
-    "__test-repeat-unit": "echo 'Repeating test suite [initializing]...'; (i=0; while [ \"$((( i += 1 ) <= 100 ))\" -ne 0 ]; do sleep 0.1 && echo \"\\r\\033[1A\\033[0KRepeating test suite [run $i/100]...\" && JEST_SILENT_REPORTER_SHOW_WARNINGS=true BABEL_ENV=test npx jest --reporters=jest-silent-reporter --testPathIgnorePatterns '/(integration|e2e).*?\\.test\\.tsx?' '/dist/' || exit; done) && echo \"All tests passed! Congrats!\"",
+    "__test-repeat-all": "echo 'Repeating test suite [initializing]...'; (i=0; while [ \"$((( i += 1 ) <= 100 ))\" -ne 0 ]; do sleep 0.1 && echo \"\\r\\033[1A\\033[0KRepeating test suite [run $i/100]...\" && JEST_SILENT_REPORTER_SHOW_WARNINGS=true NODE_ENV=test npx jest --reporters=jest-silent-reporter || exit; done) && echo \"All tests passed! Congrats!\"",
+    "__test-repeat-unit": "echo 'Repeating test suite [initializing]...'; (i=0; while [ \"$((( i += 1 ) <= 100 ))\" -ne 0 ]; do sleep 0.1 && echo \"\\r\\033[1A\\033[0KRepeating test suite [run $i/100]...\" && JEST_SILENT_REPORTER_SHOW_WARNINGS=true NODE_ENV=test npx jest --reporters=jest-silent-reporter --testPathIgnorePatterns '/(integration|e2e).*?\\.test\\.tsx?' '/dist/' || exit; done) && echo \"All tests passed! Congrats!\"",
     "build": "npm run build-dist --",
     "build-changelog": "conventional-changelog --outfile CHANGELOG.md --config conventional.config.js --release-count 0 --skip-unstable && (if [ \"$CHANGELOG_SKIP_TITLE\" != 'true' ]; then { node -e 'console.log(require(\"./conventional.config.js\").changelogTitle)'; cat CHANGELOG.md; } > CHANGELOG.md.ignore && mv CHANGELOG.md.ignore CHANGELOG.md; fi) && remark -o --use reference-links --use gfm --use frontmatter CHANGELOG.md && prettier --write CHANGELOG.md",
     "build-dist": "if [ -r ./next.config.js ]; then next build; else NODE_ENV=production tsc --project tsconfig.types.json && NODE_ENV=production webpack --config-name lib && if [ -r ./src/cli.ts ]; then NODE_ENV=production webpack --config-name cli && chmod +x ./dist/cli.js; fi && NODE_ENV=esm babel src --extensions .ts --out-dir dist/esm --out-file-extension .mjs; fi",
@@ -29,15 +29,15 @@
     "prepare": "if [ -z \"$CI\" ] && ([ -z \"$NODE_ENV\" ] || [ \"$NODE_ENV\" = \"development\" ]); then npx --no husky install; else echo 'skipped installing husky git hooks'; fi",
     "start": "next start",
     "test": "npm run test-unit --",
-    "test-all": "BABEL_ENV=test jest $JEST_CLI --coverage",
-    "test-e2e": "BABEL_ENV=test jest $JEST_CLI '/e2e.*?\\.test\\.tsx?' --testPathIgnorePatterns '/dist/'",
-    "test-integration": "BABEL_ENV=test jest $JEST_CLI '/integration.*?\\.test\\.tsx?' --testPathIgnorePatterns '/dist/'",
-    "test-integration-client": "BABEL_ENV=test jest $JEST_CLI '/integration-client.*?\\.test\\.tsx?' --testPathIgnorePatterns '/dist/'",
-    "test-integration-compile": "BABEL_ENV=test jest $JEST_CLI '/integration-compile.*?\\.test\\.tsx?' --testPathIgnorePatterns '/dist/'",
-    "test-integration-node": "BABEL_ENV=test jest $JEST_CLI '/integration-node.*?\\.test\\.tsx?' --testPathIgnorePatterns '/dist/'",
+    "test-all": "NODE_ENV=test jest $JEST_CLI --coverage",
+    "test-e2e": "NODE_ENV=test jest $JEST_CLI '/e2e.*?\\.test\\.tsx?' --testPathIgnorePatterns '/dist/'",
+    "test-integration": "NODE_ENV=test jest $JEST_CLI '/integration.*?\\.test\\.tsx?' --testPathIgnorePatterns '/dist/'",
+    "test-integration-client": "NODE_ENV=test jest $JEST_CLI '/integration-client.*?\\.test\\.tsx?' --testPathIgnorePatterns '/dist/'",
+    "test-integration-compile": "NODE_ENV=test jest $JEST_CLI '/integration-compile.*?\\.test\\.tsx?' --testPathIgnorePatterns '/dist/'",
+    "test-integration-node": "NODE_ENV=test jest $JEST_CLI '/integration-node.*?\\.test\\.tsx?' --testPathIgnorePatterns '/dist/'",
     "test-repeat-all": "npm run __test-repeat-all --silent",
     "test-repeat-unit": "npm run __test-repeat-unit --silent",
-    "test-unit": "BABEL_ENV=test jest $JEST_CLI --coverage --testPathIgnorePatterns '/(integration|e2e).*?\\.test\\.tsx?' '/dist/'"
+    "test-unit": "NODE_ENV=test jest $JEST_CLI --coverage --testPathIgnorePatterns '/(integration|e2e).*?\\.test\\.tsx?' '/dist/'"
   },
   "config": {
     "mongodbMemoryServer": {
