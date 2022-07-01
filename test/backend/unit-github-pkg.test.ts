@@ -9,7 +9,6 @@ import { githubPackageDownloadPipeline } from 'universe/backend/github-pkg';
 import { getEntries } from 'universe/backend/tar';
 
 import { expectedEntries } from 'testverse/setup';
-import { Readable } from 'node:stream';
 
 const server = setupServer();
 
