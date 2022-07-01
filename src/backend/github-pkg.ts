@@ -1,12 +1,20 @@
-import * as util from 'util';
+import { createGzip, createGunzip } from 'node:zlib';
+import * as util from 'node:util';
+import { pipeline } from 'node:stream';
+
 import fetch, { FetchError } from 'node-fetch';
-import { pipeline } from 'stream';
-import { GuruMeditationError, HttpError } from 'universe/error';
-import { extractSubdirAndRepack } from 'universe/backend/tar';
-import { createGzip, createGunzip } from 'zlib';
-import { AppError, NotFoundError } from 'named-app-errors';
 import { toss } from 'toss-expression';
 import { name as pkgName } from 'package';
+
+import { extractSubdirAndRepack } from 'universe/backend/tar';
+
+import {
+  AppError,
+  NotFoundError,
+  GuruMeditationError,
+  HttpError
+} from 'universe/error';
+
 import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiResponse } from 'next';
@@ -46,30 +54,30 @@ export async function githubPackageDownloadPipeline({
     subdir: string | null;
   };
 }) {
-  let codeloadRes: Response;
-  let actualCommit: string;
-  const errorReport = codeloadUrl(
-    `${owner}/${repo}`,
-    `[${potentialCommits.join(', ')}]`
-  );
-
-  do {
-    const url = codeloadUrl(
+  try {
+    let codeloadRes: Response;
+    let actualCommit: string;
+    const errorReport = codeloadUrl(
       `${owner}/${repo}`,
-      (actualCommit =
-        potentialCommits.shift() ||
-        toss(new GuruMeditationError('walked off potential commits array')))
+      `[${potentialCommits.join(', ')}]`
     );
 
-    debug(`attempting codeload from ${url}`);
-    // eslint-disable-next-line no-await-in-loop
-    codeloadRes = await fetch(url);
-  } while (potentialCommits.length && !codeloadRes.ok);
+    do {
+      const url = codeloadUrl(
+        `${owner}/${repo}`,
+        (actualCommit =
+          potentialCommits.shift() ||
+          toss(new GuruMeditationError('walked off potential commits array')))
+      );
 
-  if (!codeloadRes.ok) {
-    throw new NotFoundError(`could not find package at url(s): ${errorReport}`);
-  } else {
-    try {
+      debug(`attempting codeload from ${url}`);
+      // eslint-disable-next-line no-await-in-loop
+      codeloadRes = await fetch(url);
+    } while (potentialCommits.length && !codeloadRes.ok);
+
+    if (!codeloadRes.ok) {
+      throw new NotFoundError(`could not find package at url(s): ${errorReport}`);
+    } else {
       if (subdir) {
         const url = treeExistsUrl(`${owner}/${repo}`, actualCommit, subdir);
         debug(`checking for subdir existence at ${url}`);
@@ -91,10 +99,10 @@ export async function githubPackageDownloadPipeline({
           : []),
         res
       ]);
-    } catch (e) {
-      if (e instanceof FetchError) {
-        throw new HttpError(e.message);
-      } else throw e;
     }
+  } catch (e) {
+    if (e instanceof FetchError) {
+      throw new HttpError(e.message);
+    } else throw e;
   }
 }
