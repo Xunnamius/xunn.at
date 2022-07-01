@@ -1,9 +1,10 @@
+import { name as pkgName } from 'package';
+
 import { withMiddleware } from 'universe/backend/middleware';
 import { githubPackageDownloadPipeline } from 'universe/backend/github-pkg';
 import { resolveShortId, sendBadgeSvgResponse } from 'universe/backend';
-import { AppError, NotImplementedError } from 'universe/error';
-import { NotFoundError } from 'named-app-errors';
-import { name as pkgName } from 'package';
+import { AppError, NotImplementedError, NotFoundError } from 'universe/error';
+
 import { debugFactory } from 'multiverse/debug-extended';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -22,7 +23,7 @@ export default async function (request: NextApiRequest, response: NextApiRespons
   return withMiddleware(
     async (req, res) => {
       const { shortId: rawShortId } = req.query;
-      const [shortId, commitish] = rawShortId.toString().split('@');
+      const [shortId, commitish] = rawShortId?.toString().split('@') || [];
 
       // ? Cache all responses for 60 seconds by default
       res
