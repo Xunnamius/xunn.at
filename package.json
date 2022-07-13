@@ -58,7 +58,7 @@
     "@types/cors": "^2.8.12",
     "@types/debug": "^4.1.7",
     "@types/folder-hash": "^4.0.1",
-    "@types/node": "^18.0.0",
+    "@types/node": "^18.0.4",
     "@types/react": "^18.0.14",
     "@types/request-ip": "^0.0.37",
     "@xunnamius/next-types": "^1.0.9",
