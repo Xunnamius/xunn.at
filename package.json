@@ -158,7 +158,7 @@
     "remark-reference-links": "^6.0.1",
     "remark-validate-links": "^12.0.0",
     "semantic-release": "https://xunn.at/semantic-release-atam",
-    "simple-git": "^3.10.0",
+    "simple-git": "^3.16.0",
     "sort-package-json": "^1.57.0",
     "spellchecker": "^3.7.1",
     "test-listen": "^1.1.0",
