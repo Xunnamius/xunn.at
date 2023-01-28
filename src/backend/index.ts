@@ -88,20 +88,23 @@ export async function sendBadgeSvgResponse({
   label,
   message,
   color,
-  labelColor
+  labelColor,
+  style
 }: {
   res: NextApiResponse;
   label?: string;
   message?: string;
   color?: string;
   labelColor?: string;
+  style?: string;
 }) {
   const svgRes = await fetch(
     'https://img.shields.io/static/v1?' +
       (label ? `&label=${label}` : '') +
       (message ? `&message=${message}` : '') +
       (color ? `&color=${color}` : '') +
-      (labelColor ? `&labelColor=${labelColor}` : '')
+      (labelColor ? `&labelColor=${labelColor}` : '') +
+      (style ? `&style=${style}` : '')
   );
 
   if (!svgRes.ok) {

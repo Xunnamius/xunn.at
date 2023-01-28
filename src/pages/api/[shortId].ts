@@ -70,8 +70,8 @@ export default async function (request: NextApiRequest, response: NextApiRespons
       } else if (shortData.type == 'uri') {
         res.redirect(308, shortData.realLink);
       } else if (shortData.type == 'badge') {
-        const { color, label, labelColor, message } = shortData;
-        await sendBadgeSvgResponse({ res, color, label, labelColor, message });
+        const { color, label, labelColor, message, style } = shortData;
+        await sendBadgeSvgResponse({ res, color, label, labelColor, message, style });
       } else if (shortData.type == 'file') {
         // TODO: should redirect to a frontend UI at https://xunn.at/view/XXXX
         throw new NotImplementedError();

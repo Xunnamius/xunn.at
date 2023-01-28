@@ -72,6 +72,7 @@ export type InternalLinkMapEntryBadge = {
   message: string;
   color: string;
   labelColor: string;
+  style: string;
   headers?: Record<string, string>;
 };
 

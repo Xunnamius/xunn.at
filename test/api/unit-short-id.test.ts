@@ -138,7 +138,8 @@ it('badge links call pipeline with expected parameters', async () => {
       color: 'color',
       message: 'message',
       label: 'label',
-      labelColor: 'labelColor'
+      labelColor: 'labelColor',
+      style: 'style'
     })
   );
 
@@ -153,12 +154,11 @@ it('badge links call pipeline with expected parameters', async () => {
         color: 'color',
         message: 'message',
         label: 'label',
-        labelColor: 'labelColor'
+        labelColor: 'labelColor',
+        style: 'style'
       });
     }
   });
-
-  mockSendBadgeSvgResponse;
 });
 
 it('file links return a not-implemented error', async () => {

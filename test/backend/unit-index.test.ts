@@ -175,7 +175,8 @@ describe('::sendBadgeSvgResponse', () => {
             label: 'label',
             message: 'message',
             color: 'color',
-            labelColor: 'labelColor'
+            labelColor: 'labelColor',
+            style: 'style'
           }).finally(() => res.end())
         ).resolves.toBeUndefined();
       },
@@ -225,7 +226,8 @@ describe('::sendBadgeSvgResponse', () => {
             label: 'label',
             message: 'message',
             color: 'color',
-            labelColor: 'labelColor'
+            labelColor: 'labelColor',
+            style: 'style'
           }).finally(() => res.end())
         ).rejects.toThrow('555');
       },

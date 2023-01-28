@@ -67,7 +67,8 @@ export const dummyAppData: DummyAppData = {
       label: 'label-1',
       labelColor: 'black',
       message: 'message-1',
-      headers: { 'header-4': 'header-4-value' }
+      headers: { 'header-4': 'header-4-value' },
+      style: 'flat'
     },
     {
       _id: new ObjectId(),
@@ -113,7 +114,8 @@ export const dummyAppData: DummyAppData = {
       color: 'green',
       label: 'label-2',
       labelColor: 'white',
-      message: 'message-2'
+      message: 'message-2',
+      style: 'flat-square'
     }
   ]
 };
