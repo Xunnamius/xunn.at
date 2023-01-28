@@ -13,7 +13,7 @@ import { TrialError } from 'universe/error';
 // * Follow the steps (below) to tailor these tests to this specific project 😉
 
 // ? Ensure the isolated external picks up the memory server override
-jest.mock('multiverse/mongo-schema', () => {
+jest.mock('multiverse/mongo-schema', (): typeof import('multiverse/mongo-schema') => {
   return jest.requireActual('multiverse/mongo-schema');
 });
 

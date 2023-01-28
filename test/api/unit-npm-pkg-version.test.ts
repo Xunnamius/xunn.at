@@ -12,8 +12,10 @@ import Endpoint, {
 jest.mock('universe/backend/github-pkg');
 jest.mock('universe/backend');
 
+type UniverseBackendMiddleware = typeof import('universe/backend/middleware');
+
 // ? Unlike short-id which defers middleware invocation, we must mock this early
-jest.mock('universe/backend/middleware', () => {
+jest.mock('universe/backend/middleware', (): UniverseBackendMiddleware => {
   const { middlewareFactory } = require('multiverse/next-api-glue');
   const { default: handleError } = require('multiverse/next-adhesive/handle-error');
 
@@ -21,7 +23,7 @@ jest.mock('universe/backend/middleware', () => {
     withMiddleware: jest
       .fn()
       .mockImplementation(middlewareFactory({ use: [], useOnError: [handleError] }))
-  };
+  } as unknown as UniverseBackendMiddleware;
 });
 
 const handler = Endpoint as typeof Endpoint & { config?: typeof Config };

@@ -7,7 +7,10 @@ import type { TestCustomizations } from 'multiverse/mongo-test';
 import { getInitialInternalMemoryState } from 'multiverse/mongo-schema';
 
 jest.mock('mongodb');
-jest.mock('configverse/get-schema-config', () => mockedMongoCustomizations);
+jest.mock(
+  'configverse/get-schema-config',
+  (): TestCustomizations => mockedMongoCustomizations
+);
 
 const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });
 

@@ -44,9 +44,11 @@ it('handles cors package errors gracefully', async () => {
 
   jest.doMock(
     'cors',
-    () => () => (_req: unknown, _res: unknown, cb: (e: Error) => void) => {
-      return cb(new Error('fake error'));
-    }
+    (): typeof import('cors') =>
+      () =>
+      (_req: unknown, _res: unknown, cb: (e: Error) => void) => {
+        return cb(new Error('fake error'));
+      }
   );
 
   await testApiHandler({

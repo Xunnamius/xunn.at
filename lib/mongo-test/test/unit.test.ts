@@ -11,7 +11,7 @@ import { toss } from 'toss-expression';
 jest.mock('mongodb');
 jest.mock('mongodb-memory-server');
 
-jest.mock('multiverse/mongo-schema', () => {
+jest.mock('multiverse/mongo-schema', (): MongoSchemaPackage => {
   if (mockedMongoSchema) {
     return mockedMongoSchema;
   } else {
@@ -19,8 +19,15 @@ jest.mock('multiverse/mongo-schema', () => {
   }
 });
 
-jest.mock('configverse/get-schema-config', () => mockedMongoCustomizations);
-jest.mock('configverse/get-dummy-data', () => mockedMongoCustomizations);
+jest.mock(
+  'configverse/get-schema-config',
+  (): TestCustomizations => mockedMongoCustomizations
+);
+
+jest.mock(
+  'configverse/get-dummy-data',
+  (): TestCustomizations => mockedMongoCustomizations
+);
 
 const now = Date.now();
 const withMockedEnv = mockEnvFactory({ NODE_ENV: 'test' });

@@ -15,7 +15,7 @@ import type { InternalRequestLogEntry } from 'multiverse/next-log';
 import { ObjectId } from 'mongodb';
 
 // ? Ensure the isolated external picks up the memory server override
-jest.mock('multiverse/mongo-schema', () => {
+jest.mock('multiverse/mongo-schema', (): typeof import('multiverse/mongo-schema') => {
   return jest.requireActual('multiverse/mongo-schema');
 });
 
