@@ -1,13 +1,15 @@
-import { withMiddleware } from 'multiverse/next-api-glue';
 import { testApiHandler } from 'next-test-api-route-handler';
+import { toss } from 'toss-expression';
+
+import handleError, { Options } from 'multiverse/next-adhesive/handle-error';
+import { withMiddleware } from 'multiverse/next-api-glue';
+
 import {
   itemFactory,
   noopHandler,
   withMockedOutput,
   wrapHandler
 } from 'testverse/setup';
-import { toss } from 'toss-expression';
-import handleError, { Options } from 'multiverse/next-adhesive/handle-error';
 
 import {
   ValidationError,
@@ -61,11 +63,11 @@ it('sends correct HTTP error codes when certain errors occur', async () => {
     ['strange error', 500] // ? This too
   ]);
 
-  await Promise.all(
-    factory.items.map(async (item) => {
-      const [expectedError, expectedStatus] = item;
+  await withMockedOutput(async () => {
+    await Promise.all(
+      factory.items.map(async (item) => {
+        const [expectedError, expectedStatus] = item;
 
-      await withMockedOutput(async () => {
         await testApiHandler({
           handler: wrapHandler(
             withMiddleware(async () => toss(expectedError), {
@@ -76,9 +78,9 @@ it('sends correct HTTP error codes when certain errors occur', async () => {
           test: async ({ fetch }) =>
             fetch().then((res) => expect(res.status).toStrictEqual(expectedStatus))
         });
-      });
-    })
-  );
+      })
+    );
+  });
 });
 
 it('throws without calling res.end if response is no longer writable', async () => {
@@ -112,7 +114,6 @@ it('supports pluggable error handlers', async () => {
   expect.hasAssertions();
 
   const MyError = class extends DummyError {};
-
   const MyUnusedError = class extends Error {};
 
   await testApiHandler({
