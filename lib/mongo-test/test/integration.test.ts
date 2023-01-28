@@ -3,8 +3,15 @@ import { getClient } from 'multiverse/mongo-schema';
 
 import type { TestCustomizations } from 'multiverse/mongo-test';
 
-jest.mock('configverse/get-schema-config', () => mockedMongoCustomizations);
-jest.mock('configverse/get-dummy-data', () => mockedMongoCustomizations);
+jest.mock(
+  'configverse/get-schema-config',
+  (): TestCustomizations => mockedMongoCustomizations
+);
+
+jest.mock(
+  'configverse/get-dummy-data',
+  (): TestCustomizations => mockedMongoCustomizations
+);
 
 const now = Date.now();
 
@@ -83,7 +90,7 @@ describe('[run using non-deferred setupMemoryServerOverride]', () => {
       db2.collection('col-3').listIndexes().toArray()
     ).resolves.toIncludeAllPartialMembers([
       { key: { _id: 1 } },
-      { key: { key: 1 }, unique: true },
+      { key: { key: -1 }, unique: true },
       { key: { item: 1 } }
     ]);
 
