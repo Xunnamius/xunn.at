@@ -49,7 +49,8 @@ it('sends badge with compat version', async () => {
         res: expect.anything(),
         label: 'compatible with',
         message: 'next@%E2%89%A4x.y.z',
-        color: 'blue'
+        color: 'blue',
+        style: 'flat-square'
       });
     }
   });
@@ -70,7 +71,8 @@ it('sends error badge if getCompatVersion fails', async () => {
           res: expect.anything(),
           label: 'compatible with',
           message: 'error',
-          color: 'red'
+          color: 'red',
+          style: 'flat-square'
         });
       }
     });

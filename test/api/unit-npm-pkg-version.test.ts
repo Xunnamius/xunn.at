@@ -53,7 +53,8 @@ it('sends badge with compat version', async () => {
         res: expect.anything(),
         label: 'npm install',
         message: 'super-cool-pkg@a.b.c',
-        color: 'blue'
+        color: 'blue',
+        style: 'flat-square'
       });
     }
   });
@@ -68,7 +69,8 @@ it('sends badge with compat version', async () => {
         res: expect.anything(),
         label: 'npm install',
         message: '@super/cool-pkg@a.b.c',
-        color: 'blue'
+        color: 'blue',
+        style: 'flat-square'
       });
     }
   });
@@ -91,7 +93,8 @@ it('sends error badge if getCompatVersion fails', async () => {
           res: expect.anything(),
           label: 'npm install',
           message: 'error',
-          color: 'red'
+          color: 'red',
+          style: 'flat-square'
         });
       }
     });
@@ -107,7 +110,8 @@ it('sends error badge if getCompatVersion fails', async () => {
         res: expect.anything(),
         label: 'npm install',
         message: 'error',
-        color: 'red'
+        color: 'red',
+        style: 'flat-square'
       });
     }
   });

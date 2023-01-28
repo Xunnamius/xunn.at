@@ -27,7 +27,8 @@ export default withMiddleware(
       res,
       label: 'npm install',
       message: !version ? 'error' : `${pkg}@${version}`,
-      color: !version ? 'red' : 'blue'
+      color: !version ? 'red' : 'blue',
+      style: 'flat-square'
     });
   },
   { options: { allowedMethods: ['GET'] } }

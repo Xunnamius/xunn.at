@@ -23,7 +23,8 @@ export default withMiddleware(
       res,
       label: 'compatible with',
       message: !version ? 'error' : `next@%E2%89%A4${version}`,
-      color: !version ? 'red' : 'blue'
+      color: !version ? 'red' : 'blue',
+      style: 'flat-square'
     });
   },
   { options: { allowedMethods: ['GET'] } }
