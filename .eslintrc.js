@@ -100,7 +100,9 @@ module.exports = {
         'jest/require-hook': 'off',
         'jest/no-alias-methods': 'off',
         'jest/no-conditional-in-test': 'off',
-        'jest/no-conditional-expect': 'off'
+        'jest/no-conditional-expect': 'off',
+        'jest/max-expects': 'off',
+        'jest/prefer-mock-promise-shorthand': 'off'
       }
     }
   ],
