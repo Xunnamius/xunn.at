@@ -1,12 +1,13 @@
 import { asMockedFunction } from '@xunnamius/jest-types';
 import unfetch from 'unfetch';
+import { JsonObject } from 'type-fest';
+import { toss } from 'toss-expression';
+
 import {
   globalJsonRequestOptions,
   jsonFetch,
   swrFetch
 } from 'multiverse/json-unfetch';
-import { JsonObject } from 'type-fest';
-import { toss } from 'toss-expression';
 
 import type { Response } from 'multiverse/json-unfetch';
 
@@ -15,7 +16,7 @@ jest.mock('unfetch');
 const mockFetch = asMockedFunction(unfetch);
 
 const mockedFetchResult = {} as unknown as Omit<Response, 'headers'> & {
-  headers: Response['headers'] & {
+  headers: Omit<Response['headers'], 'set'> & {
     set: (k: string, v: string) => void;
   };
 };
@@ -23,12 +24,12 @@ const mockedFetchResult = {} as unknown as Omit<Response, 'headers'> & {
 let mockedFetchResultJson = {} as JsonObject | Error | string;
 
 beforeEach(() => {
-  mockFetch.mockImplementation(async () => mockedFetchResult);
+  mockFetch.mockImplementation(async () => mockedFetchResult as Response);
   mockedFetchResultJson = { hello: 'world!' };
   mockedFetchResult.ok = true;
   mockedFetchResult.status = 200;
   mockedFetchResult.headers =
-    new Map() as unknown as typeof mockedFetchResult['headers'];
+    new Map() as unknown as (typeof mockedFetchResult)['headers'];
 
   mockedFetchResult.json = jest.fn(async () => {
     return typeof mockedFetchResultJson == 'string' ||

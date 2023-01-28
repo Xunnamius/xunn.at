@@ -1,8 +1,6 @@
-import { ObjectId } from 'mongodb';
+import { type Collection, type WithId, type Document, ObjectId } from 'mongodb';
 import { toss } from 'toss-expression';
 import { GuruMeditationError } from 'named-app-errors';
-
-import type { Collection, WithId } from 'mongodb';
 
 /**
  * Represents the value of the `_id` property of a MongoDB collection entry.
@@ -43,7 +41,7 @@ export type ItemExistsOptions = {
 /**
  * Checks if an item matching `{ _id: id }` exists within `collection`.
  */
-export async function itemExists<T>(
+export async function itemExists<T extends Document>(
   collection: Collection<T>,
   id: string | ObjectId,
   options?: ItemExistsOptions
@@ -52,12 +50,12 @@ export async function itemExists<T>(
  * Checks if an item matching `{ [descriptor.key]: descriptor.id }` exists
  * within `collection`.
  */
-export async function itemExists<T>(
+export async function itemExists<T extends Document>(
   collection: Collection<T>,
   descriptor: { key: string; id: string | ObjectId },
   options?: ItemExistsOptions
 ): Promise<boolean>;
-export async function itemExists<T>(
+export async function itemExists<T extends Document>(
   collection: Collection<T>,
   id: ItemExistsIdParam,
   options?: ItemExistsOptions
